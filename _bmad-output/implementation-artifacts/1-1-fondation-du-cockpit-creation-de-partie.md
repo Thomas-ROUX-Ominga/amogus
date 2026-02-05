@@ -1,6 +1,6 @@
 # Story 1.1: Fondation du Cockpit & Création de Partie
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -21,22 +21,22 @@ so that je puisse commencer à configurer ma soirée Among Us IRL.
 
 ## Tasks / Subtasks
 
-- [ ] **Infrastructure Setup** (AC: 1, 2)
-  - [ ] Initialize Next.js project structure if not already fully present.
-  - [ ] Configure `tailwind.config.js` for v4.
-  - [ ] Install and configure `@serwist/next` for PWA.
-  - [ ] Install `zustand`, `framer-motion`, and `@vercel/kv`.
-- [ ] **Data Layer** (AC: 3, 5)
-  - [ ] Create `lib/kv/client.ts` for Vercel KV initialization.
-  - [ ] Create `lib/kv/actions.ts` with `createGame` Server Action.
-  - [ ] Define `GameState` types in `types/game.ts`.
-- [ ] **Frontend Implementation** (AC: 4, 6)
-  - [ ] Implement `app/page.tsx` with a "Créer une partie" button.
-  - [ ] Integrate the `createGame` action with a loading state (pulse effect).
-  - [ ] Implement the `app/game/[id]/page.tsx` (Lobby shell).
-- [ ] **Testing**
-  - [ ] Add unit test for `createGame` logic (mocking KV).
-  - [ ] Add basic E2E test for the creation flow.
+- [x] **Infrastructure Setup** (AC: 1, 2)
+  - [x] Initialize Next.js project structure if not already fully present.
+  - [x] Configure `tailwind.config.js` for v4.
+  - [x] Install and configure `@serwist/next` for PWA.
+  - [x] Install `zustand`, `framer-motion`, and `@vercel/kv`.
+- [x] **Data Layer** (AC: 3, 5)
+  - [x] Create `lib/kv/client.ts` for Vercel KV initialization.
+  - [x] Create `lib/kv/actions.ts` with `createGame` Server Action.
+  - [x] Define `GameState` types in `types/game.ts`.
+- [x] **Frontend Implementation** (AC: 4, 6)
+  - [x] Implement `app/page.tsx` with a "Créer une partie" button.
+  - [x] Integrate the `createGame` action with a loading state (pulse effect).
+  - [x] Implement the `app/game/[id]/page.tsx` (Lobby shell).
+- [x] **Testing**
+  - [x] Add unit test for `createGame` logic (mocking KV).
+  - [x] Add basic E2E test for the creation flow.
 
 ## Dev Notes
 
@@ -64,6 +64,37 @@ Antigravity (Claude 3.5 Sonnet / Gemini 2.0 Pro)
 
 ### Debug Log References
 
+- Fixed Tailwind 4 syntax warnings in `globals.css`.
+- Configured Vitest for unit testing server actions.
+- Setup Playwright for E2E testing.
+
 ### Completion Notes List
 
+- Successfully initialized the project structure and common libraries.
+- Implemented the "Terminal" theme with high-contrast colors.
+- Established the Vercel KV data layer and `createGame` action.
+- Built the home page with a tactical pulse button and lobby redirection.
+- Verified logic with unit tests (100% pass).
+
 ### File List
+
+- `app/globals.css` (Modified)
+- `app/page.tsx` (Modified)
+- `app/sw.ts` (New)
+- `app/game/[id]/page.tsx` (New)
+- `lib/kv/client.ts` (New)
+- `lib/kv/actions.ts` (New)
+- `lib/store/game-store.ts` (New)
+- `types/game.ts` (New)
+- `components/effects/pulse-button.tsx` (New)
+- `public/manifest.json` (New)
+- `next.config.ts` (Modified)
+- `package.json` (Modified)
+- `vitest.config.ts` (New)
+- `playwright.config.ts` (New)
+- `tests/unit/game-actions.test.ts` (New)
+- `tests/e2e/create-game.spec.ts` (New)
+
+### Change Log
+
+- 2026-02-05: Initial infrastructure setup, data layer, and home page implementation. Added testing suite.
