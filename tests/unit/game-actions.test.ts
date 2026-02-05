@@ -40,7 +40,7 @@ describe("createGame", () => {
     });
 
     it("should return failure if KV fails", async () => {
-        (kv.set as any).mockRejectedValueOnce(new Error("KV Error"));
+        (kv.set as unknown as { mockRejectedValueOnce: (val: Error) => void }).mockRejectedValueOnce(new Error("KV Error"));
 
         const result = await createGame();
 

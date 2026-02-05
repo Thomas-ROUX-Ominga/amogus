@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { GameState, Player } from "@/types/game";
+import { GameState } from "@/types/game";
 import { getGame } from "@/lib/kv/actions";
 
 interface GameStore {

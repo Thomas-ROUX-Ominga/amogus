@@ -3,7 +3,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { kv } from "./client";
 import { GameState, ActionResponse } from "@/types/game";
-import { redirect } from "next/navigation";
 
 export async function createGame(): Promise<ActionResponse<string>> {
     try {
