@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amogus UX - Visualiseur de Thèmes Cyber</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* DEEP VOID (Default) */
+            --bg: #050505;
+            --card: #111111;
+            --primary: #00F0FF; /* Neon Cyan */
+            --crewmate: #39FF14; /* Neon Green */
+            --impostor: #FF3131; /* Neon Red */
+            --text: #E0E0E0;
+            --text-dim: #888888;
+            --border: rgba(255, 255, 255, 0.1);
+            --glow: rgba(0, 240, 255, 0.3);
+            --font-main: 'Rajdhani', sans-serif;
+            --font-heading: 'Orbitron', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        .theme-cyber {
+            --bg: #0A0A0F;
+            --card: #151520;
+            --primary: #BC13FE; /* Electric Purple */
+            --crewmate: #00FF9F; /* Mint Green */
+            --impostor: #FF0055; /* Hot Pink */
+            --glow: rgba(188, 19, 254, 0.3);
+        }
+
+        .theme-tactical {
+            --bg: #0D1117;
+            --card: #161B22;
+            --primary: #58A6FF; /* Soft Blue */
+            --crewmate: #2DA44E; /* Dark Green */
+            --impostor: #DA3633; /* Tactical Red */
+            --glow: rgba(88, 166, 255, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-main);
+            margin: 0;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Background Effects */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 100% 100%;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0.3;
+        }
+
+        header {
+            width: 100%;
+            padding: 2rem;
+            text-align: center;
+            border-bottom: 3px double var(--primary);
+            margin-bottom: 2rem;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        h1 {
+            font-family: var(--font-heading);
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            margin: 0;
+            text-shadow: 0 0 10px var(--glow);
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .theme-btn {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 0.5rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+        }
+
+        .theme-btn:hover, .theme-btn.active {
+            background: var(--primary);
+            color: #000;
+            box-shadow: 0 0 15px var(--primary);
+        }
+
+        /* Device Mockups */
+        .preview-container {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 0 2rem 4rem;
+        }
+
+        .device {
+            width: 320px;
+            height: 600px;
+            background: #000;
+            border: 8px solid #333;
+            border-radius: 30px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* UI Components */
+        .nav-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--crewmate);
+            box-shadow: 0 0 5px var(--crewmate);
+        }
+
+        .logo {
+            font-family: var(--font-heading);
+            font-size: 1rem;
+            color: var(--primary);
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 2px;
+            background: var(--primary);
+            opacity: 0.5;
+        }
+
+        .btn-scan {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: transparent;
+            border: 4px solid var(--primary);
+            margin: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            cursor: pointer;
+            box-shadow: 0 0 20px var(--glow), inset 0 0 20px var(--glow);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 20px var(--glow); }
+            50% { transform: scale(1.05); box-shadow: 0 0 40px var(--primary); }
+            100% { transform: scale(1); box-shadow: 0 0 20px var(--glow); }
+        }
+
+        .btn-scan span {
+            font-family: var(--font-heading);
+            font-size: 1.2rem;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 3px;
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        .progress-fill {
+            width: 60%;
+            height: 100%;
+            background: var(--crewmate);
+            box-shadow: 0 0 10px var(--crewmate);
+            border-radius: 3px;
+        }
+
+        .label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .quest-item {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .check { color: var(--crewmate); }
+
+        /* Quest Details */
+        .quest-view .icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            color: var(--primary);
+        }
+
+        .input {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 1rem;
+            width: 100%;
+            border-radius: 8px;
+            font-family: var(--font-mono);
+            outline: none;
+        }
+
+        .input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px var(--glow);
+        }
+
+        .btn-submit {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 1rem;
+            width: 100%;
+            border-radius: 8px;
+            font-family: var(--font-heading);
+            font-weight: bold;
+            margin-top: 1rem;
+            cursor: pointer;
+        }
+
+        /* Success View */
+        .success-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .success-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 4px solid var(--crewmate);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            color: var(--crewmate);
+            font-size: 2rem;
+            box-shadow: 0 0 30px var(--crewmate);
+        }
+
+        .impostor-view .success-circle {
+            border-color: var(--impostor);
+            color: var(--impostor);
+            box-shadow: 0 0 30px var(--impostor);
+        }
+
+        .glitch-text {
+            color: var(--impostor);
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="scanlines"></div>
+
+    <header>
+        <h1>AMOGUS UX SYSTEM</h1>
+        <p>Exploration Visuelle du Thème "Deep Space Tactical"</p>
+        <div class="controls">
+            <button class="theme-btn active" onclick="setTheme('default', this)">DEEP VOID</button>
+            <button class="theme-btn" onclick="setTheme('cyber', this)">CYBER GENESIS</button>
+            <button class="theme-btn" onclick="setTheme('tactical', this)">TACTICAL STATION</button>
+        </div>
+    </header>
+
+    <div class="preview-container">
+        <!-- Screen 1: Home/Lobby -->
+        <div class="device">
+            <div class="screen">
+                <div class="nav-bar">
+                    <span class="logo">TERMINAL A-2</span>
+                    <div class="status-dot"></div>
+                </div>
+                
+                <span class="label">Mission Progress</span>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                
+                <div class="card" style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <span class="label">Primary Action</span>
+                    <div class="btn-scan">
+                        <span>SCAN</span>
+                    </div>
+                    <p style="font-size: 0.8rem; text-align: center; color: var(--text-dim); margin-top: 1rem;">Approchez-vous d'une borne de quête et scannez le QR code.</p>
+                </div>
+
+                <div class="card" style="margin-bottom: 0;">
+                    <span class="label">Recent Logs</span>
+                    <div class="quest-item"><span class="check">✓</span> Câblage Électrique</div>
+                    <div class="quest-item"><span class="check">✓</span> Calibration Moteurs</div>
+                    <div class="quest-item" style="opacity: 0.5;">○ Filtrage de l'Air</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 2: Quest Interaction -->
+        <div class="device">
+            <div class="screen quest-view">
+                <div class="nav-bar">
+                    <span class="logo">QUÊTE EN COURS</span>
+                    <span style="font-family: var(--font-mono); font-size: 0.7rem;">00:45</span>
+                </div>
+
+                <div class="icon">⚡</div>
+                <h3 style="text-align: center; font-family: var(--font-heading);">ÉNERGIE RÉDUITE</h3>
+                <p style="font-size: 0.9rem; text-align: center; color: var(--text-dim);">Entrez le code de secours affiché sur le panneau de contrôle de la station.</p>
+                
+                <div style="margin-top: 2rem;">
+                    <span class="label">CODE DE SÉCURITÉ</span>
+                    <input type="text" class="input" placeholder="XXXX-XXXX" value="GRID-8293">
+                    <button class="btn-submit">VALIDER L'ÉNERGIE</button>
+                </div>
+
+                <p style="margin-top: auto; font-size: 0.7rem; font-family: var(--font-mono); color: var(--impostor); text-align: center; text-transform: uppercase;">Alerte : Présence inhabituelle détectée</p>
+            </div>
+        </div>
+
+        <!-- Screen 3: Role Confirmation (Double View) -->
+        <div class="device">
+            <div class="screen impostor-view">
+                <div class="nav-bar">
+                    <span class="logo">STATUT SYSTÈME</span>
+                </div>
+
+                <div class="success-overlay">
+                    <div class="success-circle">✓</div>
+                    <h2 style="font-family: var(--font-heading); margin: 0;">SUCCÈS</h2>
+                    <span class="label" style="margin-top: 0.5rem;">Cammouflage Actif</span>
+                    
+                    <div style="margin-top: 3rem; text-align: center;">
+                        <span class="glitch-text">Erreur de données quête_id=829</span><br>
+                        <span class="glitch-text">Mode infiltration opérationnel</span>
+                    </div>
+
+                    <p style="margin-top: 4rem; font-size: 0.8rem; color: var(--text-dim);">Redirection vers Home...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function setTheme(name, btn) {
+            document.body.className = name === 'default' ? '' : 'theme-' + name;
+            document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+    </script>
+</body>
+</html>
