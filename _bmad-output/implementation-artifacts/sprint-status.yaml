@@ -43,7 +43,7 @@ development_status:
   epic-1: in-progress
   1-1-fondation-du-cockpit-creation-de-partie: done
   1-2-rejoindre-une-partie-zero-account-join: done
-  1-3-gestion-de-lidentite-erreurs-no-dead-end: backlog
+  1-3-gestion-de-lidentite-erreurs-no-dead-end: review
   epic-1-retrospective: optional
 
   epic-2: backlog

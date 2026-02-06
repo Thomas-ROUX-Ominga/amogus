@@ -38,6 +38,7 @@ export async function getGame(id: string): Promise<ActionResponse<GameState>> {
             return {
                 success: false,
                 error: "Game module not found or decommissioned.",
+                code: "GAME_NOT_FOUND",
             };
         }
 
@@ -50,6 +51,7 @@ export async function getGame(id: string): Promise<ActionResponse<GameState>> {
         return {
             success: false,
             error: "Failed to establish link with game module.",
+            code: "ERR_SIGNAL_LOST",
         };
     }
 }
@@ -79,6 +81,7 @@ export async function joinGame(
             return {
                 success: false,
                 error: "Game session not found.",
+                code: "GAME_NOT_FOUND",
             };
         }
 
@@ -119,6 +122,7 @@ export async function joinGame(
         return {
             success: false,
             error: "Signal lost while trying to join cockpit.",
+            code: "ERR_SIGNAL_LOST",
         };
     }
 }

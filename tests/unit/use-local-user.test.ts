@@ -35,4 +35,20 @@ describe("useLocalUser", () => {
         const { result: secondResult } = renderHook(() => useLocalUser());
         expect(secondResult.current.userId).toBe(firstId);
     });
+
+    it("should fallback to a generated ID if localStorage is restricted", () => {
+        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => { });
+        const storageSpy = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+            throw new Error("SecurityError: The operation is insecure.");
+        });
+
+        const { result } = renderHook(() => useLocalUser());
+
+        expect(result.current.userId).toBeDefined();
+        expect(typeof result.current.userId).toBe("string");
+        expect(consoleSpy).toHaveBeenCalled();
+
+        storageSpy.mockRestore();
+        consoleSpy.mockRestore();
+    });
 });

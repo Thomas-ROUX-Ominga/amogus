@@ -4,13 +4,12 @@ import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useGameStore } from "@/lib/store/game-store";
 import { useLocalUser } from "@/hooks/use-local-user";
-import { MoveLeft } from "lucide-react";
 import { JoinForm } from "@/components/game/join-form";
+import { ErrorView } from "@/components/game/error-view";
 
 export default function LobbyPage() {
     const { id } = useParams();
-    const router = useRouter();
-    const { gameState, isLoading, error, fetchGame } = useGameStore();
+    const { gameState, isLoading, error, errorCode, fetchGame } = useGameStore();
     const { userId } = useLocalUser();
 
     useEffect(() => {
@@ -26,7 +25,7 @@ export default function LobbyPage() {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <div className="max-w-2xl w-full border-2 border-primary/20 p-12 space-y-6 bg-black/50 backdrop-blur-sm animate-pulse">
-                    <div className="text-primary text-center tracking-[0.2em] uppercase text-sm">
+                    <div className="text-primary text-center tracking-[0.2em] uppercase text-sm font-orbitron">
                         Establishing Uplink...
                     </div>
                 </div>
@@ -37,20 +36,14 @@ export default function LobbyPage() {
     if (error) {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
-                <div className="max-w-2xl w-full border-2 border-destructive/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm">
-                    <div className="text-destructive font-black text-xl uppercase tracking-tighter">
-                        Critical Error: System Failure
-                    </div>
-                    <div className="p-4 bg-destructive/5 border-l-4 border-destructive text-muted-foreground text-sm italic">
-                        {error}
-                    </div>
-                    <button
-                        onClick={() => router.push("/")}
-                        className="flex items-center gap-2 text-xs text-primary hover:underline uppercase tracking-widest pt-4"
-                    >
-                        <MoveLeft size={14} /> Back to Terminal Home
-                    </button>
-                </div>
+                <ErrorView
+                    title={errorCode === "GAME_NOT_FOUND" ? "SESSION DECOMMISSIONED" : "SIGNAL INTERRUPTED"}
+                    message={error}
+                    code={errorCode || "ERR_UNKNOWN_SIG"}
+                    onRetry={() => {
+                        if (id) fetchGame(id as string);
+                    }}
+                />
             </main>
         );
     }
