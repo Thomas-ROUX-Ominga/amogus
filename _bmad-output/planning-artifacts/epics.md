@@ -156,6 +156,19 @@ So that je ne reste pas bloqué sur un écran vide.
 **Then** un message d'erreur clair s'affiche.
 **And** un bouton me permet de retourner à la page de création/accueil.
 
+### Story 1.4: Migration to Standard Redis (Technical)
+
+As a developpeur,
+I want remplacer la dépendance @vercel/kv par le client Redis standard,
+So that l'application soit compatible avec l'infrastructure TCP existante.
+
+**Acceptance Criteria:**
+
+**Given** l'application configurée avec REDIS_URL.
+**When** le build et les tests sont exécutés.
+**Then** aucune erreur liée au client Redis n'apparait.
+**And** le code utilise `redis` au lieu de `@vercel/kv`.
+
 ## Epic 2: Déploiement des Rôles & Cockpit de Jeu
 
 Lancer la partie et permettre aux joueurs de découvrir leur rôle (Crewmate/Impostor) via une interface immersive.

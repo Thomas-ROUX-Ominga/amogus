@@ -48,5 +48,5 @@ test("should show error on invalid game id", async ({ page }) => {
     await page.goto("/game/invalid-module-id");
 
     // Check if error message is shown
-    await expect(page.getByText(/Critical Error/i)).toBeVisible();
+    await expect(page.getByText(/SESSION DECOMMISSIONED/i)).toBeVisible();
 });

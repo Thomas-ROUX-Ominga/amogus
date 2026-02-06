@@ -1,5 +1,7 @@
 "use client";
 
+import { ERROR_CODES } from "@/lib/constants/error-codes";
+
 import { motion } from "framer-motion";
 import { AlertTriangle, Home, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -15,7 +17,7 @@ interface ErrorViewProps {
 export function ErrorView({
     title = "SIGNAL LOST",
     message = "Unable to establish secure uplink with game module.",
-    code = "ERR_SIGNAL_LOST",
+    code = ERROR_CODES.ERR_SIGNAL_LOST,
     onRetry
 }: ErrorViewProps) {
     const router = useRouter();

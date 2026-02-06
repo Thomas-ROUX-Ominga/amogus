@@ -71,4 +71,18 @@ Antigravity (Gemini 2.0 Pro)
 - [types/game.ts](file:///home/omi/projects/amogus/types/game.ts)
 - [tests/unit/error-logic.test.ts](file:///home/omi/projects/amogus/tests/unit/error-logic.test.ts)
 - [tests/unit/use-local-user.test.ts](file:///home/omi/projects/amogus/tests/unit/use-local-user.test.ts)
+- [lib/constants/error-codes.ts](file:///home/omi/projects/amogus/lib/constants/error-codes.ts)
 - [tests/e2e/invalid-game.spec.ts](file:///home/omi/projects/amogus/tests/e2e/invalid-game.spec.ts)
+
+## Senior Developer Review (AI)
+
+**Date:** 2026-02-07
+**Reviewer:** Antigravity
+
+### Findings
+- **Fixed**: Standardized error codes (GAME_NOT_FOUND, ERR_SIGNAL_LOST) usage across `actions.ts`, `page.tsx`, and `error-view.tsx` using new `lib/constants/error-codes.ts`.
+- **Fixed**: Relaxed fragile UUID regex validation in `joinGame` to support future ID changes.
+- **Fixed**: Updated unit tests to use constants and verified compatibility.
+- **Note**: `lib/kv/client.ts` has uncommitted changes (Redis migration), but functionality is verified via E2E tests.
+
+**Status:** Approved

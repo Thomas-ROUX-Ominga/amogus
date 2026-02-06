@@ -1,18 +1,27 @@
-import { createClient } from "@vercel/kv";
+import { createClient, RedisClientType } from "redis";
 
-// Fallback to a simple Map-based mock for local development/testing if KV env vars are missing
-const isKVConfigured = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
+const redisUrl = process.env.REDIS_URL;
 
-interface KVMock {
-    data: Map<string, unknown>;
-    get<T>(key: string): Promise<T | null>;
-    set(key: string, value: unknown): Promise<unknown>;
-    del(key: string): Promise<number>;
+if (!redisUrl) {
+    console.warn("REDIS_URL is not defined inside .env.local");
 }
 
-const globalForKv = globalThis as unknown as {
-    kvMock: KVMock | undefined;
+const globalForRedis = globalThis as unknown as {
+    redis: RedisClientType | undefined;
 };
+
+let redisClient: RedisClientType | undefined;
+
+if (redisUrl) {
+    if (!globalForRedis.redis) {
+        globalForRedis.redis = createClient({
+            url: redisUrl,
+        });
+        globalForRedis.redis.on('error', (err: unknown) => console.error('Redis Client Error', err));
+        globalForRedis.redis.connect().catch(console.error);
+    }
+    redisClient = globalForRedis.redis;
+}
 
 export interface KVClient {
     get<T>(key: string): Promise<T | null>;
@@ -20,21 +29,40 @@ export interface KVClient {
     del(key: string): Promise<number>;
 }
 
-export const kv: KVClient = isKVConfigured
-    ? (createClient({
-        url: process.env.KV_REST_API_URL!,
-        token: process.env.KV_REST_API_TOKEN!,
-    }) as unknown as KVClient)
-    : (globalForKv.kvMock ??= {
-        data: new Map<string, unknown>(),
-        get: async function <T>(key: string): Promise<T | null> {
-            return (this.data.get(key) as T) || null;
-        },
-        set: async function (key: string, value: unknown): Promise<unknown> {
-            this.data.set(key, value);
-            return "OK";
-        },
-        del: async function (key: string): Promise<number> {
-            return this.data.delete(key) ? 1 : 0;
+export const kv: KVClient = {
+    get: async function <T>(key: string): Promise<T | null> {
+        if (!redisClient) return null;
+        try {
+            const data = await redisClient.get(key);
+            if (!data) return null;
+            try {
+                return JSON.parse(data) as T;
+            } catch (e) {
+                console.error(`Failed to parse KV data for key: ${key}`, e);
+                return null;
+            }
+        } catch (error) {
+            console.error("KV Get Error:", error);
+            return null;
         }
-    });
+    },
+    set: async function (key: string, value: unknown): Promise<unknown> {
+        if (!redisClient) throw new Error("Redis client not initialized");
+        try {
+            return await redisClient.set(key, JSON.stringify(value));
+        } catch (error) {
+            console.error("KV Set Error:", error);
+            throw error;
+        }
+    },
+    del: async function (key: string): Promise<number> {
+        if (!redisClient) return 0;
+        try {
+            return await redisClient.del(key);
+        } catch (error) {
+            console.error("KV Del Error:", error);
+            throw error;
+        }
+    }
+};
+

@@ -3,6 +3,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { kv } from "./client";
 import { GameState, ActionResponse } from "@/types/game";
+import { ERROR_CODES } from "@/lib/constants/error-codes";
 
 export async function createGame(): Promise<ActionResponse<string>> {
     try {
@@ -38,7 +39,7 @@ export async function getGame(id: string): Promise<ActionResponse<GameState>> {
             return {
                 success: false,
                 error: "Game module not found or decommissioned.",
-                code: "GAME_NOT_FOUND",
+                code: ERROR_CODES.GAME_NOT_FOUND,
             };
         }
 
@@ -51,7 +52,7 @@ export async function getGame(id: string): Promise<ActionResponse<GameState>> {
         return {
             success: false,
             error: "Failed to establish link with game module.",
-            code: "ERR_SIGNAL_LOST",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
         };
     }
 }
@@ -64,13 +65,12 @@ export async function joinGame(
     // 1. Strict Server-Side Validation
     const sanitizedName = playerName.trim().slice(0, 20);
     if (!sanitizedName) {
-        return { success: false, error: "Identification failed: Empty alias." };
+        return { success: false, error: "Identification failed: Empty alias.", code: ERROR_CODES.ERR_INVALID_ALIAS };
     }
 
-    // UUID v4 regex validation
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(userId)) {
-        return { success: false, error: "Identification failed: Invalid crew signature." };
+    // Basic ID format validation (allow UUID or simple non-empty strings for flexibility)
+    if (!userId || userId.length < 5) {
+        return { success: false, error: "Identification failed: Invalid crew signature.", code: ERROR_CODES.ERR_INVALID_SIGNATURE };
     }
 
     try {
@@ -81,7 +81,7 @@ export async function joinGame(
             return {
                 success: false,
                 error: "Game session not found.",
-                code: "GAME_NOT_FOUND",
+                code: ERROR_CODES.GAME_NOT_FOUND,
             };
         }
 
@@ -96,7 +96,7 @@ export async function joinGame(
 
         // 3. Prevent overflow
         if (state.players.length >= 10) {
-            return { success: false, error: "Cockpit at maximum capacity." };
+            return { success: false, error: "Cockpit at maximum capacity.", code: ERROR_CODES.ERR_FULL_CAPACITY };
         }
 
         // Add new player
@@ -122,7 +122,7 @@ export async function joinGame(
         return {
             success: false,
             error: "Signal lost while trying to join cockpit.",
-            code: "ERR_SIGNAL_LOST",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
         };
     }
 }

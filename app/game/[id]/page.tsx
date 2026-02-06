@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { useParams, useRouter } from "next/navigation";
 import { useGameStore } from "@/lib/store/game-store";
 import { useLocalUser } from "@/hooks/use-local-user";
@@ -37,7 +38,7 @@ export default function LobbyPage() {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <ErrorView
-                    title={errorCode === "GAME_NOT_FOUND" ? "SESSION DECOMMISSIONED" : "SIGNAL INTERRUPTED"}
+                    title={errorCode === ERROR_CODES.GAME_NOT_FOUND ? "SESSION DECOMMISSIONED" : "SIGNAL INTERRUPTED"}
                     message={error}
                     code={errorCode || "ERR_UNKNOWN_SIG"}
                     onRetry={() => {
