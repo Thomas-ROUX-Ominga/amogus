@@ -11,19 +11,22 @@ test("should show home page and allow creating a game", async ({ page }) => {
     await expect(createButton).toBeVisible();
 
     // Click button and verify redirection
-    // Note: This requires KV mock or real environment
     await createButton.click();
 
     // Wait for URL to change to /game/[id]
     await expect(page).toHaveURL(/\/game\/[a-f0-9-]{36}/, { timeout: 10000 });
 
-    // Wait for the loading state to disappear if needed, or just wait for the title
-    // "Lobby Module" should eventually appear
-    const lobbyTitle = page.getByText("Lobby Module");
-    await expect(lobbyTitle).toBeVisible({ timeout: 15000 });
+    // After redirection, we should see the Join Form (Inbound Entry)
+    await expect(page.getByText("Inbound Entry")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("PENDING_AUTH")).toBeVisible();
 
-    // Verify "LIVE_CONNECTION" indicator
-    await expect(page.getByText("LIVE_CONNECTION")).toBeVisible();
+    // Enter pseudo to actually join the lobby
+    await page.fill('input[placeholder="ENTER PSEUDO..."]', "OperatorOne");
+    await page.click('button:has-text("REJOINDRE")');
+
+    // Now "Cockpit Terminal" and "SESSION_ACTIVE" should appear
+    await expect(page.getByText("Cockpit Terminal")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("SESSION_ACTIVE")).toBeVisible();
 
     // Verify "Game Identifier" label and value
     await expect(page.getByText("Game Identifier")).toBeVisible();
@@ -35,6 +38,9 @@ test("should show home page and allow creating a game", async ({ page }) => {
         const gameId = gameIdMatch[1];
         await expect(page.getByText(gameId)).toBeVisible();
     }
+
+    // Check if the manifest shows the player
+    await expect(page.getByText("OperatorOne")).toBeVisible();
 });
 
 test("should show error on invalid game id", async ({ page }) => {

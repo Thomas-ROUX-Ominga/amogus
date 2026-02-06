@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { GameState } from "@/types/game";
-import { getGame } from "@/lib/kv/actions";
+import { getGame, joinGame } from "@/lib/kv/actions";
 
 interface GameStore {
     gameState: GameState | null;
@@ -9,6 +9,7 @@ interface GameStore {
 
     // Actions
     fetchGame: (id: string) => Promise<void>;
+    join: (gameId: string, playerName: string, userId: string) => Promise<void>;
     reset: () => void;
 }
 
@@ -20,6 +21,17 @@ export const useGameStore = create<GameStore>((set) => ({
     fetchGame: async (id: string) => {
         set({ isLoading: true, error: null });
         const response = await getGame(id);
+
+        if (response.success && response.data) {
+            set({ gameState: response.data, isLoading: false });
+        } else {
+            set({ error: response.error || "Unknown error", isLoading: false });
+        }
+    },
+
+    join: async (gameId: string, playerName: string, userId: string) => {
+        set({ isLoading: true, error: null });
+        const response = await joinGame(gameId, playerName, userId);
 
         if (response.success && response.data) {
             set({ gameState: response.data, isLoading: false });

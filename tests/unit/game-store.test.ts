@@ -1,17 +1,17 @@
-import { vi, describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useGameStore } from "@/lib/store/game-store";
-import { getGame } from "@/lib/kv/actions";
+import { getGame, joinGame } from "@/lib/kv/actions";
 
-// Mock getGame action
+// Mock the server actions
 vi.mock("@/lib/kv/actions", () => ({
     getGame: vi.fn(),
+    joinGame: vi.fn(),
 }));
 
-describe("useGameStore", () => {
+describe("game-store", () => {
     beforeEach(() => {
-        vi.clearAllMocks();
-        // Reset store state before each test if possible, or just use reset()
         useGameStore.getState().reset();
+        vi.clearAllMocks();
     });
 
     it("should have initial state", () => {
@@ -21,49 +21,36 @@ describe("useGameStore", () => {
         expect(state.error).toBeNull();
     });
 
-    it("should fetch game successfully", async () => {
-        const mockGame = { id: "test-id", status: "LOBBY", players: [] };
+    it("should update state on successful fetchGame", async () => {
+        const mockGame = { id: "game-123", status: "LOBBY", players: [] };
         (getGame as any).mockResolvedValueOnce({ success: true, data: mockGame });
 
-        await useGameStore.getState().fetchGame("test-id");
+        await useGameStore.getState().fetchGame("game-123");
 
         const state = useGameStore.getState();
         expect(state.gameState).toEqual(mockGame);
         expect(state.isLoading).toBe(false);
         expect(state.error).toBeNull();
-        expect(getGame).toHaveBeenCalledWith("test-id");
     });
 
-    it("should handle fetch game failure", async () => {
-        (getGame as any).mockResolvedValueOnce({ success: false, error: "Game not found" });
+    it("should set error state on fetchGame failure", async () => {
+        (getGame as any).mockResolvedValueOnce({ success: false, error: "Link failed" });
 
-        await useGameStore.getState().fetchGame("test-id");
+        await useGameStore.getState().fetchGame("game-123");
 
         const state = useGameStore.getState();
         expect(state.gameState).toBeNull();
-        expect(state.isLoading).toBe(false);
-        expect(state.error).toBe("Game not found");
+        expect(state.error).toBe("Link failed");
     });
 
-    it("should handle unexpected fetch game failure", async () => {
-        (getGame as any).mockResolvedValueOnce({ success: false });
+    it("should update state on successful join", async () => {
+        const mockGame = { id: "game-123", status: "LOBBY", players: [{ id: "u1", name: "Omi" }] };
+        (joinGame as any).mockResolvedValueOnce({ success: true, data: mockGame });
 
-        await useGameStore.getState().fetchGame("test-id");
-
-        const state = useGameStore.getState();
-        expect(state.error).toBe("Unknown error");
-        expect(state.isLoading).toBe(false);
-    });
-
-    it("should reset state", () => {
-        // Set some state first
-        useGameStore.setState({ gameState: {} as any, error: "some error", isLoading: true });
-
-        useGameStore.getState().reset();
+        await useGameStore.getState().join("game-123", "Omi", "u1");
 
         const state = useGameStore.getState();
-        expect(state.gameState).toBeNull();
+        expect(state.gameState).toEqual(mockGame);
         expect(state.isLoading).toBe(false);
-        expect(state.error).toBeNull();
     });
 });

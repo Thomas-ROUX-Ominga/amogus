@@ -29,7 +29,7 @@ export default function Home() {
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-primary">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tighter">
+            <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tighter font-orbitron">
               AMOGUS <span className="text-foreground">COCKPIT</span>
             </h1>
           </div>
