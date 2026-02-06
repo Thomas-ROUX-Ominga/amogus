@@ -1,11 +1,12 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { createGame } from "@/lib/kv/actions";
+import { createGame, getGame } from "@/lib/kv/actions";
 import { kv } from "@/lib/kv/client";
 
 // Mock kv client
 vi.mock("@/lib/kv/client", () => ({
     kv: {
         set: vi.fn(),
+        get: vi.fn(),
     },
 }));
 
@@ -46,5 +47,42 @@ describe("createGame", () => {
 
         expect(result.success).toBe(false);
         expect(result.error).toContain("Failed to create game");
+    });
+});
+
+describe("getGame", () => {
+    // getGame is already imported at the top
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("should return game state if found", async () => {
+        const mockState = { id: "test-id", status: "LOBBY", players: [] };
+        (kv.get as any).mockResolvedValueOnce(mockState);
+
+        const result = await getGame("test-id");
+
+        expect(result.success).toBe(true);
+        expect(result.data).toEqual(mockState);
+        expect(kv.get).toHaveBeenCalledWith("game:test-id:state");
+    });
+
+    it("should return failure if game not found", async () => {
+        (kv.get as any).mockResolvedValueOnce(null);
+
+        const result = await getGame("test-id");
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain("not found");
+    });
+
+    it("should return failure if KV fails", async () => {
+        (kv.get as any).mockRejectedValueOnce(new Error("KV Error"));
+
+        const result = await getGame("test-id");
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain("Failed to establish link");
     });
 });

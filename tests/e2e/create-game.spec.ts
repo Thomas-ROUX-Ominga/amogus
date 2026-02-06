@@ -19,7 +19,22 @@ test("should show home page and allow creating a game", async ({ page }) => {
 
     // Wait for the loading state to disappear if needed, or just wait for the title
     // "Lobby Module" should eventually appear
-    await expect(page.getByText("Lobby Module")).toBeVisible({ timeout: 15000 });
+    const lobbyTitle = page.getByText("Lobby Module");
+    await expect(lobbyTitle).toBeVisible({ timeout: 15000 });
+
+    // Verify "LIVE_CONNECTION" indicator
+    await expect(page.getByText("LIVE_CONNECTION")).toBeVisible();
+
+    // Verify "Game Identifier" label and value
+    await expect(page.getByText("Game Identifier")).toBeVisible();
+
+    // The game ID should be visible and match part of the URL
+    const url = page.url();
+    const gameIdMatch = url.match(/\/game\/([a-f0-9-]{36})/);
+    if (gameIdMatch) {
+        const gameId = gameIdMatch[1];
+        await expect(page.getByText(gameId)).toBeVisible();
+    }
 });
 
 test("should show error on invalid game id", async ({ page }) => {
