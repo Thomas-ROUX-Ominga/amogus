@@ -94,13 +94,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "pnpm"
-          cache-dependency-path: pnpm-lock.yaml
+          cache: "npm"
 
       - name: Enable pnpm via Corepack
         run: |
           corepack enable
           corepack prepare pnpm@10 --activate
+          pnpm --version
 
       - name: Install Vercel CLI
         run: pnpm install --global vercel@latest
