@@ -49,6 +49,7 @@ jobs:
     name: Playwright E2E Tests
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Checkout
         uses: actions/checkout@v4
