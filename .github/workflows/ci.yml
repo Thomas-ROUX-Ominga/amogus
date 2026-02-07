@@ -66,6 +66,8 @@ jobs:
         run: npx playwright install --with-deps
         
       - name: Run Playwright Tests
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL }}
         run: npx playwright test
         
       - name: Upload Artifacts
