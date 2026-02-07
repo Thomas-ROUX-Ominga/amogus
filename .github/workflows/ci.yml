@@ -29,7 +29,7 @@ jobs:
       - name: "notify vercel"
         uses: "vercel/repository-dispatch/actions/status@v1"
         with:
-          name: Vercel - amogus: lint
+          name: "Vercel - amogus: lint"
 
   unit-test:
     name: Unit Tests
@@ -49,6 +49,11 @@ jobs:
 
       - name: Run Unit Tests
         run: npm test
+
+      - name: "notify vercel"
+        uses: "vercel/repository-dispatch/actions/status@v1"
+        with:
+          name: "Vercel - amogus: unit-test"
 
   e2e-test:
     name: Playwright E2E Tests
@@ -83,3 +88,8 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
+
+      - name: "notify vercel"
+        uses: "vercel/repository-dispatch/actions/status@v1"
+        with:
+          name: "Vercel - amogus: e2e-test"
