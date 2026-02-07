@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { GameState } from "@/types/game";
-import { getGame, joinGame } from "@/lib/kv/actions";
+import { getGame, joinGame } from "@/lib/redis/actions";
 
 interface GameStore {
     gameState: GameState | null;

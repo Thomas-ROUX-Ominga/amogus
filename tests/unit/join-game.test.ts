@@ -1,10 +1,10 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { joinGame } from "@/lib/kv/actions";
-import { kv } from "@/lib/kv/client";
+import { joinGame } from "@/lib/redis/actions";
+import { redis } from "@/lib/redis/client";
 
 // Mock kv client
-vi.mock("@/lib/kv/client", () => ({
-    kv: {
+vi.mock("@/lib/redis/client", () => ({
+    redis: {
         set: vi.fn(),
         get: vi.fn(),
     },
@@ -25,7 +25,7 @@ describe("joinGame", () => {
             players: [],
             createdAt: Date.now(),
         };
-        (kv.get as any).mockResolvedValueOnce(mockState);
+        vi.mocked(redis.get).mockResolvedValueOnce(mockState);
 
         const result = await joinGame("test-game", "Omi", VALID_UUID);
 
@@ -36,7 +36,7 @@ describe("joinGame", () => {
             name: "Omi",
             isAlive: true,
         });
-        expect(kv.set).toHaveBeenCalled();
+        expect(redis.set).toHaveBeenCalled();
     });
 
     it("should not add a player if they are already in the game", async () => {
@@ -46,17 +46,17 @@ describe("joinGame", () => {
             players: [{ id: VALID_UUID, name: "Omi", isAlive: true }],
             createdAt: Date.now(),
         };
-        (kv.get as any).mockResolvedValueOnce(mockState);
+        vi.mocked(redis.get).mockResolvedValueOnce(mockState);
 
         const result = await joinGame("test-game", "Omi-Duplicate", VALID_UUID);
 
         expect(result.success).toBe(true);
         expect(result.data?.players).toHaveLength(1);
-        expect(kv.set).not.toHaveBeenCalled();
+        expect(redis.set).not.toHaveBeenCalled();
     });
 
     it("should return error if game does not exist", async () => {
-        (kv.get as any).mockResolvedValueOnce(null);
+        vi.mocked(redis.get).mockResolvedValueOnce(null);
 
         const result = await joinGame("invalid-game", "Omi", VALID_UUID);
 
@@ -65,7 +65,7 @@ describe("joinGame", () => {
     });
 
     it("should return error for invalid UUID signature", async () => {
-        const result = await joinGame("test-game", "Omi", "invalid-id");
+        const result = await joinGame("test-game", "Omi", "123");
         expect(result.success).toBe(false);
         expect(result.error).toContain("Invalid crew signature");
     });

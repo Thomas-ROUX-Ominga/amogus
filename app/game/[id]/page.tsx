@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useGameStore } from "@/lib/store/game-store";
 import { useLocalUser } from "@/hooks/use-local-user";
 import { JoinForm } from "@/components/game/join-form";

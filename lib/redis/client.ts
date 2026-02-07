@@ -23,13 +23,13 @@ if (redisUrl) {
     redisClient = globalForRedis.redis;
 }
 
-export interface KVClient {
+export interface RedisClient {
     get<T>(key: string): Promise<T | null>;
     set(key: string, value: unknown): Promise<unknown>;
     del(key: string): Promise<number>;
 }
 
-export const kv: KVClient = {
+export const redis: RedisClient = {
     get: async function <T>(key: string): Promise<T | null> {
         if (!redisClient) return null;
         try {
@@ -38,11 +38,11 @@ export const kv: KVClient = {
             try {
                 return JSON.parse(data) as T;
             } catch (e) {
-                console.error(`Failed to parse KV data for key: ${key}`, e);
+                console.error(`Failed to parse Redis data for key: ${key}`, e);
                 return null;
             }
         } catch (error) {
-            console.error("KV Get Error:", error);
+            console.error("Redis Get Error:", error);
             return null;
         }
     },
@@ -51,7 +51,7 @@ export const kv: KVClient = {
         try {
             return await redisClient.set(key, JSON.stringify(value));
         } catch (error) {
-            console.error("KV Set Error:", error);
+            console.error("Redis Set Error:", error);
             throw error;
         }
     },
@@ -60,7 +60,7 @@ export const kv: KVClient = {
         try {
             return await redisClient.del(key);
         } catch (error) {
-            console.error("KV Del Error:", error);
+            console.error("Redis Del Error:", error);
             throw error;
         }
     }

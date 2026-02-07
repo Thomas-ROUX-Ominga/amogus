@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useGameStore } from "@/lib/store/game-store";
-import { getGame, joinGame } from "@/lib/kv/actions";
+import { getGame, joinGame } from "@/lib/redis/actions";
+import { GameState } from "@/types/game";
 
 // Mock the server actions
-vi.mock("@/lib/kv/actions", () => ({
+vi.mock("@/lib/redis/actions", () => ({
     getGame: vi.fn(),
     joinGame: vi.fn(),
 }));
@@ -22,8 +23,8 @@ describe("game-store", () => {
     });
 
     it("should update state on successful fetchGame", async () => {
-        const mockGame = { id: "game-123", status: "LOBBY", players: [] };
-        (getGame as any).mockResolvedValueOnce({ success: true, data: mockGame });
+        const mockGame: GameState = { id: "game-123", status: "LOBBY", players: [], createdAt: Date.now() };
+        vi.mocked(getGame).mockResolvedValueOnce({ success: true, data: mockGame });
 
         await useGameStore.getState().fetchGame("game-123");
 
@@ -34,7 +35,7 @@ describe("game-store", () => {
     });
 
     it("should set error state on fetchGame failure", async () => {
-        (getGame as any).mockResolvedValueOnce({ success: false, error: "Link failed" });
+        vi.mocked(getGame).mockResolvedValueOnce({ success: false, error: "Link failed" });
 
         await useGameStore.getState().fetchGame("game-123");
 
@@ -44,8 +45,8 @@ describe("game-store", () => {
     });
 
     it("should update state on successful join", async () => {
-        const mockGame = { id: "game-123", status: "LOBBY", players: [{ id: "u1", name: "Omi" }] };
-        (joinGame as any).mockResolvedValueOnce({ success: true, data: mockGame });
+        const mockGame: GameState = { id: "game-123", status: "LOBBY", players: [{ id: "u1", name: "Omi", isAlive: true }], createdAt: Date.now() };
+        vi.mocked(joinGame).mockResolvedValueOnce({ success: true, data: mockGame });
 
         await useGameStore.getState().join("game-123", "Omi", "u1");
 

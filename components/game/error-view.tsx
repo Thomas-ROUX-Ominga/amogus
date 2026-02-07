@@ -28,7 +28,7 @@ export function ErrorView({
             if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
                 navigator.vibrate([200, 100, 200]);
             }
-        } catch (e) {
+        } catch {
             // Ignore haptic failures
         }
     }, []);

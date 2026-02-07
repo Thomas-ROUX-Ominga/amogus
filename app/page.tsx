@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PulseButton } from "@/components/effects/pulse-button";
-import { createGame } from "@/lib/kv/actions";
+import { createGame } from "@/lib/redis/actions";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);

@@ -1,10 +1,10 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { getGame, joinGame } from "@/lib/kv/actions";
-import { kv } from "@/lib/kv/client";
+import { getGame, joinGame } from "@/lib/redis/actions";
+import { redis } from "@/lib/redis/client";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 
-vi.mock("@/lib/kv/client", () => ({
-    kv: {
+vi.mock("@/lib/redis/client", () => ({
+    redis: {
         get: vi.fn(),
         set: vi.fn(),
     },
@@ -19,7 +19,7 @@ describe("Action Error Logic", () => {
 
     describe("getGame", () => {
         it("should return GAME_NOT_FOUND code when game does not exist", async () => {
-            (kv.get as any).mockResolvedValueOnce(null);
+            vi.mocked(redis.get).mockResolvedValueOnce(null);
 
             const result = await getGame("missing-id");
 
@@ -28,7 +28,7 @@ describe("Action Error Logic", () => {
         });
 
         it("should return ERR_SIGNAL_LOST code when KV fails", async () => {
-            (kv.get as any).mockRejectedValueOnce(new Error("Redis Disconnected"));
+            vi.mocked(redis.get).mockRejectedValueOnce(new Error("Redis Disconnected"));
 
             const result = await getGame("any-id");
 
@@ -39,7 +39,7 @@ describe("Action Error Logic", () => {
 
     describe("joinGame", () => {
         it("should return GAME_NOT_FOUND code when game does not exist", async () => {
-            (kv.get as any).mockResolvedValueOnce(null);
+            vi.mocked(redis.get).mockResolvedValueOnce(null);
 
             const result = await joinGame("missing-id", "Omi", VALID_UUID);
 
@@ -48,7 +48,7 @@ describe("Action Error Logic", () => {
         });
 
         it("should return ERR_SIGNAL_LOST code when KV fails", async () => {
-            (kv.get as any).mockRejectedValueOnce(new Error("Redis Disconnected"));
+            vi.mocked(redis.get).mockRejectedValueOnce(new Error("Redis Disconnected"));
 
             const result = await joinGame("any-id", "Omi", VALID_UUID);
 

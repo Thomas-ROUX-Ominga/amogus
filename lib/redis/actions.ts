@@ -1,7 +1,7 @@
 "use server";
 
 import { v4 as uuidv4 } from "uuid";
-import { kv } from "./client";
+import { redis } from "./client";
 import { GameState, ActionResponse } from "@/types/game";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 
@@ -16,7 +16,7 @@ export async function createGame(): Promise<ActionResponse<string>> {
         };
 
         // Store game state in Redis
-        await kv.set(`game:${gameId}:state`, initialState);
+        await redis.set(`game:${gameId}:state`, initialState);
 
         return {
             success: true,
@@ -33,7 +33,7 @@ export async function createGame(): Promise<ActionResponse<string>> {
 
 export async function getGame(id: string): Promise<ActionResponse<GameState>> {
     try {
-        const state = await kv.get<GameState>(`game:${id}:state`);
+        const state = await redis.get<GameState>(`game:${id}:state`);
 
         if (!state) {
             return {
@@ -75,7 +75,7 @@ export async function joinGame(
 
     try {
         const stateKey = `game:${gameId}:state`;
-        const state = await kv.get<GameState>(stateKey);
+        const state = await redis.get<GameState>(stateKey);
 
         if (!state) {
             return {
@@ -111,7 +111,7 @@ export async function joinGame(
             players: [...state.players, newPlayer],
         };
 
-        await kv.set(stateKey, updatedState);
+        await redis.set(stateKey, updatedState);
 
         return {
             success: true,

@@ -1,10 +1,10 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { createGame, getGame } from "@/lib/kv/actions";
-import { kv } from "@/lib/kv/client";
+import { createGame, getGame } from "@/lib/redis/actions";
+import { redis } from "@/lib/redis/client";
 
 // Mock kv client
-vi.mock("@/lib/kv/client", () => ({
-    kv: {
+vi.mock("@/lib/redis/client", () => ({
+    redis: {
         set: vi.fn(),
         get: vi.fn(),
     },
@@ -30,7 +30,7 @@ describe("createGame", () => {
 
         expect(result.success).toBe(true);
         expect(result.data).toBe("test-uuid");
-        expect(kv.set).toHaveBeenCalledWith(
+        expect(redis.set).toHaveBeenCalledWith(
             "game:test-uuid:state",
             expect.objectContaining({
                 id: "test-uuid",
@@ -41,7 +41,7 @@ describe("createGame", () => {
     });
 
     it("should return failure if KV fails", async () => {
-        (kv.set as unknown as { mockRejectedValueOnce: (val: Error) => void }).mockRejectedValueOnce(new Error("KV Error"));
+        vi.mocked(redis.set).mockRejectedValueOnce(new Error("KV Error"));
 
         const result = await createGame();
 
@@ -59,17 +59,17 @@ describe("getGame", () => {
 
     it("should return game state if found", async () => {
         const mockState = { id: "test-id", status: "LOBBY", players: [] };
-        (kv.get as any).mockResolvedValueOnce(mockState);
+        vi.mocked(redis.get).mockResolvedValueOnce(mockState);
 
         const result = await getGame("test-id");
 
         expect(result.success).toBe(true);
         expect(result.data).toEqual(mockState);
-        expect(kv.get).toHaveBeenCalledWith("game:test-id:state");
+        expect(redis.get).toHaveBeenCalledWith("game:test-id:state");
     });
 
     it("should return failure if game not found", async () => {
-        (kv.get as any).mockResolvedValueOnce(null);
+        vi.mocked(redis.get).mockResolvedValueOnce(null);
 
         const result = await getGame("test-id");
 
@@ -78,7 +78,7 @@ describe("getGame", () => {
     });
 
     it("should return failure if KV fails", async () => {
-        (kv.get as any).mockRejectedValueOnce(new Error("KV Error"));
+        vi.mocked(redis.get).mockRejectedValueOnce(new Error("KV Error"));
 
         const result = await getGame("test-id");
 
