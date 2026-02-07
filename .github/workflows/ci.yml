@@ -29,6 +29,7 @@ jobs:
       - name: "notify vercel"
         uses: "vercel/repository-dispatch/actions/status@v1"
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           name: "Vercel - amogus: lint"
 
   unit-test:
@@ -53,6 +54,7 @@ jobs:
       - name: "notify vercel"
         uses: "vercel/repository-dispatch/actions/status@v1"
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           name: "Vercel - amogus: unit-test"
 
   e2e-test:
@@ -92,4 +94,5 @@ jobs:
       - name: "notify vercel"
         uses: "vercel/repository-dispatch/actions/status@v1"
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           name: "Vercel - amogus: e2e-test"
