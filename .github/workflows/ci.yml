@@ -88,22 +88,15 @@ jobs:
       pull-requests: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v4
         with:
-          node-version: 20
-          cache: "npm"
-
-      - name: Enable pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@10 --activate
-          pnpm --version
-
-      - name: Install Vercel CLI
-        run: pnpm install --global vercel@latest
+          version: 10
+          run_install: |
+            - recursive: true
+              args: [--strict-peer-dependencies]
+            - args: [--global, vercel]
 
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
