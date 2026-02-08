@@ -21,6 +21,16 @@ describe("GameStore - Role Selection", () => {
             data: { role: "CREWMATE" },
         });
 
+        vi.mocked(actions.getGame).mockResolvedValue({
+            success: true,
+            data: {
+                id: "game-123",
+                status: "IN_PROGRESS",
+                players: [{ id: "user-456", name: "Test", role: "CREWMATE", isAlive: true }],
+                createdAt: Date.now(),
+            },
+        });
+
         const store = useGameStore.getState();
         const result = await store.chooseRole("game-123", "user-456", "CREWMATE");
 
@@ -34,6 +44,16 @@ describe("GameStore - Role Selection", () => {
         vi.mocked(actions.selectRole).mockResolvedValue({
             success: true,
             data: { role: "IMPOSTOR" },
+        });
+
+        vi.mocked(actions.getGame).mockResolvedValue({
+            success: true,
+            data: {
+                id: "game-123",
+                status: "IN_PROGRESS",
+                players: [{ id: "user-456", name: "Test", role: "IMPOSTOR", isAlive: true }],
+                createdAt: Date.now(),
+            },
         });
 
         const store = useGameStore.getState();
@@ -52,6 +72,16 @@ describe("GameStore - Role Selection", () => {
                 success: true,
                 data: { role: "CREWMATE" },
             });
+        });
+
+        vi.mocked(actions.getGame).mockResolvedValue({
+            success: true,
+            data: {
+                id: "game-123",
+                status: "IN_PROGRESS",
+                players: [{ id: "user-456", name: "Test", role: "CREWMATE", isAlive: true }],
+                createdAt: Date.now(),
+            },
         });
 
         const store = useGameStore.getState();
@@ -79,6 +109,16 @@ describe("GameStore - Role Selection", () => {
         vi.mocked(actions.selectRole).mockResolvedValue({
             success: true,
             data: { role: "CREWMATE" },
+        });
+
+        vi.mocked(actions.getGame).mockResolvedValue({
+            success: true,
+            data: {
+                id: "game-123",
+                status: "IN_PROGRESS",
+                players: [{ id: "user-456", name: "Test", role: "CREWMATE", isAlive: true }],
+                createdAt: Date.now(),
+            },
         });
 
         const store = useGameStore.getState();

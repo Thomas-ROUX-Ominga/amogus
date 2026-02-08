@@ -9,7 +9,8 @@ import { JoinForm } from "@/components/game/join-form";
 import { ErrorView } from "@/components/game/error-view";
 import { RoleSelection } from "@/components/game/role-selection";
 import { RoleTransition } from "@/components/effects/role-transition";
-import { Rocket, Loader2, Shield, Users } from "lucide-react";
+import { GameHome } from "@/components/game/game-home";
+import { Rocket, Loader2 } from "lucide-react";
 
 export default function LobbyPage() {
     const { id } = useParams();
@@ -94,81 +95,7 @@ export default function LobbyPage() {
 
     // Show game home after role selection
     if (shouldShowGameHome && currentPlayer) {
-        return (
-            <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
-                <div className="max-w-2xl w-full border-2 border-primary/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgba(var(--primary),0.05)]">
-                    <div className="flex items-center justify-between border-b border-primary/20 pb-4">
-                        <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
-                            Game Cockpit
-                        </h1>
-                        <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full animate-pulse bg-green-500" />
-                            <span className="text-[10px] text-green-400/80 tracking-widest">
-                                ACTIVE
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-center gap-4 p-8 border border-primary/20 bg-primary/5">
-                            {currentPlayer.role === "CREWMATE" ? (
-                                <Users className="w-16 h-16 text-[#2DA44E]" />
-                            ) : (
-                                <Shield className="w-16 h-16 text-[#DA3633]" />
-                            )}
-                            <div>
-                                <div className="text-xs text-muted-foreground uppercase tracking-widest mb-1 font-rajdhani">
-                                    Votre rôle
-                                </div>
-                                <div className={`text-3xl font-black uppercase tracking-wider font-orbitron ${
-                                    currentPlayer.role === "CREWMATE" ? "text-[#2DA44E]" : "text-[#DA3633]"
-                                }`}>
-                                    {currentPlayer.role === "CREWMATE" ? "Crewmate" : "Imposteur"}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="p-6 border border-primary/20 bg-black/30">
-                            <div className="text-xs text-primary/60 uppercase tracking-widest mb-4 font-rajdhani">
-                                Joueurs connectés ({gameState?.players.length})
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                {gameState?.players.map((player) => (
-                                    <div
-                                        key={player.id}
-                                        className={`p-3 border text-xs tracking-widest uppercase flex items-center justify-between ${
-                                            player.id === userId
-                                                ? "border-primary bg-primary/10 text-primary font-bold"
-                                                : "border-white/10 bg-white/5 text-muted-foreground"
-                                        }`}
-                                    >
-                                        <span>{player.name}</span>
-                                        {player.id === userId && (
-                                            <span className="text-[8px] opacity-50 px-2 py-0.5 border border-primary/50">
-                                                YOU
-                                            </span>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="p-4 border-l-4 border-primary/30 bg-primary/5 text-xs text-muted-foreground italic tracking-wide font-rajdhani">
-                            Cockpit de jeu prêt. En attente des prochaines instructions...
-                        </div>
-                    </div>
-
-                    <div className="pt-4 flex justify-between items-center opacity-40">
-                        <div className="text-[8px] text-muted-foreground uppercase tracking-widest">
-                            Role: {currentPlayer.role}
-                        </div>
-                        <div className="text-[8px] text-muted-foreground uppercase tracking-widest">
-                            Status: READY
-                        </div>
-                    </div>
-                </div>
-            </main>
-        );
+        return <GameHome gameState={gameState!} currentPlayer={currentPlayer} userId={userId} />;
     }
 
     // Show role selection when game is IN_PROGRESS and no role selected yet

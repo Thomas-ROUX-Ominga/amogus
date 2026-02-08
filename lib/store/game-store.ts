@@ -12,6 +12,8 @@ interface GameStore {
     launchError: string | null;
     roleError: string | null;
     selectedRole: PlayerRole | null;
+    questsCompleted: number;
+    questsTotal: number;
 
     // Actions
     fetchGame: (id: string) => Promise<void>;
@@ -31,6 +33,8 @@ export const useGameStore = create<GameStore>((set) => ({
     launchError: null,
     roleError: null,
     selectedRole: null,
+    questsCompleted: 0,
+    questsTotal: 0,
 
     fetchGame: async (id: string) => {
         set({ isLoading: true, error: null, errorCode: null });
@@ -83,19 +87,32 @@ export const useGameStore = create<GameStore>((set) => ({
         const response = await selectRole(gameId, userId, role);
 
         if (response.success && response.data) {
-            set((state) => {
-                const updatedPlayers = state.gameState?.players.map((p) =>
-                    p.id === userId ? { ...p, role: response.data!.role } : p
-                );
-                return {
-                    selectedRole: response.data!.role,
+            // Fetch fresh game state after role selection to ensure full sync
+            const gameResponse = await getGame(gameId);
+            
+            if (gameResponse.success && gameResponse.data) {
+                set({
+                    selectedRole: response.data.role,
                     isSelectingRole: false,
                     roleError: null,
-                    gameState: state.gameState
-                        ? { ...state.gameState, players: updatedPlayers ?? state.gameState.players }
-                        : null,
-                };
-            });
+                    gameState: gameResponse.data,
+                });
+            } else {
+                // Fallback: update locally if fetch fails
+                set((state) => {
+                    const updatedPlayers = state.gameState?.players.map((p) =>
+                        p.id === userId ? { ...p, role: response.data!.role } : p
+                    );
+                    return {
+                        selectedRole: response.data!.role,
+                        isSelectingRole: false,
+                        roleError: null,
+                        gameState: state.gameState
+                            ? { ...state.gameState, players: updatedPlayers ?? state.gameState.players }
+                            : null,
+                    };
+                });
+            }
             return true;
         } else {
             set({
@@ -115,6 +132,8 @@ export const useGameStore = create<GameStore>((set) => ({
         errorCode: null, 
         launchError: null,
         roleError: null,
-        selectedRole: null
+        selectedRole: null,
+        questsCompleted: 0,
+        questsTotal: 0
     }),
 }));
