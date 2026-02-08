@@ -56,7 +56,7 @@ development_status:
   3-1-routage-dynamique-scan-qr: done
   3-2-conteneur-de-quete-quest-sandbox: done
   3-3-mini-jeux-mvp-qcm-vrai-faux: done
-  3-4-conclusion-atomique-retour-home: backlog
+  3-4-conclusion-atomique-retour-home: done
   epic-3-retrospective: optional
 
   epic-4: backlog

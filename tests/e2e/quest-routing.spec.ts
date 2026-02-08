@@ -249,9 +249,12 @@ test.describe("Quest Routing Flow", () => {
         // Wait for completion confirmation
         await expect(page.getByText("MISSION ENREGISTRÉE")).toBeVisible({ timeout: 5000 });
 
-        // Return to Game Home
-        const fleeButton = page.getByRole("button", { name: /Abandonner/i });
-        await fleeButton.click();
+        // Wait for Success Overlay
+        await expect(page.getByRole("heading", { name: /MISSION\s*ACCOMPLIE/i })).toBeVisible({ timeout: 15000 });
+
+        // Return to Game Home (Manual Exit)
+        const exitButton = page.getByRole("button", { name: /Retour au Cockpit/i });
+        await exitButton.click();
 
         // Verify progress bar shows 1/9
         await expect(page.getByText("1/9 quêtes accomplies")).toBeVisible({ timeout: 5000 });
@@ -296,12 +299,15 @@ test.describe("Quest Routing Flow", () => {
             }
         }
 
-        // Wait for completion
+        // Wait for completion confirmation
         await expect(page.getByText("MISSION ENREGISTRÉE")).toBeVisible({ timeout: 5000 });
 
-        // Return to Game Home
-        const fleeButton = page.getByRole("button", { name: /Abandonner/i });
-        await fleeButton.click();
+        // Wait for Success Overlay
+        await expect(page.getByRole("heading", { name: /MISSION\s*ACCOMPLIE/i })).toBeVisible({ timeout: 15000 });
+
+        // Return to Game Home (Manual Exit)
+        const exitButton = page.getByRole("button", { name: /Retour au Cockpit/i });
+        await exitButton.click();
 
         // Navigate to same quest again
         // We manually construct the URL to ensure we hit the SAME quest (random selection might pick a different one)
@@ -347,12 +353,15 @@ test.describe("Quest Routing Flow", () => {
             }
         }
 
-        // Wait for completion
+        // Wait for completion confirmation
         await expect(page.getByText("MISSION ENREGISTRÉE")).toBeVisible({ timeout: 5000 });
 
-        // Return to Game Home
-        const fleeButton = page.getByRole("button", { name: /Abandonner/i });
-        await fleeButton.click();
+        // Wait for Success Overlay
+        await expect(page.getByRole("heading", { name: /MISSION\s*ACCOMPLIE/i })).toBeVisible({ timeout: 15000 });
+
+        // Return to Game Home (Manual Exit)
+        const exitButton = page.getByRole("button", { name: /Retour au Cockpit/i });
+        await exitButton.click();
 
         // Verify progress shows 1/9
         await expect(page.getByText("1/9 quêtes accomplies")).toBeVisible({ timeout: 5000 });

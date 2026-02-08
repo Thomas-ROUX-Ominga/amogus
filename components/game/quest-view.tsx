@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { X, Clock, Check, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Quest, QuestDuration } from "@/types/quest";
 import { useGameStore } from "@/lib/store/game-store";
 import { QuestRenderer } from "@/components/game/quest-renderer";
+import { SuccessOverlay } from "@/components/game/success-overlay";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 
 interface QuestViewProps {
@@ -27,11 +28,25 @@ const DURATION_LABELS: Record<QuestDuration, string> = {
     long: "LONG",
 };
 
+const REDIRECT_DELAY_MS = 3000;
+
 export function QuestView({ quest, gameId, userId }: QuestViewProps) {
     const router = useRouter();
     const prefersReducedMotion = useReducedMotion();
     const { clearQuest, setQuestAnswered, completeQuestAction, isCompletingQuest, completionError, completionErrorCode, questAnswered } = useGameStore();
     const completionTriggered = useRef(false);
+    const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
+
+    const triggerSuccessFlow = useCallback(() => {
+        setShowSuccessOverlay(true);
+        try {
+            if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+                navigator.vibrate([100, 50, 100]);
+            }
+        } catch {
+            // Ignore haptic failures
+        }
+    }, []);
 
     const handleSuccess = useCallback(() => {
         setQuestAnswered(true);
@@ -43,39 +58,47 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
             completionTriggered.current = true;
             completeQuestAction(gameId, userId, quest.id).then((success) => {
                 if (success) {
-                    try {
-                        if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-                            navigator.vibrate([100, 50, 100]);
-                        }
-                    } catch {
-                        // Ignore haptic failures
-                    }
+                    triggerSuccessFlow();
                 }
             });
         }
-    }, [questAnswered, userId, gameId, quest.id, completeQuestAction]);
+    }, [questAnswered, userId, gameId, quest.id, completeQuestAction, triggerSuccessFlow]);
+
+    // Auto-redirect after success overlay
+    useEffect(() => {
+        if (showSuccessOverlay) {
+            const timer = setTimeout(() => {
+                clearQuest();
+                router.push(`/game/${gameId}`);
+            }, REDIRECT_DELAY_MS);
+
+            return () => {
+                clearTimeout(timer);
+                clearQuest();
+            };
+        }
+    }, [showSuccessOverlay, clearQuest, router, gameId]);
+
+    const handleManualExit = useCallback(() => {
+        clearQuest();
+        router.push(`/game/${gameId}`);
+    }, [clearQuest, router, gameId]);
 
     const handleRetryCompletion = useCallback(() => {
         if (userId) {
             completeQuestAction(gameId, userId, quest.id).then((success) => {
                 if (success) {
-                    try {
-                        if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-                            navigator.vibrate([100, 50, 100]);
-                        }
-                    } catch {
-                        // Ignore haptic failures
-                    }
+                    triggerSuccessFlow();
                 }
             });
         }
-    }, [userId, gameId, quest.id, completeQuestAction]);
+    }, [userId, gameId, quest.id, completeQuestAction, triggerSuccessFlow]);
 
     const handleError = useCallback(() => {
         // No store update on error — visual feedback only (handled by quest components)
     }, []);
 
-    const handleFlee = () => {
+    const handleFlee = useCallback(() => {
         try {
             if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
                 navigator.vibrate([50]);
@@ -85,7 +108,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
         }
         clearQuest();
         router.push(`/game/${gameId}`);
-    };
+    }, [clearQuest, router, gameId]);
 
     const containerVariants = prefersReducedMotion
         ? {}
@@ -220,6 +243,15 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                     Type: {quest.type}
                 </div>
             </div>
+
+            <AnimatePresence>
+                {showSuccessOverlay && (
+                    <SuccessOverlay 
+                        onManualExit={handleManualExit} 
+                        reducedMotion={!!prefersReducedMotion}
+                    />
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 }

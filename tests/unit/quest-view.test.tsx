@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { QuestView } from "@/components/game/quest-view";
 import { Quest } from "@/types/quest";
 
@@ -180,5 +180,115 @@ describe("QuestView", () => {
         mockStoreState.isCompletingQuest = true;
         render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
         expect(screen.getByText("Enregistrement...")).toBeTruthy();
+    });
+
+    it("should show SuccessOverlay when completion succeeds", async () => {
+        mockStoreState.questAnswered = true;
+        mockStoreState.isCompletingQuest = false;
+        mockStoreState.completionError = null;
+        mockCompleteQuestAction.mockResolvedValue(true);
+        
+        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        
+        // Wait for effect to run and state to update
+        await screen.findByText((content, element) => {
+            return element?.tagName.toLowerCase() === 'h1' && 
+                   content.includes('MISSION') && 
+                   content.includes('ACCOMPLIE');
+        });
+    });
+
+    it("should auto-redirect after delay when completion succeeds", async () => {
+        vi.useFakeTimers();
+        mockStoreState.questAnswered = true;
+        mockStoreState.isCompletingQuest = false;
+        mockStoreState.completionError = null;
+        mockCompleteQuestAction.mockResolvedValue(true);
+        
+        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        
+        // Allow the useEffect to run and the promise to resolve
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        // The overlay should be present now
+        expect(screen.getByText((content, element) => {
+            return element?.tagName.toLowerCase() === 'h1' && 
+                   content.includes('MISSION') && 
+                   content.includes('ACCOMPLIE');
+        })).toBeTruthy();
+        
+        // Fast-forward time for the redirect timer
+        await act(async () => {
+            vi.advanceTimersByTime(3000);
+        });
+        
+        expect(mockPush).toHaveBeenCalledWith("/game/game-123");
+        expect(mockClearQuest).toHaveBeenCalled();
+        
+        vi.useRealTimers();
+    });
+
+    it("should show SuccessOverlay and redirect when retry succeeds after failure", async () => {
+        vi.useFakeTimers();
+        
+        // Start with not answered
+        mockStoreState.questAnswered = false;
+        mockStoreState.completionError = null;
+        
+        const { rerender } = render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+
+        // User answers correctly
+        mockStoreState.questAnswered = true;
+        
+        // First attempt fails
+        mockCompleteQuestAction.mockResolvedValueOnce(false);
+        
+        // Trigger re-render to fire useEffect
+        rerender(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        
+        // Wait for first attempt
+        await act(async () => {
+            await Promise.resolve();
+        });
+
+        // Simulate store update with error
+        mockStoreState.completionError = "Failed";
+        rerender(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+
+        // Verify error state
+        expect(screen.getByText("ERREUR DE SAUVEGARDE")).toBeTruthy();
+
+        // Setup retry to succeed
+        mockCompleteQuestAction.mockResolvedValue(true);
+
+        // Click Retry
+        const retryButton = screen.getByText("RÉESSAYER").closest("button")!;
+        fireEvent.click(retryButton);
+
+        // Wait for retry promise to resolve
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        // Expect SuccessOverlay to appear
+        expect(screen.getByText((content, element) => {
+            return element?.tagName.toLowerCase() === 'h1' && 
+                   content.includes('MISSION') && 
+                   content.includes('ACCOMPLIE');
+        })).toBeTruthy();
+
+        // Fast-forward for redirect
+        await act(async () => {
+            vi.advanceTimersByTime(3000);
+        });
+
+        expect(mockPush).toHaveBeenCalledWith("/game/game-123");
+        expect(mockClearQuest).toHaveBeenCalled();
+
+        vi.useRealTimers();
     });
 });
