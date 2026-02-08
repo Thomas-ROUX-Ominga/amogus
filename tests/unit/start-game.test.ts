@@ -24,7 +24,7 @@ import { startGame } from "@/lib/redis/actions";
 // Helper: mock atomicUpdate to call the updater with the given state
 function mockAtomicUpdate(state: unknown) {
     vi.mocked(redis.atomicUpdate).mockImplementationOnce(
-        async (_key: string, updater: (current: unknown) => unknown, _ttl?: number) => {
+        async (_key: string, updater: (current: unknown) => unknown) => {
             const result = updater(state);
             return result ?? state; // If updater returns null, return original state
         }

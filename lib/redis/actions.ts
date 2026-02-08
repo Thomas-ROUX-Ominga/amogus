@@ -2,7 +2,7 @@
 
 import { v4 as uuidv4 } from "uuid";
 import { redis, GAME_TTL_SECONDS } from "./client";
-import { GameState, ActionResponse } from "@/types/game";
+import { GameState, ActionResponse, PlayerRole } from "@/types/game";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 
 export async function createGame(): Promise<ActionResponse<string>> {
@@ -190,6 +190,84 @@ export async function joinGame(
         return {
             success: false,
             error: "Signal lost while trying to join cockpit.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
+}
+
+export async function selectRole(
+    gameId: string,
+    userId: string,
+    role: PlayerRole
+): Promise<ActionResponse<{ role: PlayerRole }>> {
+    // Validate role value
+    if (role !== "CREWMATE" && role !== "IMPOSTOR") {
+        return {
+            success: false,
+            error: "Invalid role selection.",
+            code: ERROR_CODES.ERR_INVALID_ROLE,
+        };
+    }
+
+    try {
+        const stateKey = `game:${gameId}:state`;
+
+        let validationError: ActionResponse<{ role: PlayerRole }> | null = null;
+
+        await redis.atomicUpdate<GameState>(stateKey, (state) => {
+            if (!state) {
+                validationError = {
+                    success: false,
+                    error: "Game session not found.",
+                    code: ERROR_CODES.GAME_NOT_FOUND,
+                };
+                return null;
+            }
+
+            if (state.status !== "IN_PROGRESS") {
+                validationError = {
+                    success: false,
+                    error: "Cannot select role: game is not in progress.",
+                    code: ERROR_CODES.ERR_INVALID_STATE,
+                };
+                return null;
+            }
+
+            const playerIndex = state.players.findIndex((p) => p.id === userId);
+            if (playerIndex === -1) {
+                validationError = {
+                    success: false,
+                    error: "Player not found in game.",
+                    code: ERROR_CODES.ERR_INVALID_SIGNATURE,
+                };
+                return null;
+            }
+
+            const updatedPlayers = [...state.players];
+            updatedPlayers[playerIndex] = {
+                ...updatedPlayers[playerIndex],
+                role,
+            };
+
+            return {
+                ...state,
+                players: updatedPlayers,
+            };
+        }, GAME_TTL_SECONDS);
+
+        if (validationError) {
+            return validationError;
+        }
+
+        return {
+            success: true,
+            data: { role },
+        };
+    } catch (error) {
+        console.error("Failed to select role:", error);
+        return {
+            success: false,
+            error: "Signal lost while assigning role.",
             code: ERROR_CODES.ERR_SIGNAL_LOST,
         };
     }

@@ -1,19 +1,23 @@
 import { create } from "zustand";
-import { GameState } from "@/types/game";
-import { getGame, joinGame, startGame } from "@/lib/redis/actions";
+import { GameState, PlayerRole } from "@/types/game";
+import { getGame, joinGame, startGame, selectRole } from "@/lib/redis/actions";
 
 interface GameStore {
     gameState: GameState | null;
     isLoading: boolean;
     isLaunching: boolean;
+    isSelectingRole: boolean;
     error: string | null;
     errorCode: string | null;
     launchError: string | null;
+    roleError: string | null;
+    selectedRole: PlayerRole | null;
 
     // Actions
     fetchGame: (id: string) => Promise<void>;
     join: (gameId: string, playerName: string, userId: string) => Promise<void>;
     launch: (gameId: string) => Promise<boolean>;
+    chooseRole: (gameId: string, userId: string, role: PlayerRole) => Promise<boolean>;
     reset: () => void;
 }
 
@@ -21,9 +25,12 @@ export const useGameStore = create<GameStore>((set) => ({
     gameState: null,
     isLoading: false,
     isLaunching: false,
+    isSelectingRole: false,
     error: null,
     errorCode: null,
     launchError: null,
+    roleError: null,
+    selectedRole: null,
 
     fetchGame: async (id: string) => {
         set({ isLoading: true, error: null, errorCode: null });
@@ -71,5 +78,43 @@ export const useGameStore = create<GameStore>((set) => ({
         }
     },
 
-    reset: () => set({ gameState: null, isLoading: false, isLaunching: false, error: null, errorCode: null, launchError: null }),
+    chooseRole: async (gameId: string, userId: string, role: PlayerRole) => {
+        set({ isSelectingRole: true, roleError: null });
+        const response = await selectRole(gameId, userId, role);
+
+        if (response.success && response.data) {
+            set((state) => {
+                const updatedPlayers = state.gameState?.players.map((p) =>
+                    p.id === userId ? { ...p, role: response.data!.role } : p
+                );
+                return {
+                    selectedRole: response.data!.role,
+                    isSelectingRole: false,
+                    roleError: null,
+                    gameState: state.gameState
+                        ? { ...state.gameState, players: updatedPlayers ?? state.gameState.players }
+                        : null,
+                };
+            });
+            return true;
+        } else {
+            set({
+                roleError: response.error || "Unknown error",
+                isSelectingRole: false
+            });
+            return false;
+        }
+    },
+
+    reset: () => set({ 
+        gameState: null, 
+        isLoading: false, 
+        isLaunching: false, 
+        isSelectingRole: false,
+        error: null, 
+        errorCode: null, 
+        launchError: null,
+        roleError: null,
+        selectedRole: null
+    }),
 }));

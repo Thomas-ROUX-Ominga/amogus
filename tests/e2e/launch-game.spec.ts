@@ -25,7 +25,7 @@ test.describe("Launch Game Flow", () => {
         // Should transition to role selection screen
         await expect(page.getByText("Mission Active")).toBeVisible({ timeout: 10000 });
         await expect(page.getByText("IN_PROGRESS")).toBeVisible();
-        await expect(page.getByText("Role Assignment")).toBeVisible();
+        await expect(page.getByText(/Choisissez votre rôle/i)).toBeVisible();
     });
 
     test("should show launch button disabled before players join, then enabled after", async ({ page }) => {

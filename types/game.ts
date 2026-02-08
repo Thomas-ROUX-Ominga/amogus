@@ -1,9 +1,11 @@
 export type GameStatus = "LOBBY" | "IN_PROGRESS" | "FINISHED";
 
+export type PlayerRole = "CREWMATE" | "IMPOSTOR";
+
 export interface Player {
     id: string;
     name: string;
-    role?: "CREWMATE" | "IMPOSTOR";
+    role?: PlayerRole;
     isAlive: boolean;
 }
 
