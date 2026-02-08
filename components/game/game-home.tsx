@@ -100,7 +100,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     </div>
 
                     {/* SCAN Button (thumb zone — bottom) */}
-                    <ScanButton disabled={true} />
+                    <ScanButton disabled={false} href={`/game/${gameState.id}/quest?duration=short`} />
 
                     {/* No Dead End — Return link */}
                     <Link

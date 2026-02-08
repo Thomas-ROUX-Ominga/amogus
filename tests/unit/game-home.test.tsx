@@ -25,6 +25,7 @@ describe("GameHome", () => {
         vi.mocked(useGameStore).mockReturnValue({
             questsCompleted: 0,
             questsTotal: 0,
+            currentQuest: null,
             gameState: null,
             isLoading: false,
             isLaunching: false,
@@ -38,6 +39,8 @@ describe("GameHome", () => {
             fetchGame: vi.fn(),
             join: vi.fn(),
             launch: vi.fn(),
+            setCurrentQuest: vi.fn(),
+            clearQuest: vi.fn(),
             reset: vi.fn(),
         });
     });
@@ -83,9 +86,16 @@ describe("GameHome", () => {
         expect(screen.getByText("SCANNER")).toBeTruthy();
     });
 
-    it("should render SCAN button as disabled", () => {
+    it("should render SCAN button as enabled link", () => {
         render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
-        expect(screen.getByText("Bientôt disponible")).toBeTruthy();
+        const link = screen.getByRole("link", { name: /Scanner/i });
+        expect(link).toBeTruthy();
+        expect(link.getAttribute("href")).toContain("/quest?duration=short");
+    });
+
+    it("should not show 'Bientôt disponible' on SCAN button", () => {
+        render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
+        expect(screen.queryByText("Bientôt disponible")).toBeNull();
     });
 
     it("should render quest progress for Crewmate", () => {

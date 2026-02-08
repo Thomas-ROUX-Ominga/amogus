@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { GameState, PlayerRole } from "@/types/game";
+import { Quest } from "@/types/quest";
 import { getGame, joinGame, startGame, selectRole } from "@/lib/redis/actions";
 
 interface GameStore {
@@ -14,12 +15,15 @@ interface GameStore {
     selectedRole: PlayerRole | null;
     questsCompleted: number;
     questsTotal: number;
+    currentQuest: Quest | null;
 
     // Actions
     fetchGame: (id: string) => Promise<void>;
     join: (gameId: string, playerName: string, userId: string) => Promise<void>;
     launch: (gameId: string) => Promise<boolean>;
     chooseRole: (gameId: string, userId: string, role: PlayerRole) => Promise<boolean>;
+    setCurrentQuest: (quest: Quest) => void;
+    clearQuest: () => void;
     reset: () => void;
 }
 
@@ -35,6 +39,7 @@ export const useGameStore = create<GameStore>((set) => ({
     selectedRole: null,
     questsCompleted: 0,
     questsTotal: 0,
+    currentQuest: null,
 
     fetchGame: async (id: string) => {
         set({ isLoading: true, error: null, errorCode: null });
@@ -123,6 +128,10 @@ export const useGameStore = create<GameStore>((set) => ({
         }
     },
 
+    setCurrentQuest: (quest: Quest) => set({ currentQuest: quest }),
+
+    clearQuest: () => set({ currentQuest: null }),
+
     reset: () => set({ 
         gameState: null, 
         isLoading: false, 
@@ -134,6 +143,7 @@ export const useGameStore = create<GameStore>((set) => ({
         roleError: null,
         selectedRole: null,
         questsCompleted: 0,
-        questsTotal: 0
+        questsTotal: 0,
+        currentQuest: null
     }),
 }));

@@ -38,11 +38,15 @@ test.describe("Game Home Flow", () => {
         await expect(page.getByText("HomePlayer")).toBeVisible();
         await expect(page.getByText("YOU")).toBeVisible();
 
-        // Verify SCAN button is visible
+        // Verify SCAN button is visible and enabled as a link
         await expect(page.getByText("SCANNER")).toBeVisible();
 
-        // Verify SCAN button shows disabled state
-        await expect(page.getByText("Bientôt disponible")).toBeVisible();
+        // Verify SCAN button no longer shows disabled state
+        await expect(page.getByText("Bientôt disponible")).not.toBeVisible();
+
+        // Verify SCAN is a link to quest page
+        const scanLink = page.getByRole("link", { name: /Scanner/i });
+        await expect(scanLink).toBeVisible();
 
         // Verify quest progress is visible for Crewmate
         await expect(page.getByText("Progression des quêtes")).toBeVisible();
@@ -83,14 +87,15 @@ test.describe("Game Home Flow", () => {
         await expect(page.getByText("SCANNER")).toBeVisible();
     });
 
-    test("should have SCAN button visible and in correct position", async ({ page }) => {
+    test("should have SCAN link visible and in correct position", async ({ page }) => {
         await createJoinLaunchSelectRole(page, "Crewmate");
 
-        const scanButton = page.getByRole("button", { name: /Scanner/i });
-        await expect(scanButton).toBeVisible();
+        const scanLink = page.getByRole("link", { name: /Scanner/i });
+        await expect(scanLink).toBeVisible();
 
-        // Verify button is disabled
-        await expect(scanButton).toBeDisabled();
+        // Verify link points to quest page
+        const href = await scanLink.getAttribute("href");
+        expect(href).toContain("/quest?duration=short");
     });
 
     test("should navigate to home page via return link", async ({ page }) => {
@@ -103,32 +108,27 @@ test.describe("Game Home Flow", () => {
         await expect(page).toHaveURL("/", { timeout: 5000 });
     });
 
-    test("should have SCAN button with minimum 120px height (touch target)", async ({ page }) => {
+    test("should have SCAN link with minimum 120px height (touch target)", async ({ page }) => {
         await createJoinLaunchSelectRole(page, "Crewmate");
 
-        const scanButton = page.getByRole("button", { name: /Scanner/i });
-        const boundingBox = await scanButton.boundingBox();
+        const scanLink = page.getByRole("link", { name: /Scanner/i });
+        const boundingBox = await scanLink.boundingBox();
         
         expect(boundingBox).not.toBeNull();
         expect(boundingBox!.height).toBeGreaterThanOrEqual(120);
     });
 
-    test("should support keyboard navigation on SCAN button", async ({ page }) => {
+    test("should support keyboard navigation on SCAN link", async ({ page }) => {
         await createJoinLaunchSelectRole(page, "Crewmate");
 
-        const scanButton = page.getByRole("button", { name: /Scanner/i });
+        const scanLink = page.getByRole("link", { name: /Scanner/i });
+        await expect(scanLink).toBeVisible();
         
-        // Verify button has keyboard event handler (onKeyDown)
-        // Note: Disabled buttons cannot receive focus in browsers, but the handler is still present
-        await expect(scanButton).toBeVisible();
-        await expect(scanButton).toBeDisabled();
-        
-        // Verify the button is keyboard accessible when enabled (structural test)
-        // The actual keyboard navigation will work when button is enabled in Epic 3
-        const hasKeyboardHandler = await scanButton.evaluate((el) => {
+        // Verify the link is keyboard accessible
+        const hasAriaLabel = await scanLink.evaluate((el) => {
             return el.hasAttribute('aria-label');
         });
-        expect(hasKeyboardHandler).toBe(true);
+        expect(hasAriaLabel).toBe(true);
     });
 
     test("should maintain Game Home state after reload with role assigned", async ({ page }) => {

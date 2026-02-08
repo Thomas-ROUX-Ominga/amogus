@@ -1,0 +1,71 @@
+{
+  "short": [
+    {
+      "id": "s1",
+      "type": "true-false",
+      "duration": "short",
+      "title": "Vérification de Protocole",
+      "instruction": "Le vaisseau spatial possède exactement 12 modules de survie. Vrai ou Faux ?"
+    },
+    {
+      "id": "s2",
+      "type": "qcm",
+      "duration": "short",
+      "title": "Code d'Accès",
+      "instruction": "Quel est le code d'accès au terminal principal ? A) 4815 B) 1623 C) 4242 D) 0007"
+    },
+    {
+      "id": "s3",
+      "type": "true-false",
+      "duration": "short",
+      "title": "Alerte Oxygène",
+      "instruction": "Le niveau d'oxygène du secteur B est critique. Vrai ou Faux ?"
+    }
+  ],
+  "medium": [
+    {
+      "id": "m1",
+      "type": "qcm",
+      "duration": "medium",
+      "title": "Diagnostic Moteur",
+      "instruction": "Le moteur principal montre une anomalie. Quelle est la cause probable ? A) Surchauffe du réacteur B) Fuite de carburant C) Défaillance électrique D) Sabotage"
+    },
+    {
+      "id": "m2",
+      "type": "true-false",
+      "duration": "medium",
+      "title": "Transmission Cryptée",
+      "instruction": "Un message crypté a été intercepté depuis la station orbitale. Le signal provient du secteur Delta. Vrai ou Faux ?"
+    },
+    {
+      "id": "m3",
+      "type": "qcm",
+      "duration": "medium",
+      "title": "Navigation Stellaire",
+      "instruction": "Pour atteindre la station relais, quelle trajectoire emprunter ? A) Couloir Alpha-7 B) Passage Nebula C) Route directe D) Saut hyperspatial"
+    }
+  ],
+  "long": [
+    {
+      "id": "l1",
+      "type": "qcm",
+      "duration": "long",
+      "title": "Enquête de Sabotage",
+      "instruction": "Trois systèmes ont été sabotés simultanément. Analysez les indices et identifiez le secteur compromis. A) Secteur médical B) Salle des machines C) Pont de commandement D) Soute cargo"
+    },
+    {
+      "id": "l2",
+      "type": "true-false",
+      "duration": "long",
+      "title": "Protocole d'Urgence",
+      "instruction": "Le protocole d'urgence Omega-9 nécessite l'approbation de 3 membres d'équipage minimum pour être activé. Vrai ou Faux ?"
+    },
+    {
+      "id": "l3",
+      "type": "qcm",
+      "duration": "long",
+      "title": "Réparation Critique",
+      "instruction": "Le bouclier thermique est endommagé à 67%. Quelle séquence de réparation est correcte ? A) Isoler → Souder → Tester B) Tester → Isoler → Souder C) Souder → Tester → Isoler D) Isoler → Tester → Souder"
+    }
+  ]
+}

@@ -80,4 +80,29 @@ describe("ScanButton", () => {
         const button = screen.getByRole("button");
         expect(button.className).toContain("font-orbitron");
     });
+
+    it("should render as a link when href is provided and not disabled", () => {
+        render(<ScanButton disabled={false} href="/game/123/quest?duration=short" />);
+        const link = screen.getByRole("link", { name: /Scanner/i });
+        expect(link).toBeTruthy();
+        expect(link.getAttribute("href")).toBe("/game/123/quest?duration=short");
+    });
+
+    it("should render as button when href is provided but disabled", () => {
+        render(<ScanButton disabled={true} href="/game/123/quest?duration=short" />);
+        const button = screen.getByRole("button");
+        expect(button).toBeTruthy();
+        expect(button.hasAttribute("disabled")).toBe(true);
+    });
+
+    it("should not show 'Bientôt disponible' when href is provided and enabled", () => {
+        render(<ScanButton disabled={false} href="/game/123/quest?duration=short" />);
+        expect(screen.queryByText("Bientôt disponible")).toBeNull();
+    });
+
+    it("should have correct aria-label when rendered as link", () => {
+        render(<ScanButton disabled={false} href="/game/123/quest?duration=short" />);
+        const link = screen.getByRole("link");
+        expect(link.getAttribute("aria-label")).toBe("Scanner");
+    });
 });

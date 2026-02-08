@@ -2,14 +2,15 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { Scan } from "lucide-react";
+import Link from "next/link";
 
 interface ScanButtonProps {
     disabled?: boolean;
     onClick?: () => void;
+    href?: string;
 }
 
-// Future: add `href` prop for Epic 3 quest routing
-export function ScanButton({ disabled = true, onClick }: ScanButtonProps) {
+export function ScanButton({ disabled = true, onClick, href }: ScanButtonProps) {
     const prefersReducedMotion = useReducedMotion();
 
     const handlePress = () => {
@@ -54,28 +55,8 @@ export function ScanButton({ disabled = true, onClick }: ScanButtonProps) {
               ease: "easeInOut" as const,
           };
 
-    return (
-        <motion.button
-            animate={pulseAnimation}
-            transition={pulseTransition}
-            onClick={handlePress}
-            onKeyDown={handleKeyDown}
-            disabled={disabled}
-            aria-label={disabled ? "Scanner — Bientôt disponible" : "Scanner"}
-            style={{ willChange: prefersReducedMotion ? "auto" : "transform" }}
-            className={`
-                w-full min-h-[120px] p-6
-                flex flex-col items-center justify-center gap-3
-                border-2 border-primary bg-primary/10
-                font-orbitron uppercase tracking-wider
-                touch-manipulation
-                transition-opacity duration-200
-                ${disabled
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-primary/20 cursor-pointer"
-                }
-            `}
-        >
+    const content = (
+        <>
             <Scan className="w-10 h-10 text-primary" />
             <span className="text-xl font-black text-primary tracking-[0.3em]">
                 SCANNER
@@ -85,6 +66,47 @@ export function ScanButton({ disabled = true, onClick }: ScanButtonProps) {
                     Bientôt disponible
                 </span>
             )}
+        </>
+    );
+
+    const className = `
+        w-full min-h-[120px] p-6
+        flex flex-col items-center justify-center gap-3
+        border-2 border-primary bg-primary/10
+        font-orbitron uppercase tracking-wider
+        touch-manipulation
+        transition-opacity duration-200
+        ${disabled
+            ? "opacity-50 cursor-not-allowed"
+            : "hover:bg-primary/20 cursor-pointer"
+        }
+    `;
+
+    if (href && !disabled) {
+        return (
+            <Link
+                href={href}
+                onClick={handlePress}
+                aria-label="Scanner"
+                className={className}
+            >
+                {content}
+            </Link>
+        );
+    }
+
+    return (
+        <motion.button
+            animate={pulseAnimation}
+            transition={pulseTransition}
+            onClick={handlePress}
+            onKeyDown={handleKeyDown}
+            disabled={disabled}
+            aria-label={disabled ? "Scanner — Bientôt disponible" : "Scanner"}
+            style={{ willChange: prefersReducedMotion ? "auto" : "transform" }}
+            className={className}
+        >
+            {content}
         </motion.button>
     );
 }
