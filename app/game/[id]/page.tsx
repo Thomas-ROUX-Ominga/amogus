@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { useParams } from "next/navigation";
 import { useGameStore } from "@/lib/store/game-store";
 import { useLocalUser } from "@/hooks/use-local-user";
 import { JoinForm } from "@/components/game/join-form";
 import { ErrorView } from "@/components/game/error-view";
+import { RoleSelection } from "@/components/game/role-selection";
+import { Rocket, Loader2 } from "lucide-react";
 
 export default function LobbyPage() {
     const { id } = useParams();
-    const { gameState, isLoading, error, errorCode, fetchGame } = useGameStore();
+    const { gameState, isLoading, isLaunching, error, errorCode, launchError, fetchGame, launch } = useGameStore();
     const { userId } = useLocalUser();
 
     useEffect(() => {
@@ -19,8 +21,24 @@ export default function LobbyPage() {
         }
     }, [id, fetchGame]);
 
+    const handleLaunch = useCallback(async () => {
+        if (!id || isLaunching) return;
+        const success = await launch(id as string);
+        if (success) {
+            try {
+                if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+                    navigator.vibrate([50, 30, 50]);
+                }
+            } catch {
+                // Ignore haptic failures
+            }
+        }
+    }, [id, isLaunching, launch]);
+
     // Check if the current user is already in the player list
     const isJoined = gameState?.players.some((p) => p.id === userId);
+    const canLaunch = gameState && gameState.players.length >= 1 && gameState.status === "LOBBY";
+    const isGameInProgress = gameState?.status === "IN_PROGRESS";
 
     if (isLoading || !userId) {
         return (
@@ -45,6 +63,28 @@ export default function LobbyPage() {
                         if (id) fetchGame(id as string);
                     }}
                 />
+            </main>
+        );
+    }
+
+    // Show role selection when game is IN_PROGRESS
+    if (isGameInProgress) {
+        return (
+            <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
+                <div className="max-w-2xl w-full border-2 border-primary/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgba(var(--primary),0.05)]">
+                    <div className="flex items-center justify-between border-b border-primary/20 pb-4">
+                        <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
+                            Mission Active
+                        </h1>
+                        <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full animate-pulse bg-green-500" />
+                            <span className="text-[10px] text-green-400/80 tracking-widest">
+                                IN_PROGRESS
+                            </span>
+                        </div>
+                    </div>
+                    <RoleSelection />
+                </div>
             </main>
         );
     }
@@ -100,9 +140,51 @@ export default function LobbyPage() {
                                 </div>
                             </div>
 
-                            <div className="p-4 border-l-4 border-primary/30 bg-primary/5 text-xs text-muted-foreground italic tracking-wide">
-                                System ready. Waiting for commander to launch the mission...
-                            </div>
+                            <button
+                                onClick={handleLaunch}
+                                disabled={!canLaunch || isLaunching}
+                                className="w-full min-h-[44px] bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed text-primary-foreground font-black py-4 rounded-sm transition-all flex items-center justify-center gap-3 group relative overflow-hidden touch-manipulation font-orbitron"
+                            >
+                                <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 group-disabled:translate-y-full transition-transform duration-300" />
+                                <span className="relative flex items-center gap-3 tracking-[0.3em] uppercase text-sm">
+                                    {isLaunching ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            Lancement...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Rocket className="w-5 h-5" />
+                                            Lancer la partie
+                                        </>
+                                    )}
+                                </span>
+                            </button>
+
+                            {launchError && (
+                                <div className="p-4 border-l-4 border-destructive/50 bg-destructive/5 text-xs text-destructive/80 tracking-wide space-y-2">
+                                    <div className="font-bold uppercase">Launch Failed</div>
+                                    <div>{launchError}</div>
+                                    <button
+                                        onClick={handleLaunch}
+                                        className="mt-2 px-4 py-2 border border-destructive/30 text-destructive/70 text-xs uppercase tracking-widest hover:bg-destructive/10 transition-colors touch-manipulation"
+                                    >
+                                        Retry Launch
+                                    </button>
+                                </div>
+                            )}
+
+                            {!launchError && !canLaunch && gameState?.players.length === 0 && (
+                                <div className="p-4 border-l-4 border-yellow-500/30 bg-yellow-500/5 text-xs text-yellow-500/80 italic tracking-wide">
+                                    Awaiting crew members before launch authorization...
+                                </div>
+                            )}
+
+                            {!launchError && canLaunch && (
+                                <div className="p-4 border-l-4 border-primary/30 bg-primary/5 text-xs text-muted-foreground italic tracking-wide">
+                                    System ready. Commander may launch the mission.
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

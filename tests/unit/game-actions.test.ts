@@ -4,9 +4,11 @@ import { redis } from "@/lib/redis/client";
 
 // Mock kv client
 vi.mock("@/lib/redis/client", () => ({
+    GAME_TTL_SECONDS: 86400,
     redis: {
         set: vi.fn(),
         get: vi.fn(),
+        atomicUpdate: vi.fn(),
     },
 }));
 
@@ -36,7 +38,8 @@ describe("createGame", () => {
                 id: "test-uuid",
                 status: "LOBBY",
                 players: [],
-            })
+            }),
+            86400
         );
     });
 

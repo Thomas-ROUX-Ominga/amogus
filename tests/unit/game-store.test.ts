@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useGameStore } from "@/lib/store/game-store";
-import { getGame, joinGame } from "@/lib/redis/actions";
+import { getGame, joinGame, startGame } from "@/lib/redis/actions";
 import { GameState } from "@/types/game";
 
 // Mock the server actions
 vi.mock("@/lib/redis/actions", () => ({
     getGame: vi.fn(),
     joinGame: vi.fn(),
+    startGame: vi.fn(),
 }));
 
 describe("game-store", () => {
@@ -20,6 +21,7 @@ describe("game-store", () => {
         expect(state.gameState).toBeNull();
         expect(state.isLoading).toBe(false);
         expect(state.error).toBeNull();
+        expect(state.launchError).toBeNull();
     });
 
     it("should update state on successful fetchGame", async () => {
@@ -53,5 +55,29 @@ describe("game-store", () => {
         const state = useGameStore.getState();
         expect(state.gameState).toEqual(mockGame);
         expect(state.isLoading).toBe(false);
+    });
+
+    it("should update state on successful launch", async () => {
+        const mockGame: GameState = { id: "game-123", status: "IN_PROGRESS", players: [{ id: "u1", name: "Omi", isAlive: true }], createdAt: Date.now() };
+        vi.mocked(startGame).mockResolvedValueOnce({ success: true, data: mockGame });
+
+        const result = await useGameStore.getState().launch("game-123");
+
+        const state = useGameStore.getState();
+        expect(result).toBe(true);
+        expect(state.gameState).toEqual(mockGame);
+        expect(state.isLaunching).toBe(false);
+    });
+
+    it("should set error state on launch failure", async () => {
+        vi.mocked(startGame).mockResolvedValueOnce({ success: false, error: "No players", code: "ERR_NO_PLAYERS" });
+
+        const result = await useGameStore.getState().launch("game-123");
+
+        const state = useGameStore.getState();
+        expect(result).toBe(false);
+        expect(state.launchError).toBe("No players");
+        expect(state.error).toBeNull();
+        expect(state.isLaunching).toBe(false);
     });
 });

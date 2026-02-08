@@ -1,7 +1,7 @@
 "use server";
 
 import { v4 as uuidv4 } from "uuid";
-import { redis } from "./client";
+import { redis, GAME_TTL_SECONDS } from "./client";
 import { GameState, ActionResponse } from "@/types/game";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 
@@ -15,8 +15,8 @@ export async function createGame(): Promise<ActionResponse<string>> {
             createdAt: Date.now(),
         };
 
-        // Store game state in Redis
-        await redis.set(`game:${gameId}:state`, initialState);
+        // Store game state in Redis with 24h TTL
+        await redis.set(`game:${gameId}:state`, initialState, GAME_TTL_SECONDS);
 
         return {
             success: true,
@@ -52,6 +52,74 @@ export async function getGame(id: string): Promise<ActionResponse<GameState>> {
         return {
             success: false,
             error: "Failed to establish link with game module.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
+}
+
+export async function startGame(
+    gameId: string
+): Promise<ActionResponse<GameState>> {
+    try {
+        const stateKey = `game:${gameId}:state`;
+
+        // Use a validation result holder to communicate errors from the updater
+        let validationError: ActionResponse<GameState> | null = null;
+
+        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
+            if (!state) {
+                validationError = {
+                    success: false,
+                    error: "Game session not found.",
+                    code: ERROR_CODES.GAME_NOT_FOUND,
+                };
+                return null; // Abort transaction
+            }
+
+            // Idempotent: already IN_PROGRESS is fine
+            if (state.status === "IN_PROGRESS") {
+                validationError = null; // Not an error, handled below
+                return null; // No update needed
+            }
+
+            // Only LOBBY → IN_PROGRESS is allowed
+            if (state.status !== "LOBBY") {
+                validationError = {
+                    success: false,
+                    error: "Cannot launch: game is not in lobby state.",
+                    code: ERROR_CODES.ERR_INVALID_STATE,
+                };
+                return null;
+            }
+
+            // Minimum players validation
+            if (state.players.length < 1) {
+                validationError = {
+                    success: false,
+                    error: "Cannot launch: at least one crew member must join.",
+                    code: ERROR_CODES.ERR_NO_PLAYERS,
+                };
+                return null;
+            }
+
+            return { ...state, status: "IN_PROGRESS" };
+        }, GAME_TTL_SECONDS);
+
+        // If updater returned null, check why
+        if (validationError) {
+            return validationError;
+        }
+
+        // result is the updated state (or original if no update was needed)
+        return {
+            success: true,
+            data: result!,
+        };
+    } catch (error) {
+        console.error("Failed to start game:", error);
+        return {
+            success: false,
+            error: "Signal lost while trying to launch mission.",
             code: ERROR_CODES.ERR_SIGNAL_LOST,
         };
     }

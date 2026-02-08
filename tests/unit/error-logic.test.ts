@@ -7,6 +7,7 @@ vi.mock("@/lib/redis/client", () => ({
     redis: {
         get: vi.fn(),
         set: vi.fn(),
+        atomicUpdate: vi.fn(),
     },
 }));
 

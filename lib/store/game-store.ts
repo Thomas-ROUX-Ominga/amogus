@@ -1,24 +1,29 @@
 import { create } from "zustand";
 import { GameState } from "@/types/game";
-import { getGame, joinGame } from "@/lib/redis/actions";
+import { getGame, joinGame, startGame } from "@/lib/redis/actions";
 
 interface GameStore {
     gameState: GameState | null;
     isLoading: boolean;
+    isLaunching: boolean;
     error: string | null;
     errorCode: string | null;
+    launchError: string | null;
 
     // Actions
     fetchGame: (id: string) => Promise<void>;
     join: (gameId: string, playerName: string, userId: string) => Promise<void>;
+    launch: (gameId: string) => Promise<boolean>;
     reset: () => void;
 }
 
 export const useGameStore = create<GameStore>((set) => ({
     gameState: null,
     isLoading: false,
+    isLaunching: false,
     error: null,
     errorCode: null,
+    launchError: null,
 
     fetchGame: async (id: string) => {
         set({ isLoading: true, error: null, errorCode: null });
@@ -50,5 +55,21 @@ export const useGameStore = create<GameStore>((set) => ({
         }
     },
 
-    reset: () => set({ gameState: null, isLoading: false, error: null, errorCode: null }),
+    launch: async (gameId: string) => {
+        set({ isLaunching: true, launchError: null });
+        const response = await startGame(gameId);
+
+        if (response.success && response.data) {
+            set({ gameState: response.data, isLaunching: false, launchError: null });
+            return true;
+        } else {
+            set({
+                launchError: response.error || "Unknown error",
+                isLaunching: false
+            });
+            return false;
+        }
+    },
+
+    reset: () => set({ gameState: null, isLoading: false, isLaunching: false, error: null, errorCode: null, launchError: null }),
 }));

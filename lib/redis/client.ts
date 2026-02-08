@@ -23,15 +23,18 @@ if (redisUrl) {
     redisClient = globalForRedis.redis;
 }
 
+export const GAME_TTL_SECONDS = 86400; // 24 hours
+
 export interface RedisClient {
     get<T>(key: string): Promise<T | null>;
-    set(key: string, value: unknown): Promise<unknown>;
+    set(key: string, value: unknown, ttlSeconds?: number): Promise<unknown>;
     del(key: string): Promise<number>;
+    atomicUpdate<T>(key: string, updater: (current: T | null) => T | null, ttlSeconds?: number): Promise<T | null>;
 }
 
 export const redis: RedisClient = {
     get: async function <T>(key: string): Promise<T | null> {
-        if (!redisClient) return null;
+        if (!redisClient) throw new Error("Redis client not initialized");
         try {
             const data = await redisClient.get(key);
             if (!data) return null;
@@ -46,9 +49,12 @@ export const redis: RedisClient = {
             return null;
         }
     },
-    set: async function (key: string, value: unknown): Promise<unknown> {
+    set: async function (key: string, value: unknown, ttlSeconds?: number): Promise<unknown> {
         if (!redisClient) throw new Error("Redis client not initialized");
         try {
+            if (ttlSeconds) {
+                return await redisClient.set(key, JSON.stringify(value), { EX: ttlSeconds });
+            }
             return await redisClient.set(key, JSON.stringify(value));
         } catch (error) {
             console.error("Redis Set Error:", error);
@@ -56,13 +62,44 @@ export const redis: RedisClient = {
         }
     },
     del: async function (key: string): Promise<number> {
-        if (!redisClient) return 0;
+        if (!redisClient) throw new Error("Redis client not initialized");
         try {
             return await redisClient.del(key);
         } catch (error) {
             console.error("Redis Del Error:", error);
             throw error;
         }
+    },
+    atomicUpdate: async function <T>(key: string, updater: (current: T | null) => T | null, ttlSeconds?: number): Promise<T | null> {
+        if (!redisClient) throw new Error("Redis client not initialized");
+        const maxRetries = 3;
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                await redisClient.watch(key);
+                const raw = await redisClient.get(key);
+                const current = raw ? (JSON.parse(raw) as T) : null;
+                const updated = updater(current);
+                if (updated === null) {
+                    await redisClient.unwatch();
+                    return current;
+                }
+                const multi = redisClient.multi();
+                if (ttlSeconds) {
+                    multi.set(key, JSON.stringify(updated), { EX: ttlSeconds });
+                } else {
+                    multi.set(key, JSON.stringify(updated));
+                }
+                const results = await multi.exec();
+                if (results !== null) {
+                    return updated;
+                }
+                // Transaction aborted (key changed), retry
+            } catch (error) {
+                try { await redisClient.unwatch(); } catch { /* ignore */ }
+                throw error;
+            }
+        }
+        throw new Error("Atomic update failed after max retries (concurrent modification)");
     }
 };
 
