@@ -16,6 +16,7 @@ interface GameStore {
     questsCompleted: number;
     questsTotal: number;
     currentQuest: Quest | null;
+    questAnswered: boolean;
 
     // Actions
     fetchGame: (id: string) => Promise<void>;
@@ -24,6 +25,7 @@ interface GameStore {
     chooseRole: (gameId: string, userId: string, role: PlayerRole) => Promise<boolean>;
     setCurrentQuest: (quest: Quest) => void;
     clearQuest: () => void;
+    setQuestAnswered: (answered: boolean) => void;
     reset: () => void;
 }
 
@@ -40,6 +42,7 @@ export const useGameStore = create<GameStore>((set) => ({
     questsCompleted: 0,
     questsTotal: 0,
     currentQuest: null,
+    questAnswered: false,
 
     fetchGame: async (id: string) => {
         set({ isLoading: true, error: null, errorCode: null });
@@ -130,7 +133,9 @@ export const useGameStore = create<GameStore>((set) => ({
 
     setCurrentQuest: (quest: Quest) => set({ currentQuest: quest }),
 
-    clearQuest: () => set({ currentQuest: null }),
+    clearQuest: () => set({ currentQuest: null, questAnswered: false }),
+
+    setQuestAnswered: (answered: boolean) => set({ questAnswered: answered }),
 
     reset: () => set({ 
         gameState: null, 
@@ -144,6 +149,7 @@ export const useGameStore = create<GameStore>((set) => ({
         selectedRole: null,
         questsCompleted: 0,
         questsTotal: 0,
-        currentQuest: null
+        currentQuest: null,
+        questAnswered: false
     }),
 }));

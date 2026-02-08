@@ -1,10 +1,12 @@
 "use client";
 
+import { useCallback } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { X, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Quest, QuestDuration } from "@/types/quest";
 import { useGameStore } from "@/lib/store/game-store";
+import { QuestRenderer } from "@/components/game/quest-renderer";
 
 interface QuestViewProps {
     quest: Quest;
@@ -26,7 +28,15 @@ const DURATION_LABELS: Record<QuestDuration, string> = {
 export function QuestView({ quest, gameId }: QuestViewProps) {
     const router = useRouter();
     const prefersReducedMotion = useReducedMotion();
-    const { clearQuest } = useGameStore();
+    const { clearQuest, setQuestAnswered } = useGameStore();
+
+    const handleSuccess = useCallback(() => {
+        setQuestAnswered(true);
+    }, [setQuestAnswered]);
+
+    const handleError = useCallback(() => {
+        // No store update on error — visual feedback only (handled by quest components)
+    }, []);
 
     const handleFlee = () => {
         try {
@@ -52,7 +62,7 @@ export function QuestView({ quest, gameId }: QuestViewProps) {
         <motion.div
             {...containerVariants}
             transition={containerTransition}
-            className="flex flex-col min-h-screen bg-[#0D1117] text-foreground p-4"
+            className="flex flex-col min-h-screen bg-background text-foreground p-4"
         >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-primary/20 pb-4 mb-6">
@@ -81,12 +91,13 @@ export function QuestView({ quest, gameId }: QuestViewProps) {
                     </p>
                 </div>
 
-                {/* Quest Content Placeholder — for Story 3.2/3.3 */}
-                <div className="p-6 border border-dashed border-primary/10 bg-black/20 text-center">
-                    <p className="text-xs text-muted-foreground/50 uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
-                        Zone d&apos;interaction — Prochaine mise à jour
-                    </p>
-                </div>
+                {/* Interactive Quest Area */}
+                <QuestRenderer
+                    quest={quest}
+                    gameId={gameId}
+                    onSuccess={handleSuccess}
+                    onError={handleError}
+                />
             </div>
 
             {/* Flee Button — bottom thumb zone */}

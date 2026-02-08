@@ -75,6 +75,87 @@ describe("quest-pool", () => {
         });
     });
 
+    describe("quest data model — options and answer fields", () => {
+        it("should have options array on all quests", () => {
+            const allQuests = [
+                ...getQuestsByDuration("short"),
+                ...getQuestsByDuration("medium"),
+                ...getQuestsByDuration("long"),
+            ];
+            allQuests.forEach((q) => {
+                expect(q.options).toBeDefined();
+                expect(Array.isArray(q.options)).toBe(true);
+                expect(q.options!.length).toBeGreaterThanOrEqual(2);
+            });
+        });
+
+        it("should have answer field on all quests", () => {
+            const allQuests = [
+                ...getQuestsByDuration("short"),
+                ...getQuestsByDuration("medium"),
+                ...getQuestsByDuration("long"),
+            ];
+            allQuests.forEach((q) => {
+                expect(q.answer).toBeDefined();
+                expect(typeof q.answer).toBe("string");
+                expect(q.answer!.length).toBeGreaterThan(0);
+            });
+        });
+
+        it("should have options with label and value on all quests", () => {
+            const allQuests = [
+                ...getQuestsByDuration("short"),
+                ...getQuestsByDuration("medium"),
+                ...getQuestsByDuration("long"),
+            ];
+            allQuests.forEach((q) => {
+                q.options!.forEach((opt) => {
+                    expect(opt).toHaveProperty("label");
+                    expect(opt).toHaveProperty("value");
+                    expect(typeof opt.label).toBe("string");
+                    expect(typeof opt.value).toBe("string");
+                });
+            });
+        });
+
+        it("should have answer matching one of the option values", () => {
+            const allQuests = [
+                ...getQuestsByDuration("short"),
+                ...getQuestsByDuration("medium"),
+                ...getQuestsByDuration("long"),
+            ];
+            allQuests.forEach((q) => {
+                const optionValues = q.options!.map((o) => o.value);
+                expect(optionValues).toContain(q.answer);
+            });
+        });
+
+        it("should have exactly 2 options for true-false quests", () => {
+            const allQuests = [
+                ...getQuestsByDuration("short"),
+                ...getQuestsByDuration("medium"),
+                ...getQuestsByDuration("long"),
+            ];
+            allQuests.filter((q) => q.type === "true-false").forEach((q) => {
+                expect(q.options!.length).toBe(2);
+                const values = q.options!.map((o) => o.value);
+                expect(values).toContain("true");
+                expect(values).toContain("false");
+            });
+        });
+
+        it("should have 4 options for qcm quests", () => {
+            const allQuests = [
+                ...getQuestsByDuration("short"),
+                ...getQuestsByDuration("medium"),
+                ...getQuestsByDuration("long"),
+            ];
+            allQuests.filter((q) => q.type === "qcm").forEach((q) => {
+                expect(q.options!.length).toBe(4);
+            });
+        });
+    });
+
     describe("isValidDuration", () => {
         it("should return true for 'short'", () => {
             expect(isValidDuration("short")).toBe(true);

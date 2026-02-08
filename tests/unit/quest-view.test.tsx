@@ -5,12 +5,13 @@ import { Quest } from "@/types/quest";
 
 const mockPush = vi.fn();
 const mockClearQuest = vi.fn();
+const mockSetQuestAnswered = vi.fn();
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: mockPush }),
 }));
 
 vi.mock("@/lib/store/game-store", () => ({
-    useGameStore: () => ({ clearQuest: mockClearQuest }),
+    useGameStore: () => ({ clearQuest: mockClearQuest, setQuestAnswered: mockSetQuestAnswered }),
 }));
 
 const mockQuest: Quest = {
@@ -19,6 +20,11 @@ const mockQuest: Quest = {
     duration: "short",
     title: "Vérification de Protocole",
     instruction: "Le vaisseau spatial possède exactement 12 modules de survie. Vrai ou Faux ?",
+    options: [
+        { label: "VRAI", value: "true" },
+        { label: "FAUX", value: "false" },
+    ],
+    answer: "true",
 };
 
 describe("QuestView", () => {
@@ -110,5 +116,17 @@ describe("QuestView", () => {
         const fleeButton = screen.getByText("Abandonner").closest("button")!;
         fireEvent.click(fleeButton);
         expect(vibrateMock).toHaveBeenCalledWith([50]);
+    });
+
+    it("should render QuestRenderer with answer buttons instead of placeholder", () => {
+        render(<QuestView quest={mockQuest} gameId="game-123" />);
+        // QuestRenderer dispatches to QuestTrueFalse which renders VRAI/FAUX buttons
+        expect(screen.getByLabelText("Répondre VRAI")).toBeTruthy();
+        expect(screen.getByLabelText("Répondre FAUX")).toBeTruthy();
+    });
+
+    it("should not render the old placeholder text", () => {
+        render(<QuestView quest={mockQuest} gameId="game-123" />);
+        expect(screen.queryByText(/Zone d'interaction/)).toBeNull();
     });
 });

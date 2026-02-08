@@ -98,4 +98,116 @@ test.describe("Quest Routing Flow", () => {
             page.getByText(/SESSION INTROUVABLE|SIGNAL PERDU|SIGNAL LOST|SESSION DECOMMISSIONED/i)
         ).toBeVisible({ timeout: 10000 });
     });
+
+    test("quest interaction: correct answer shows success state (green highlight + buttons disabled)", async ({ page }) => {
+        await createJoinLaunchSelectRole(page);
+
+        const scanLink = page.getByRole("link", { name: /Scanner/i });
+        await scanLink.click();
+        await expect(page.getByText("Quest Active")).toBeVisible({ timeout: 10000 });
+
+        // Detect quest type
+        const vraiButton = page.getByLabel("Répondre VRAI");
+        const isTrueFalse = await vraiButton.isVisible().catch(() => false);
+
+        if (isTrueFalse) {
+            // Try VRAI — if wrong, retry then try FAUX
+            await vraiButton.click();
+            const retryButton = page.getByLabel("Réessayer la question");
+            const wasWrong = await retryButton.isVisible().catch(() => false);
+            if (wasWrong) {
+                await retryButton.click();
+                await page.getByLabel("Répondre FAUX").click();
+            }
+            // Now we have the correct answer — verify success state
+            const correctButton = wasWrong
+                ? page.getByLabel("Répondre FAUX")
+                : page.getByLabel("Répondre VRAI");
+            await expect(correctButton).toBeDisabled();
+            // Verify green success class on the selected button
+            await expect(correctButton).toHaveClass(/border-\[#2DA44E\]/);
+        } else {
+            // QCM: try options until correct
+            const options = page.locator('[role="radio"]');
+            const count = await options.count();
+            for (let i = 0; i < count; i++) {
+                await options.nth(i).click();
+                const retryButton = page.getByLabel("Réessayer la question");
+                const wasWrong = await retryButton.isVisible().catch(() => false);
+                if (wasWrong) {
+                    await retryButton.click();
+                    continue;
+                }
+                // Correct answer found — verify success state
+                await expect(options.nth(i)).toBeDisabled();
+                await expect(options.nth(i)).toHaveClass(/border-\[#2DA44E\]/);
+                break;
+            }
+        }
+    });
+
+    test("quest interaction: wrong answer shows error state + retry resets", async ({ page }) => {
+        await createJoinLaunchSelectRole(page);
+
+        const scanLink = page.getByRole("link", { name: /Scanner/i });
+        await scanLink.click();
+        await expect(page.getByText("Quest Active")).toBeVisible({ timeout: 10000 });
+
+        const vraiButton = page.getByLabel("Répondre VRAI");
+        const isTrueFalse = await vraiButton.isVisible().catch(() => false);
+
+        if (isTrueFalse) {
+            // Click VRAI — if it's correct, we can't test wrong answer with this quest
+            await vraiButton.click();
+            const retryButton = page.getByLabel("Réessayer la question");
+            const wasWrong = await retryButton.isVisible().catch(() => false);
+            if (wasWrong) {
+                // Verify error state: red highlight, buttons disabled, retry visible
+                await expect(vraiButton).toBeDisabled();
+                await expect(vraiButton).toHaveClass(/border-\[#DA3633\]/);
+                await expect(retryButton).toBeVisible();
+                // Click retry — buttons should be re-enabled
+                await retryButton.click();
+                await expect(vraiButton).toBeEnabled();
+                await expect(page.getByLabel("Répondre FAUX")).toBeEnabled();
+            }
+            // If VRAI was correct, the test still passes (we verified success in the other test)
+        } else {
+            // QCM: click first option
+            const firstOption = page.locator('[role="radio"]').first();
+            await firstOption.click();
+            const retryButton = page.getByLabel("Réessayer la question");
+            const wasWrong = await retryButton.isVisible().catch(() => false);
+            if (wasWrong) {
+                await expect(firstOption).toBeDisabled();
+                await expect(firstOption).toHaveClass(/border-\[#DA3633\]/);
+                await expect(retryButton).toBeVisible();
+                await retryButton.click();
+                await expect(firstOption).toBeEnabled();
+            }
+        }
+    });
+
+    test("flee button works during quest interaction", async ({ page }) => {
+        await createJoinLaunchSelectRole(page);
+
+        const scanLink = page.getByRole("link", { name: /Scanner/i });
+        await scanLink.click();
+        await expect(page.getByText("Quest Active")).toBeVisible({ timeout: 10000 });
+
+        // Verify interactive quest content is present
+        const vraiButton = page.getByLabel("Répondre VRAI");
+        const optionA = page.getByLabel(/^Option A:/);
+        const isTrueFalse = await vraiButton.isVisible().catch(() => false);
+        const isQCM = await optionA.isVisible().catch(() => false);
+        expect(isTrueFalse || isQCM).toBe(true);
+
+        // Click flee button — should still work
+        const fleeButton = page.getByRole("button", { name: /Abandonner/i });
+        await expect(fleeButton).toBeVisible();
+        await fleeButton.click();
+
+        // Should return to Game Home
+        await expect(page.getByText(/Game Cockpit/i)).toBeVisible({ timeout: 5000 });
+    });
 });

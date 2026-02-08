@@ -80,4 +80,34 @@ describe("game-store", () => {
         expect(state.error).toBeNull();
         expect(state.isLaunching).toBe(false);
     });
+
+    describe("questAnswered", () => {
+        it("should have questAnswered default to false", () => {
+            const state = useGameStore.getState();
+            expect(state.questAnswered).toBe(false);
+        });
+
+        it("should set questAnswered to true via setQuestAnswered", () => {
+            useGameStore.getState().setQuestAnswered(true);
+            expect(useGameStore.getState().questAnswered).toBe(true);
+        });
+
+        it("should set questAnswered back to false via setQuestAnswered", () => {
+            useGameStore.getState().setQuestAnswered(true);
+            useGameStore.getState().setQuestAnswered(false);
+            expect(useGameStore.getState().questAnswered).toBe(false);
+        });
+
+        it("should reset questAnswered when clearQuest is called", () => {
+            useGameStore.getState().setQuestAnswered(true);
+            useGameStore.getState().clearQuest();
+            expect(useGameStore.getState().questAnswered).toBe(false);
+        });
+
+        it("should reset questAnswered when reset is called", () => {
+            useGameStore.getState().setQuestAnswered(true);
+            useGameStore.getState().reset();
+            expect(useGameStore.getState().questAnswered).toBe(false);
+        });
+    });
 });
