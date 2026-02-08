@@ -46,8 +46,8 @@ development_status:
   1-3-gestion-de-lidentite-erreurs-no-dead-end: done
   epic-1-retrospective: done
 
-  epic-2: backlog
-  2-1-lancement-de-la-partie-start-game: backlog
+  epic-2: in-progress
+  2-1-lancement-de-la-partie-start-game: ready-for-dev
   2-2-selection-de-role-immersion-visuelle: backlog
   2-3-home-cocktail-game-home: backlog
   epic-2-retrospective: optional
