@@ -1,13 +1,15 @@
 "use client";
 
 import { Suspense, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { Check } from "lucide-react";
 import { useGameStore } from "@/lib/store/game-store";
 import { useLocalUser } from "@/hooks/use-local-user";
 import { ErrorView } from "@/components/game/error-view";
 import { QuestView } from "@/components/game/quest-view";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
-import { isValidDuration, getRandomQuest, getQuestsByDuration } from "@/lib/constants/quest-pool";
+import { isValidDuration, getRandomQuest, getQuestsByDuration, getQuestById } from "@/lib/constants/quest-pool";
 
 export default function QuestPage() {
     return (
@@ -32,6 +34,7 @@ function QuestPageContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const duration = searchParams.get("duration");
+    const questId = searchParams.get("questId");
     const { userId } = useLocalUser();
     const {
         gameState,
@@ -47,34 +50,52 @@ function QuestPageContent() {
 
     useEffect(() => {
         if (id) {
-            fetchGame(id as string);
+            fetchGame(id as string, userId ?? undefined);
         }
-    }, [id, fetchGame]);
+    }, [id, userId, fetchGame]);
 
     // Select a random quest once game is loaded and duration is valid
     const questError = useMemo(() => {
+        // If targeting a specific quest by ID, skip duration validation
+        if (questId) return null;
+
         if (!isValidDuration(duration)) {
             return { code: ERROR_CODES.ERR_INVALID_DURATION, message: "Durée invalide. Les valeurs acceptées sont : short, medium, long." };
         }
         return null;
-    }, [duration]);
+    }, [duration, questId]);
 
     useEffect(() => {
-        if (gameState && isValidDuration(duration) && !currentQuest) {
-            const quest = getRandomQuest(duration);
-            if (quest) {
-                setCurrentQuest(quest);
-                // Haptic feedback on successful quest load
-                try {
-                    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-                        navigator.vibrate([30]);
+        if (gameState && !currentQuest) {
+            if (questId) {
+                const quest = getQuestById(questId);
+                if (quest) {
+                    setCurrentQuest(quest);
+                    // Haptic feedback on successful quest load
+                    try {
+                        if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+                            navigator.vibrate([30]);
+                        }
+                    } catch {
+                        // Ignore haptic failures
                     }
-                } catch {
-                    // Ignore haptic failures
+                }
+            } else if (isValidDuration(duration)) {
+                const quest = getRandomQuest(duration);
+                if (quest) {
+                    setCurrentQuest(quest);
+                    // Haptic feedback on successful quest load
+                    try {
+                        if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+                            navigator.vibrate([30]);
+                        }
+                    } catch {
+                        // Ignore haptic failures
+                    }
                 }
             }
         }
-    }, [gameState, duration, currentQuest, setCurrentQuest]);
+    }, [gameState, duration, questId, currentQuest, setCurrentQuest]);
 
     // Loading state
     if (isLoading || !userId) {
@@ -161,6 +182,34 @@ function QuestPageContent() {
                 </main>
             );
         }
+
+        // Quest already completed guard
+        if (currentQuest) {
+            const completedQuests = currentPlayer.completedQuests ?? [];
+            if (completedQuests.includes(currentQuest.id)) {
+                return (
+                    <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
+                        <div className="max-w-2xl w-full border-2 border-[#2DA44E]/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm">
+                            <div className="flex items-center justify-center gap-3">
+                                <Check className="w-6 h-6 text-[#2DA44E]" aria-hidden="true" />
+                                <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-[#2DA44E] font-orbitron">
+                                    QUÊTE DÉJÀ ACCOMPLIE
+                                </h1>
+                            </div>
+                            <p className="text-center text-muted-foreground font-rajdhani">
+                                Vous avez déjà validé cette mission.
+                            </p>
+                            <Link
+                                href={`/game/${gameId}`}
+                                className="flex items-center justify-center w-full min-h-[44px] border-2 border-primary/50 bg-transparent text-primary font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-primary/10 active:scale-95 transition-all touch-manipulation"
+                            >
+                                RETOUR AU COCKPIT
+                            </Link>
+                        </div>
+                    </main>
+                );
+            }
+        }
     }
 
     // No quest available
@@ -193,5 +242,5 @@ function QuestPageContent() {
         );
     }
 
-    return <QuestView quest={currentQuest} gameId={gameId} />;
+    return <QuestView quest={currentQuest} gameId={gameId} userId={userId ?? undefined} />;
 }

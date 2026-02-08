@@ -24,19 +24,24 @@ const baseStoreState = {
     isLoading: false,
     isLaunching: false,
     isSelectingRole: false,
+    isCompletingQuest: false,
     error: null,
     errorCode: null,
     launchError: null,
     roleError: null,
+    completionError: null,
     selectedRole: null,
     questsCompleted: 0,
     questsTotal: 0,
     currentQuest: null,
+    questAnswered: false,
     fetchGame: mockFetchGame,
     join: vi.fn(),
     launch: vi.fn(),
     chooseRole: vi.fn(),
+    completeQuestAction: vi.fn().mockResolvedValue(true),
     setCurrentQuest: mockSetCurrentQuest,
+    setQuestAnswered: vi.fn(),
     clearQuest: vi.fn(),
     reset: vi.fn(),
 };
@@ -152,6 +157,28 @@ describe("QuestPage", () => {
     it("should call fetchGame on mount", () => {
         vi.mocked(useGameStore).mockReturnValue(baseStoreState);
         render(<QuestPage />);
-        expect(mockFetchGame).toHaveBeenCalledWith("game-123");
+        expect(mockFetchGame).toHaveBeenCalledWith("game-123", "user-1");
+    });
+
+    it("should show already-completed guard when quest is in player's completedQuests", () => {
+        vi.mocked(useGameStore).mockReturnValue({
+            ...baseStoreState,
+            gameState: {
+                id: "game-123",
+                status: "IN_PROGRESS",
+                players: [{ id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true, completedQuests: ["s1"] }],
+                createdAt: Date.now(),
+            },
+            currentQuest: {
+                id: "s1",
+                type: "true-false",
+                duration: "short",
+                title: "Test Quest",
+                instruction: "Test instruction",
+            },
+        });
+        render(<QuestPage />);
+        expect(screen.getByText("QUÊTE DÉJÀ ACCOMPLIE")).toBeTruthy();
+        expect(screen.getByText("RETOUR AU COCKPIT")).toBeTruthy();
     });
 });

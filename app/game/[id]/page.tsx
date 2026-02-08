@@ -21,9 +21,9 @@ export default function LobbyPage() {
 
     useEffect(() => {
         if (id) {
-            fetchGame(id as string);
+            fetchGame(id as string, userId ?? undefined);
         }
-    }, [id, fetchGame]);
+    }, [id, userId, fetchGame]);
 
     const handleLaunch = useCallback(async () => {
         if (!id || isLaunching) return;

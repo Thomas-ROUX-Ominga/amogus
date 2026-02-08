@@ -7,6 +7,15 @@ export function getQuestsByDuration(duration: QuestDuration): Quest[] {
     return questPool[duration] ?? [];
 }
 
+export function getQuestById(id: string): Quest | undefined {
+    const allQuests = [
+        ...questPool.short,
+        ...questPool.medium,
+        ...questPool.long
+    ];
+    return allQuests.find((q) => q.id === id);
+}
+
 export function getRandomQuest(duration: QuestDuration): Quest | null {
     const quests = getQuestsByDuration(duration);
     if (quests.length === 0) return null;

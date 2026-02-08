@@ -210,4 +210,157 @@ test.describe("Quest Routing Flow", () => {
         // Should return to Game Home
         await expect(page.getByText(/Game Cockpit/i)).toBeVisible({ timeout: 5000 });
     });
+
+    test("full flow: answer quest correctly → completion recorded → return to Game Home → progress bar updated", async ({ page }) => {
+        await createJoinLaunchSelectRole(page);
+
+        const scanLink = page.getByRole("link", { name: /Scanner/i });
+        await scanLink.click();
+        await expect(page.getByText("Quest Active")).toBeVisible({ timeout: 5000 });
+
+        // Find correct answer and answer it
+        const vraiButton = page.getByLabel("Répondre VRAI");
+        const isTrueFalse = await vraiButton.isVisible().catch(() => false);
+
+        if (isTrueFalse) {
+            await vraiButton.click();
+            const retryButton = page.getByLabel("Réessayer la question");
+            const wasWrong = await retryButton.isVisible().catch(() => false);
+            if (wasWrong) {
+                await retryButton.click();
+                await page.getByLabel("Répondre FAUX").click();
+            }
+        } else {
+            const options = page.locator('[role="radio"]');
+            const count = await options.count();
+            let answeredCorrectly = false;
+            for (let i = 0; i < count && !answeredCorrectly; i++) {
+                await options.nth(i).click();
+                const retryButton = page.getByLabel("Réessayer la question");
+                const wasWrong = await retryButton.isVisible().catch(() => false);
+                if (!wasWrong) {
+                    answeredCorrectly = true;
+                    break;
+                }
+                await retryButton.click();
+            }
+        }
+
+        // Wait for completion confirmation
+        await expect(page.getByText("MISSION ENREGISTRÉE")).toBeVisible({ timeout: 5000 });
+
+        // Return to Game Home
+        const fleeButton = page.getByRole("button", { name: /Abandonner/i });
+        await fleeButton.click();
+
+        // Verify progress bar shows 1/9
+        await expect(page.getByText("1/9 quêtes accomplies")).toBeVisible({ timeout: 5000 });
+    });
+
+    
+    test("navigate to already-completed quest → guard message shown", async ({ page }) => {
+        await createJoinLaunchSelectRole(page);
+
+        // First, complete a quest
+        const scanLink = page.getByRole("link", { name: /Scanner/i });
+        await scanLink.click();
+        await expect(page.getByText("Quest Active")).toBeVisible({ timeout: 5000 });
+
+        // Capture quest ID and current URL for later
+        const questView = page.locator('[data-quest-id]');
+        await expect(questView).toBeVisible();
+        const questId = await questView.getAttribute('data-quest-id');
+        const questUrl = page.url();
+        const baseUrl = questUrl.split('?')[0]; // .../game/[id]/quest
+
+        // Answer correctly (using brute force)
+        const vraiButton = page.getByLabel("Répondre VRAI");
+        const isTrueFalse = await vraiButton.isVisible().catch(() => false);
+        if (isTrueFalse) {
+            await vraiButton.click();
+            const retryButton = page.getByLabel("Réessayer la question");
+            const wasWrong = await retryButton.isVisible().catch(() => false);
+            if (wasWrong) {
+                await retryButton.click();
+                await page.getByLabel("Répondre FAUX").click();
+            }
+        } else {
+            const options = page.locator('[role="radio"]');
+            const count = await options.count();
+            for (let i = 0; i < count; i++) {
+                await options.nth(i).click();
+                const retryButton = page.getByLabel("Réessayer la question");
+                const wasWrong = await retryButton.isVisible().catch(() => false);
+                if (!wasWrong) break;
+                await retryButton.click();
+            }
+        }
+
+        // Wait for completion
+        await expect(page.getByText("MISSION ENREGISTRÉE")).toBeVisible({ timeout: 5000 });
+
+        // Return to Game Home
+        const fleeButton = page.getByRole("button", { name: /Abandonner/i });
+        await fleeButton.click();
+
+        // Navigate to same quest again
+        // We manually construct the URL to ensure we hit the SAME quest (random selection might pick a different one)
+        if (baseUrl && questId) {
+            await page.goto(`${baseUrl}?questId=${questId}`);
+        } else {
+            throw new Error("Failed to capture quest details for re-navigation");
+        }
+
+        // Should show already-completed guard
+        await expect(page.getByText("QUÊTE DÉJÀ ACCOMPLIE")).toBeVisible({ timeout: 5000 });
+        await expect(page.getByText("RETOUR AU COCKPIT")).toBeVisible();
+    });
+
+    test("quest progress persists across page refreshes", async ({ page }) => {
+        await createJoinLaunchSelectRole(page);
+
+        // Complete a quest
+        const scanLink = page.getByRole("link", { name: /Scanner/i });
+        await scanLink.click();
+        await expect(page.getByText("Quest Active")).toBeVisible({ timeout: 5000 });
+
+        // Answer correctly
+        const vraiButton = page.getByLabel("Répondre VRAI");
+        const isTrueFalse = await vraiButton.isVisible().catch(() => false);
+        if (isTrueFalse) {
+            await vraiButton.click();
+            const retryButton = page.getByLabel("Réessayer la question");
+            const wasWrong = await retryButton.isVisible().catch(() => false);
+            if (wasWrong) {
+                await retryButton.click();
+                await page.getByLabel("Répondre FAUX").click();
+            }
+        } else {
+            const options = page.locator('[role="radio"]');
+            const count = await options.count();
+            for (let i = 0; i < count; i++) {
+                await options.nth(i).click();
+                const retryButton = page.getByLabel("Réessayer la question");
+                const wasWrong = await retryButton.isVisible().catch(() => false);
+                if (!wasWrong) break;
+                await retryButton.click();
+            }
+        }
+
+        // Wait for completion
+        await expect(page.getByText("MISSION ENREGISTRÉE")).toBeVisible({ timeout: 5000 });
+
+        // Return to Game Home
+        const fleeButton = page.getByRole("button", { name: /Abandonner/i });
+        await fleeButton.click();
+
+        // Verify progress shows 1/9
+        await expect(page.getByText("1/9 quêtes accomplies")).toBeVisible({ timeout: 5000 });
+
+        // Refresh the page
+        await page.reload();
+
+        // Progress should still show 1/9
+        await expect(page.getByText("1/9 quêtes accomplies")).toBeVisible({ timeout: 5000 });
+    });
 });

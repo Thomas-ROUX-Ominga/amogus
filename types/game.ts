@@ -7,6 +7,7 @@ export interface Player {
     name: string;
     role?: PlayerRole;
     isAlive: boolean;
+    completedQuests?: string[];
 }
 
 export interface GameState {

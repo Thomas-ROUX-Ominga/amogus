@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { createGame, getGame } from "@/lib/redis/actions";
+import { createGame, getGame, completeQuest } from "@/lib/redis/actions";
 import { redis } from "@/lib/redis/client";
+import { GameState } from "@/types/game";
 
 // Mock kv client
 vi.mock("@/lib/redis/client", () => ({
@@ -87,5 +88,92 @@ describe("getGame", () => {
 
         expect(result.success).toBe(false);
         expect(result.error).toContain("Failed to establish link");
+    });
+});
+
+describe("completeQuest", () => {
+    const baseGame: GameState = {
+        id: "game-123",
+        status: "IN_PROGRESS",
+        players: [
+            { id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true, completedQuests: [] },
+            { id: "user-2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
+        ],
+        createdAt: Date.now(),
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("should record quest completion successfully", async () => {
+        vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
+            return updater(structuredClone(baseGame));
+        });
+
+        const result = await completeQuest("game-123", "user-1", "s1");
+
+        expect(result.success).toBe(true);
+        expect(result.data?.completedQuests).toContain("s1");
+        expect(result.data?.questsCompleted).toBe(1);
+    });
+
+    it("should prevent duplicate quest completion (idempotent)", async () => {
+        const gameWithCompleted = structuredClone(baseGame);
+        gameWithCompleted.players[0].completedQuests = ["s1"];
+
+        vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
+            return updater(gameWithCompleted);
+        });
+
+        const result = await completeQuest("game-123", "user-1", "s1");
+
+        expect(result.success).toBe(true);
+        expect(result.data?.completedQuests).toEqual(["s1"]);
+        expect(result.data?.questsCompleted).toBe(1);
+    });
+
+    it("should return error when game not found", async () => {
+        vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
+            return updater(null);
+        });
+
+        const result = await completeQuest("nonexistent", "user-1", "s1");
+
+        expect(result.success).toBe(false);
+        expect(result.code).toBe("GAME_NOT_FOUND");
+    });
+
+    it("should return error when player not found", async () => {
+        vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
+            return updater(structuredClone(baseGame));
+        });
+
+        const result = await completeQuest("game-123", "unknown-user", "s1");
+
+        expect(result.success).toBe(false);
+        expect(result.code).toBe("ERR_INVALID_SIGNATURE");
+    });
+
+    it("should return error when game is not IN_PROGRESS", async () => {
+        const lobbyGame = { ...structuredClone(baseGame), status: "LOBBY" as const };
+
+        vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
+            return updater(lobbyGame);
+        });
+
+        const result = await completeQuest("game-123", "user-1", "s1");
+
+        expect(result.success).toBe(false);
+        expect(result.code).toBe("ERR_INVALID_STATE");
+    });
+
+    it("should return error on Redis failure", async () => {
+        vi.mocked(redis.atomicUpdate).mockRejectedValueOnce(new Error("Redis Error"));
+
+        const result = await completeQuest("game-123", "user-1", "s1");
+
+        expect(result.success).toBe(false);
+        expect(result.code).toBe("ERR_QUEST_COMPLETE_FAILED");
     });
 });

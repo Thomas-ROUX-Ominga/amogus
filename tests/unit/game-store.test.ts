@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useGameStore } from "@/lib/store/game-store";
-import { getGame, joinGame, startGame } from "@/lib/redis/actions";
+import { getGame, joinGame, startGame, completeQuest } from "@/lib/redis/actions";
 import { GameState } from "@/types/game";
 
 // Mock the server actions
@@ -8,6 +8,7 @@ vi.mock("@/lib/redis/actions", () => ({
     getGame: vi.fn(),
     joinGame: vi.fn(),
     startGame: vi.fn(),
+    completeQuest: vi.fn(),
 }));
 
 describe("game-store", () => {
@@ -108,6 +109,124 @@ describe("game-store", () => {
             useGameStore.getState().setQuestAnswered(true);
             useGameStore.getState().reset();
             expect(useGameStore.getState().questAnswered).toBe(false);
+        });
+    });
+
+    describe("completeQuestAction", () => {
+        it("should call completeQuest server action and update questsCompleted", async () => {
+            vi.mocked(completeQuest).mockResolvedValueOnce({
+                success: true,
+                data: { completedQuests: ["s1"], questsCompleted: 1 },
+            });
+
+            await useGameStore.getState().completeQuestAction("game-123", "user-1", "s1");
+
+            const state = useGameStore.getState();
+            expect(completeQuest).toHaveBeenCalledWith("game-123", "user-1", "s1");
+            expect(state.questsCompleted).toBe(1);
+            expect(state.isCompletingQuest).toBe(false);
+            expect(state.completionError).toBeNull();
+        });
+
+        it("should set loading state during completion", async () => {
+            let resolvePromise: (value: unknown) => void;
+            const promise = new Promise((resolve) => { resolvePromise = resolve; });
+            vi.mocked(completeQuest).mockReturnValueOnce(promise as never);
+
+            const actionPromise = useGameStore.getState().completeQuestAction("game-123", "user-1", "s1");
+            expect(useGameStore.getState().isCompletingQuest).toBe(true);
+
+            resolvePromise!({ success: true, data: { completedQuests: ["s1"], questsCompleted: 1 } });
+            await actionPromise;
+            expect(useGameStore.getState().isCompletingQuest).toBe(false);
+        });
+
+        it("should set completionError on failure", async () => {
+            vi.mocked(completeQuest).mockResolvedValueOnce({
+                success: false,
+                error: "Failed to record quest completion.",
+                code: "ERR_QUEST_COMPLETE_FAILED",
+            });
+
+            await useGameStore.getState().completeQuestAction("game-123", "user-1", "s1");
+
+            const state = useGameStore.getState();
+            expect(state.completionError).toBe("Failed to record quest completion.");
+            expect(state.isCompletingQuest).toBe(false);
+        });
+
+        it("should return true on success and false on failure", async () => {
+            vi.mocked(completeQuest).mockResolvedValueOnce({
+                success: true,
+                data: { completedQuests: ["s1"], questsCompleted: 1 },
+            });
+            const successResult = await useGameStore.getState().completeQuestAction("game-123", "user-1", "s1");
+            expect(successResult).toBe(true);
+
+            vi.mocked(completeQuest).mockResolvedValueOnce({
+                success: false,
+                error: "Error",
+            });
+            const failResult = await useGameStore.getState().completeQuestAction("game-123", "user-1", "s1");
+            expect(failResult).toBe(false);
+        });
+    });
+
+    describe("fetchGame quest progress sync", () => {
+        it("should sync questsCompleted from player completedQuests", async () => {
+            const mockGame: GameState = {
+                id: "game-123",
+                status: "IN_PROGRESS",
+                players: [
+                    { id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true, completedQuests: ["s1", "s2"] },
+                ],
+                createdAt: Date.now(),
+            };
+            vi.mocked(getGame).mockResolvedValueOnce({ success: true, data: mockGame });
+
+            // Set userId in store context — fetchGame needs to know which player
+            // The store's fetchGame syncs progress using a userId param
+            await useGameStore.getState().fetchGame("game-123", "user-1");
+
+            const state = useGameStore.getState();
+            expect(state.questsCompleted).toBe(2);
+            expect(state.questsTotal).toBe(9);
+        });
+
+        it("should default questsCompleted to 0 when completedQuests is undefined", async () => {
+            const mockGame: GameState = {
+                id: "game-123",
+                status: "IN_PROGRESS",
+                players: [
+                    { id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true },
+                ],
+                createdAt: Date.now(),
+            };
+            vi.mocked(getGame).mockResolvedValueOnce({ success: true, data: mockGame });
+
+            await useGameStore.getState().fetchGame("game-123", "user-1");
+
+            const state = useGameStore.getState();
+            expect(state.questsCompleted).toBe(0);
+            expect(state.questsTotal).toBe(9);
+        });
+    });
+
+    describe("clearQuest and reset with completion state", () => {
+        it("should reset completion state when clearQuest is called", () => {
+            useGameStore.setState({ isCompletingQuest: true, completionError: "some error" });
+            useGameStore.getState().clearQuest();
+            const state = useGameStore.getState();
+            expect(state.isCompletingQuest).toBe(false);
+            expect(state.completionError).toBeNull();
+        });
+
+        it("should reset completion state when reset is called", () => {
+            useGameStore.setState({ isCompletingQuest: true, completionError: "some error" });
+            useGameStore.getState().reset();
+            const state = useGameStore.getState();
+            expect(state.isCompletingQuest).toBe(false);
+            expect(state.completionError).toBeNull();
         });
     });
 });

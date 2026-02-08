@@ -6,12 +6,22 @@ import { Quest } from "@/types/quest";
 const mockPush = vi.fn();
 const mockClearQuest = vi.fn();
 const mockSetQuestAnswered = vi.fn();
+const mockCompleteQuestAction = vi.fn();
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: mockPush }),
 }));
 
+let mockStoreState = {
+    clearQuest: mockClearQuest,
+    setQuestAnswered: mockSetQuestAnswered,
+    completeQuestAction: mockCompleteQuestAction,
+    isCompletingQuest: false,
+    completionError: null as string | null,
+    questAnswered: false,
+};
+
 vi.mock("@/lib/store/game-store", () => ({
-    useGameStore: () => ({ clearQuest: mockClearQuest, setQuestAnswered: mockSetQuestAnswered }),
+    useGameStore: () => mockStoreState,
 }));
 
 const mockQuest: Quest = {
@@ -30,6 +40,15 @@ const mockQuest: Quest = {
 describe("QuestView", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockCompleteQuestAction.mockResolvedValue(true);
+        mockStoreState = {
+            clearQuest: mockClearQuest,
+            setQuestAnswered: mockSetQuestAnswered,
+            completeQuestAction: mockCompleteQuestAction,
+            isCompletingQuest: false,
+            completionError: null,
+            questAnswered: false,
+        };
         Object.defineProperty(navigator, "vibrate", {
             value: vi.fn(),
             writable: true,
@@ -128,5 +147,38 @@ describe("QuestView", () => {
     it("should not render the old placeholder text", () => {
         render(<QuestView quest={mockQuest} gameId="game-123" />);
         expect(screen.queryByText(/Zone d'interaction/)).toBeNull();
+    });
+
+    it("should show completion confirmation when quest is answered and completion succeeds", () => {
+        mockStoreState.questAnswered = true;
+        mockStoreState.isCompletingQuest = false;
+        mockStoreState.completionError = null;
+        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        expect(screen.getByText("MISSION ENREGISTRÉE")).toBeTruthy();
+    });
+
+    it("should show completion error with retry button on failure", () => {
+        mockStoreState.questAnswered = true;
+        mockStoreState.completionError = "Failed to record quest completion.";
+        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        expect(screen.getByText("ERREUR DE SAUVEGARDE")).toBeTruthy();
+        expect(screen.getByText("RÉESSAYER")).toBeTruthy();
+    });
+
+    it("should call completeQuestAction when retry button is clicked", () => {
+        mockStoreState.questAnswered = true;
+        mockStoreState.completionError = "Failed";
+        mockCompleteQuestAction.mockResolvedValue(true);
+        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        const retryButton = screen.getByText("RÉESSAYER").closest("button")!;
+        fireEvent.click(retryButton);
+        expect(mockCompleteQuestAction).toHaveBeenCalledWith("game-123", "user-1", "s1");
+    });
+
+    it("should show loading state during completion", () => {
+        mockStoreState.questAnswered = true;
+        mockStoreState.isCompletingQuest = true;
+        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        expect(screen.getByText("Enregistrement...")).toBeTruthy();
     });
 });

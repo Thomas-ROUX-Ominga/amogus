@@ -195,6 +195,95 @@ export async function joinGame(
     }
 }
 
+export async function completeQuest(
+    gameId: string,
+    userId: string,
+    questId: string
+): Promise<ActionResponse<{ completedQuests: string[]; questsCompleted: number }>> {
+    try {
+        const stateKey = `game:${gameId}:state`;
+
+        let validationError: ActionResponse<{ completedQuests: string[]; questsCompleted: number }> | null = null;
+
+        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
+            if (!state) {
+                validationError = {
+                    success: false,
+                    error: "Game session not found.",
+                    code: ERROR_CODES.GAME_NOT_FOUND,
+                };
+                return null;
+            }
+
+            if (state.status !== "IN_PROGRESS") {
+                validationError = {
+                    success: false,
+                    error: "Cannot complete quest: game is not in progress.",
+                    code: ERROR_CODES.ERR_INVALID_STATE,
+                };
+                return null;
+            }
+
+            const playerIndex = state.players.findIndex((p) => p.id === userId);
+            if (playerIndex === -1) {
+                validationError = {
+                    success: false,
+                    error: "Player not found in game.",
+                    code: ERROR_CODES.ERR_INVALID_SIGNATURE,
+                };
+                return null;
+            }
+
+            const player = state.players[playerIndex];
+            const completed = player.completedQuests ?? [];
+
+            // Idempotent: already completed — return success without duplicating
+            if (completed.includes(questId)) {
+                validationError = {
+                    success: true,
+                    data: { completedQuests: completed, questsCompleted: completed.length },
+                };
+                return null;
+            }
+
+            const updatedCompleted = [...completed, questId];
+            const updatedPlayers = [...state.players];
+            updatedPlayers[playerIndex] = {
+                ...updatedPlayers[playerIndex],
+                completedQuests: updatedCompleted,
+            };
+
+            return {
+                ...state,
+                players: updatedPlayers,
+            };
+        }, GAME_TTL_SECONDS);
+
+        if (validationError) {
+            return validationError;
+        }
+
+        // Extract updated player data from result
+        const updatedPlayer = result?.players.find((p) => p.id === userId);
+        const updatedCompleted = updatedPlayer?.completedQuests ?? [];
+
+        return {
+            success: true,
+            data: {
+                completedQuests: updatedCompleted,
+                questsCompleted: updatedCompleted.length,
+            },
+        };
+    } catch (error) {
+        console.error("Failed to complete quest:", error);
+        return {
+            success: false,
+            error: "Failed to record quest completion.",
+            code: ERROR_CODES.ERR_QUEST_COMPLETE_FAILED,
+        };
+    }
+}
+
 export async function selectRole(
     gameId: string,
     userId: string,

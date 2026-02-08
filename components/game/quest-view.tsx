@@ -1,16 +1,18 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { X, Clock } from "lucide-react";
+import { X, Clock, Check, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Quest, QuestDuration } from "@/types/quest";
 import { useGameStore } from "@/lib/store/game-store";
 import { QuestRenderer } from "@/components/game/quest-renderer";
+import { ERROR_CODES } from "@/lib/constants/error-codes";
 
 interface QuestViewProps {
     quest: Quest;
     gameId: string;
+    userId?: string;
 }
 
 const DURATION_COLORS: Record<QuestDuration, string> = {
@@ -25,14 +27,49 @@ const DURATION_LABELS: Record<QuestDuration, string> = {
     long: "LONG",
 };
 
-export function QuestView({ quest, gameId }: QuestViewProps) {
+export function QuestView({ quest, gameId, userId }: QuestViewProps) {
     const router = useRouter();
     const prefersReducedMotion = useReducedMotion();
-    const { clearQuest, setQuestAnswered } = useGameStore();
+    const { clearQuest, setQuestAnswered, completeQuestAction, isCompletingQuest, completionError, completionErrorCode, questAnswered } = useGameStore();
+    const completionTriggered = useRef(false);
 
     const handleSuccess = useCallback(() => {
         setQuestAnswered(true);
     }, [setQuestAnswered]);
+
+    // Trigger quest completion recording after answer is correct
+    useEffect(() => {
+        if (questAnswered && userId && !completionTriggered.current) {
+            completionTriggered.current = true;
+            completeQuestAction(gameId, userId, quest.id).then((success) => {
+                if (success) {
+                    try {
+                        if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+                            navigator.vibrate([100, 50, 100]);
+                        }
+                    } catch {
+                        // Ignore haptic failures
+                    }
+                }
+            });
+        }
+    }, [questAnswered, userId, gameId, quest.id, completeQuestAction]);
+
+    const handleRetryCompletion = useCallback(() => {
+        if (userId) {
+            completeQuestAction(gameId, userId, quest.id).then((success) => {
+                if (success) {
+                    try {
+                        if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+                            navigator.vibrate([100, 50, 100]);
+                        }
+                    } catch {
+                        // Ignore haptic failures
+                    }
+                }
+            });
+        }
+    }, [userId, gameId, quest.id, completeQuestAction]);
 
     const handleError = useCallback(() => {
         // No store update on error — visual feedback only (handled by quest components)
@@ -63,6 +100,7 @@ export function QuestView({ quest, gameId }: QuestViewProps) {
             {...containerVariants}
             transition={containerTransition}
             className="flex flex-col min-h-screen bg-background text-foreground p-4"
+            data-quest-id={quest.id}
         >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-primary/20 pb-4 mb-6">
@@ -99,6 +137,67 @@ export function QuestView({ quest, gameId }: QuestViewProps) {
                     onError={handleError}
                 />
             </div>
+
+            {/* Completion Status Area */}
+            {questAnswered && (
+                <div className="space-y-3">
+                    {isCompletingQuest && (
+                        <div className="p-4 border border-primary/20 bg-black/30 text-center" role="status" aria-live="polite">
+                            <span className="text-sm text-primary/80 font-rajdhani tracking-wide animate-pulse">
+                                Enregistrement...
+                            </span>
+                        </div>
+                    )}
+
+                    {!isCompletingQuest && !completionError && (
+                        <motion.div
+                            {...(prefersReducedMotion ? {} : { initial: { opacity: 0 }, animate: { opacity: 1 } })}
+                            transition={prefersReducedMotion ? {} : { duration: 0.3 }}
+                            className="p-4 border border-[#2DA44E]/30 bg-[#2DA44E]/10 text-center"
+                            role="status"
+                            aria-live="polite"
+                        >
+                            <div className="flex items-center justify-center gap-2">
+                                <Check className="w-5 h-5 text-[#2DA44E]" aria-hidden="true" />
+                                <span className="text-sm font-bold text-[#2DA44E] font-orbitron tracking-wide">
+                                    MISSION ENREGISTRÉE
+                                </span>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {!isCompletingQuest && completionError && (
+                        <div className="p-4 border border-destructive/30 bg-destructive/10 space-y-3" role="alert" aria-live="assertive">
+                            <div className="flex items-center justify-center gap-2">
+                                <AlertTriangle className="w-5 h-5 text-destructive" aria-hidden="true" />
+                                <span className="text-sm font-bold text-destructive font-orbitron tracking-wide">
+                                    ERREUR DE SAUVEGARDE
+                                </span>
+                            </div>
+                            <p className="text-xs text-destructive/80 text-center font-rajdhani">
+                                {completionError}
+                            </p>
+                            
+                            {completionErrorCode === ERROR_CODES.GAME_NOT_FOUND ? (
+                                <button
+                                    onClick={() => router.push(`/game/${gameId}`)}
+                                    className="w-full min-h-[44px] flex items-center justify-center border-2 border-destructive/50 bg-transparent text-destructive font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-destructive/10 active:scale-95 transition-all touch-manipulation"
+                                >
+                                    RETOUR ACCUEIL
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleRetryCompletion}
+                                    aria-label="Réessayer la sauvegarde de la quête"
+                                    className="w-full min-h-[44px] flex items-center justify-center border-2 border-primary/50 bg-transparent text-primary font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-primary/10 active:scale-95 transition-all touch-manipulation"
+                                >
+                                    RÉESSAYER
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Flee Button — bottom thumb zone */}
             <div className="pt-6 pb-4">
