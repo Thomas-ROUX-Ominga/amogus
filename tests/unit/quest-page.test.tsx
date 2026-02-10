@@ -181,4 +181,22 @@ describe("QuestPage", () => {
         expect(screen.getByText("QUÊTE DÉJÀ ACCOMPLIE")).toBeTruthy();
         expect(screen.getByText("RETOUR AU COCKPIT")).toBeTruthy();
     });
+
+    it("should set a simulated quest and not a real one if player is an IMPOSTOR", () => {
+        vi.mocked(useGameStore).mockReturnValue({
+            ...baseStoreState,
+            gameState: {
+                id: "game-123",
+                status: "IN_PROGRESS",
+                players: [{ id: "user-1", name: "Alice", role: "IMPOSTOR", isAlive: true }],
+                createdAt: Date.now(),
+            },
+        });
+        render(<QuestPage />);
+        
+        // It should call setCurrentQuest with a simulated quest object
+        expect(mockSetCurrentQuest).toHaveBeenCalledWith(expect.objectContaining({
+            id: "impostor-sim",
+        }));
+    });
 });

@@ -10,6 +10,7 @@ import { ErrorView } from "@/components/game/error-view";
 import { QuestView } from "@/components/game/quest-view";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { isValidDuration, getRandomQuest, getQuestsByDuration, getQuestById } from "@/lib/constants/quest-pool";
+import { QuestDuration } from "@/types/quest";
 
 export default function QuestPage() {
     return (
@@ -67,6 +68,19 @@ function QuestPageContent() {
 
     useEffect(() => {
         if (gameState && !currentQuest) {
+            // Role check for Impostors - Story 4.1
+            const currentPlayer = gameState.players.find((p) => p.id === userId);
+            if (currentPlayer?.role === "IMPOSTOR") {
+                setCurrentQuest({
+                    id: "impostor-sim",
+                    type: "true-false", // Keep type for TS compatibility but it's irrelevant for UI
+                    duration: (isValidDuration(duration) ? duration : "short") as QuestDuration,
+                    title: "SIGNAL OVERRIDE",
+                    instruction: "PROTOCOL DE CAMOUFLAGE ACTIF",
+                });
+                return;
+            }
+
             if (questId) {
                 const quest = getQuestById(questId);
                 if (quest) {
@@ -95,7 +109,7 @@ function QuestPageContent() {
                 }
             }
         }
-    }, [gameState, duration, questId, currentQuest, setCurrentQuest]);
+    }, [gameState, duration, questId, currentQuest, setCurrentQuest, userId]);
 
     // Loading state
     if (isLoading || !userId) {

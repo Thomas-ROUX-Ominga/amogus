@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { QuestView } from "@/components/game/quest-view";
 import { Quest } from "@/types/quest";
+import { GameState } from "@/types/game";
 
 const mockPush = vi.fn();
 const mockClearQuest = vi.fn();
@@ -18,6 +19,9 @@ let mockStoreState = {
     isCompletingQuest: false,
     completionError: null as string | null,
     questAnswered: false,
+    gameState: {
+        players: [{ id: "user-1", role: "CREWMATE" }]
+    } as unknown as GameState,
 };
 
 vi.mock("@/lib/store/game-store", () => ({
@@ -48,6 +52,9 @@ describe("QuestView", () => {
             isCompletingQuest: false,
             completionError: null,
             questAnswered: false,
+            gameState: {
+                players: [{ id: "user-1", role: "CREWMATE" }]
+            } as unknown as GameState,
         };
         Object.defineProperty(navigator, "vibrate", {
             value: vi.fn(),
@@ -290,5 +297,21 @@ describe("QuestView", () => {
         expect(mockClearQuest).toHaveBeenCalled();
 
         vi.useRealTimers();
+    });
+
+    it("should hide quest title and duration badge if player is an IMPOSTOR", () => {
+        mockStoreState.gameState = {
+            players: [{ id: "user-1", role: "IMPOSTOR" }]
+        } as unknown as GameState;
+        
+        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        
+        // Title should be hidden or replaced with generic text
+        expect(screen.queryByText(mockQuest.title)).toBeNull();
+        
+        // Duration badge should be hidden
+        expect(screen.queryByText("COURT")).toBeNull();
+        expect(screen.queryByText("MOYEN")).toBeNull();
+        expect(screen.queryByText("LONG")).toBeNull();
     });
 });
