@@ -52,12 +52,12 @@ development_status:
   2-3-home-cocktail-game-home: done
   epic-2-retrospective: done
 
-  epic-3: in-progress
+  epic-3: done
   3-1-routage-dynamique-scan-qr: done
   3-2-conteneur-de-quete-quest-sandbox: done
   3-3-mini-jeux-mvp-qcm-vrai-faux: done
   3-4-conclusion-atomique-retour-home: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
 
   epic-4: backlog
   4-1-masquage-du-contenu-impostor-view: backlog
