@@ -52,4 +52,15 @@ describe('SuccessOverlay', () => {
     
     expect(mockOnManualExit).toHaveBeenCalledTimes(1);
   });
+
+  it('renders with red color and glitchy vibration for impostors', () => {
+    render(<SuccessOverlay onManualExit={mockOnManualExit} isImpostor={true} />);
+    
+    // Check for red color class on h1
+    const heading = screen.getByRole('heading', { name: /MISSION/i });
+    expect(heading.className).toContain('text-[#DA3633]');
+    
+    // Check for glitchy vibration pattern
+    expect(mockVibrate).toHaveBeenCalledWith([50, 30, 100, 30, 250, 50, 150]);
+  });
 });

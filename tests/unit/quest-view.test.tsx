@@ -229,7 +229,7 @@ describe("QuestView", () => {
         
         // Fast-forward time for the redirect timer
         await act(async () => {
-            vi.advanceTimersByTime(3000);
+            vi.advanceTimersByTime(2500);
         });
         
         expect(mockPush).toHaveBeenCalledWith("/game/game-123");
@@ -290,7 +290,7 @@ describe("QuestView", () => {
 
         // Fast-forward for redirect
         await act(async () => {
-            vi.advanceTimersByTime(3000);
+            vi.advanceTimersByTime(2500);
         });
 
         expect(mockPush).toHaveBeenCalledWith("/game/game-123");
@@ -299,19 +299,25 @@ describe("QuestView", () => {
         vi.useRealTimers();
     });
 
-    it("should hide quest title and duration badge if player is an IMPOSTOR", () => {
+    it("should trigger immediate success for IMPOSTOR", async () => {
+        vi.useFakeTimers();
+        const testUserId = "user-impostor";
         mockStoreState.gameState = {
-            players: [{ id: "user-1", role: "IMPOSTOR" }]
+            players: [{ id: testUserId, role: "IMPOSTOR" }]
         } as unknown as GameState;
+        mockStoreState.questAnswered = false;
         
-        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        render(<QuestView quest={mockQuest} gameId="game-123" userId={testUserId} />);
         
-        // Title should be hidden or replaced with generic text
-        expect(screen.queryByText(mockQuest.title)).toBeNull();
-        
-        // Duration badge should be hidden
-        expect(screen.queryByText("COURT")).toBeNull();
-        expect(screen.queryByText("MOYEN")).toBeNull();
-        expect(screen.queryByText("LONG")).toBeNull();
+        // Wait for all promises/timers
+        await act(async () => {
+            await Promise.resolve();
+            vi.runAllTimers();
+        });
+
+        // SuccessOverlay should be visible
+        expect(screen.getByRole('heading', { name: /MISSION/i })).toBeTruthy();
+
+        vi.useRealTimers();
     });
 });

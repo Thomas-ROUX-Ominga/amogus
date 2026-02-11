@@ -7,23 +7,47 @@ import { X } from 'lucide-react';
 interface SuccessOverlayProps {
   onManualExit: () => void;
   reducedMotion?: boolean;
+  isImpostor?: boolean;
 }
 
-export function SuccessOverlay({ onManualExit, reducedMotion = false }: SuccessOverlayProps) {
+export function SuccessOverlay({ onManualExit, reducedMotion = false, isImpostor = false }: SuccessOverlayProps) {
   useEffect(() => {
-    // Haptic feedback pattern: [50, 50, 50, 50, 200]
+    // Haptic feedback pattern
+    // Crewmate: [50, 50, 50, 50, 200]
+    // Impostor: [50, 30, 100, 30, 250, 50, 150] (Glitchy)
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       try {
-        navigator.vibrate([50, 50, 50, 50, 200]);
+        const pattern = isImpostor 
+          ? [50, 30, 100, 30, 250, 50, 150]
+          : [50, 50, 50, 50, 200];
+        navigator.vibrate(pattern);
       } catch {
         // Ignore vibration errors
       }
     }
-  }, []);
+  }, [isImpostor]);
 
   const containerVariants = reducedMotion 
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
     : { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } };
+
+  const glitchVariants = {
+    animate: {
+      x: [0, -2, 2, -1, 1, 0],
+      y: [0, 1, -1, 2, -2, 0],
+      filter: [
+        "hue-rotate(0deg)",
+        "hue-rotate(50deg)",
+        "hue-rotate(-50deg)",
+        "hue-rotate(0deg)",
+      ],
+      transition: {
+        duration: 0.2,
+        repeat: Infinity,
+        repeatType: "mirror" as const,
+      }
+    }
+  };
 
   const textVariants = reducedMotion
     ? { initial: { opacity: 0 }, animate: { opacity: 1 } }
@@ -32,18 +56,25 @@ export function SuccessOverlay({ onManualExit, reducedMotion = false }: SuccessO
         animate: { 
           scale: 1, 
           opacity: 1,
-          textShadow: [
-            "0 0 10px rgba(0,255,0,0.5)",
-            "2px 2px 0px rgba(255,0,255,0.5)",
-            "-2px -2px 0px rgba(0,255,255,0.5)",
-            "0 0 10px rgba(0,255,0,0.5)"
-          ]
+          textShadow: isImpostor
+            ? [
+                "2px 2px 0px rgba(255,0,0,0.8)",
+                "-2px -2px 0px rgba(0,0,0,0.8)",
+                "2px -2px 0px rgba(255,0,0,0.8)",
+                "0 0 10px rgba(255,0,0,0.5)"
+              ]
+            : [
+                "0 0 10px rgba(0,255,0,0.5)",
+                "2px 2px 0px rgba(255,0,255,0.5)",
+                "-2px -2px 0px rgba(0,255,255,0.5)",
+                "0 0 10px rgba(0,255,0,0.5)"
+              ]
         },
         transition: { 
           duration: 0.5,
           textShadow: {
             repeat: Infinity,
-            duration: 0.2
+            duration: isImpostor ? 0.1 : 0.2
           }
         }
       };
@@ -51,13 +82,18 @@ export function SuccessOverlay({ onManualExit, reducedMotion = false }: SuccessO
   return (
     <motion.div
       {...containerVariants}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm p-4 ${
+        isImpostor ? 'bg-red-900/40' : 'bg-black/90'
+      }`}
     >
       <motion.div
         {...textVariants}
+        animate={isImpostor ? { ...textVariants.animate, ...glitchVariants.animate } : textVariants.animate}
         className="text-center mb-12"
       >
-        <h1 className="text-4xl md:text-6xl font-orbitron font-bold text-green-500 tracking-wider">
+        <h1 className={`text-4xl md:text-6xl font-orbitron font-bold tracking-wider ${
+          isImpostor ? 'text-[#DA3633]' : 'text-green-500'
+        }`}>
           MISSION
           <br />
           ACCOMPLIE
@@ -71,12 +107,25 @@ export function SuccessOverlay({ onManualExit, reducedMotion = false }: SuccessO
       >
         <button 
           onClick={onManualExit}
-          className="flex items-center gap-2 px-6 py-3 border-2 border-green-500/50 text-green-500 hover:bg-green-500/10 rounded font-rajdhani font-bold uppercase tracking-wider transition-colors"
+          className={`flex items-center gap-2 px-6 py-3 border-2 rounded font-rajdhani font-bold uppercase tracking-wider transition-colors ${
+            isImpostor 
+              ? 'border-[#DA3633]/50 text-[#DA3633] hover:bg-[#DA3633]/10' 
+              : 'border-green-500/50 text-green-500 hover:bg-green-500/10'
+          }`}
         >
           <X size={18} />
           Retour au Cockpit
         </button>
       </motion.div>
+
+      {isImpostor && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 0.2, 0] }}
+          transition={{ duration: 0.1, repeat: Infinity }}
+          className="absolute inset-0 pointer-events-none bg-white/5 mix-blend-overlay"
+        />
+      )}
     </motion.div>
   );
 }

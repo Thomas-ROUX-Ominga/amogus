@@ -28,7 +28,7 @@ const DURATION_LABELS: Record<QuestDuration, string> = {
     long: "LONG",
 };
 
-const REDIRECT_DELAY_MS = 3000;
+const REDIRECT_DELAY_MS = 2500;
 
 export function QuestView({ quest, gameId, userId }: QuestViewProps) {
     const router = useRouter();
@@ -114,6 +114,15 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
         router.push(`/game/${gameId}`);
     }, [clearQuest, router, gameId]);
 
+    // Impostor Immediate Success Effect
+    useEffect(() => {
+        if (isImpostor && !completionTriggered.current) {
+            // Story 4.2: Trigger success flow immediately for impostors
+            completionTriggered.current = true;
+            triggerSuccessFlow(); // eslint-disable-line react-hooks/set-state-in-effect
+        }
+    }, [isImpostor, triggerSuccessFlow]);
+
     const containerVariants = prefersReducedMotion
         ? {}
         : { initial: { opacity: 0 }, animate: { opacity: 1 } };
@@ -148,49 +157,9 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
 
             {/* Quest Content — top section */}
             <div className="flex-1 space-y-6">
-                <div className="p-6 border border-primary/20 bg-black/50 backdrop-blur-sm relative overflow-hidden">
-                    {isImpostor ? (
-                        <div className="py-8 text-center space-y-6">
-                             <div className="flex justify-center">
-                                <motion.div
-                                    animate={{ 
-                                        opacity: [0.4, 0.7, 0.4],
-                                        scale: [1, 1.02, 1]
-                                    }}
-                                    transition={{ duration: 2, repeat: Infinity }}
-                                >
-                                    <AlertTriangle className="w-12 h-12 text-primary/40" />
-                                </motion.div>
-                             </div>
-                             <div className="space-y-2">
-                                <p className="text-sm font-orbitron text-primary/60 tracking-[0.2em] uppercase">
-                                    Transmission Brouillée
-                                </p>
-                                <div className="flex justify-center gap-1 h-1">
-                                    {[1, 2, 3].map(i => (
-                                        <motion.div 
-                                            key={i}
-                                            className="w-8 h-full bg-primary/20"
-                                            animate={{ opacity: [0.1, 0.5, 0.1] }}
-                                            transition={{ duration: 1.5, delay: i * 0.2, repeat: Infinity }}
-                                        />
-                                    ))}
-                                </div>
-                             </div>
-
-                             {/* Story 4.1 Fix: Allow Impostor to trigger success flow */}
-                             <motion.button
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 1 }}
-                                onClick={handleSuccess}
-                                className="w-full min-h-[44px] border border-primary/30 bg-primary/5 text-primary/80 font-rajdhani text-xs uppercase tracking-widest hover:bg-primary/10 active:scale-95 transition-all"
-                             >
-                                Finaliser l&apos;Offuscation
-                             </motion.button>
-                        </div>
-                    ) : (
-                        <>
+                {!isImpostor && (
+                    <>
+                        <div className="p-6 border border-primary/20 bg-black/50 backdrop-blur-sm relative overflow-hidden">
                             <h2 className="text-xl font-bold font-orbitron text-primary mb-4 tracking-wide">
                                 {quest.title}
                             </h2>
@@ -198,18 +167,16 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                             <p className="text-base text-foreground/90 font-rajdhani leading-relaxed">
                                 {quest.instruction}
                             </p>
-                        </>
-                    )}
-                </div>
+                        </div>
 
-                {/* Interactive Quest Area */}
-                {!isImpostor && (
-                    <QuestRenderer
-                        quest={quest}
-                        gameId={gameId}
-                        onSuccess={handleSuccess}
-                        onError={handleError}
-                    />
+                        {/* Interactive Quest Area */}
+                        <QuestRenderer
+                            quest={quest}
+                            gameId={gameId}
+                            onSuccess={handleSuccess}
+                            onError={handleError}
+                        />
+                    </>
                 )}
             </div>
 
@@ -301,6 +268,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                     <SuccessOverlay 
                         onManualExit={handleManualExit} 
                         reducedMotion={!!prefersReducedMotion}
+                        isImpostor={isImpostor}
                     />
                 )}
             </AnimatePresence>
