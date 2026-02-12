@@ -1,7 +1,7 @@
 "use client";
 
 import { Player } from "@/types/game";
-import { getTotalQuests, calculatePlayerProgress } from "@/lib/utils/quest-calculations";
+import { PlayerQuestProgress } from "./player-quest-progress";
 
 interface PlayerListProps {
     players: Player[];
@@ -24,44 +24,35 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
             <div className="space-y-3">
                 {players.map((player) => {
                     const isCurrentUser = player.id === currentUserId;
-                    const completedCount = player.completedQuests?.length || 0;
-                    const totalCount = getTotalQuests();
-                    const completionPercentage = calculatePlayerProgress(player.completedQuests);
 
                     return (
                         <div
                             key={player.id}
-                            className={`p-4 border text-xs tracking-widest uppercase flex items-center justify-between transition-all ${
+                            className={`p-4 border text-xs tracking-widest uppercase transition-all ${
                                 isCurrentUser 
                                     ? 'border-primary bg-primary/10 text-primary font-bold' 
                                     : 'border-white/10 bg-white/5 text-muted-foreground hover:border-primary/30'
                             }`}
                         >
-                            <div className="flex items-center gap-4">
-                                <div>
-                                    <div className="font-bold text-sm">{player.name}</div>
-                                    <div className="text-[8px] opacity-50 mt-1">
-                                        {player.role || 'NO_ROLE'} • {player.isAlive ? 'ACTIVE' : 'ELIMINATED'}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div>
+                                        <div className="font-bold text-sm">{player.name}</div>
+                                        <div className="text-[8px] opacity-50 mt-1">
+                                            {player.role || 'NO_ROLE'} • {player.isAlive ? 'ACTIVE' : 'ELIMINATED'}
+                                        </div>
                                     </div>
+                                    {isCurrentUser && (
+                                        <span className="text-[8px] opacity-50 px-2 py-0.5 border border-primary/50">
+                                            YOU
+                                        </span>
+                                    )}
                                 </div>
-                                {isCurrentUser && (
-                                    <span className="text-[8px] opacity-50 px-2 py-0.5 border border-primary/50">
-                                        YOU
-                                    </span>
-                                )}
-                            </div>
-                            
-                            <div className="flex items-center gap-4">
-                                <div className="text-right">
-                                    <div className="text-[8px] opacity-50">QUEST PROGRESS</div>
-                                    <div className="text-sm font-bold">
-                                        {completedCount}/{totalCount}
-                                    </div>
-                                </div>
-                                <div className="w-16 h-2 bg-white/10 rounded-full overflow-hidden">
-                                    <div 
-                                        className="h-full bg-primary transition-all duration-500"
-                                        style={{ width: `${completionPercentage}%` }}
+                                
+                                <div className="w-48">
+                                    <PlayerQuestProgress 
+                                        player={player} 
+                                        isCurrentUser={isCurrentUser}
                                     />
                                 </div>
                             </div>

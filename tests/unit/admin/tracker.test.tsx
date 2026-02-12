@@ -57,9 +57,9 @@ describe("PlayerList", () => {
     it("should display quest progress", () => {
         render(<PlayerList players={mockPlayers} currentUserId="player1" />);
         
-        expect(screen.getByText("2/9")).toBeDefined();
-        expect(screen.getByText("1/9")).toBeDefined();
-        expect(screen.getByText("0/9")).toBeDefined();
+        expect(screen.getByText("2/9 Quêtes")).toBeDefined();
+        expect(screen.getByText("1/9 Quêtes")).toBeDefined();
+        expect(screen.getByText("0/9 Quêtes")).toBeDefined();
     });
 
     it("should show empty state when no players", () => {

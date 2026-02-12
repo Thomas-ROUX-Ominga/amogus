@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { GameState, PlayerRole } from "@/types/game";
 import { Quest } from "@/types/quest";
-import { getGame, joinGame, startGame, selectRole, completeQuest } from "@/lib/redis/actions";
+import { getGame, joinGame, startGame, selectRole, completeQuest, refreshGame } from "@/lib/redis/actions";
 import { getQuestsByDuration } from "@/lib/constants/quest-pool";
 
 function getTotalQuests(): number {
@@ -14,6 +14,7 @@ interface GameStore {
     isLaunching: boolean;
     isSelectingRole: boolean;
     isCompletingQuest: boolean;
+    isRefreshing: boolean;
     error: string | null;
     errorCode: string | null;
     launchError: string | null;
@@ -28,6 +29,7 @@ interface GameStore {
 
     // Actions
     fetchGame: (id: string, userId?: string) => Promise<void>;
+    refreshGameData: (id: string, userId?: string) => Promise<void>;
     join: (gameId: string, playerName: string, userId: string) => Promise<void>;
     launch: (gameId: string) => Promise<boolean>;
     chooseRole: (gameId: string, userId: string, role: PlayerRole) => Promise<boolean>;
@@ -44,6 +46,7 @@ export const useGameStore = create<GameStore>((set) => ({
     isLaunching: false,
     isSelectingRole: false,
     isCompletingQuest: false,
+    isRefreshing: false,
     error: null,
     errorCode: null,
     launchError: null,
@@ -75,6 +78,35 @@ export const useGameStore = create<GameStore>((set) => ({
                 error: response.error || "Unknown error",
                 errorCode: response.code || null,
                 isLoading: false
+            });
+        }
+    },
+
+    refreshGameData: async (id: string, userId?: string) => {
+        set({ isRefreshing: true, error: null, errorCode: null });
+        const response = await refreshGame(id);
+
+        if (response.success && response.data) {
+            const updates: Partial<GameStore> = { 
+                gameState: response.data, 
+                isRefreshing: false 
+            };
+
+            // Update quest counts for current user if available
+            if (userId) {
+                const updatedPlayer = response.data.players.find((p) => p.id === userId);
+                if (updatedPlayer) {
+                    updates.questsCompleted = updatedPlayer.completedQuests?.length ?? 0;
+                    updates.questsTotal = getTotalQuests();
+                }
+            }
+
+            set(updates);
+        } else {
+            set({
+                error: response.error || "Unknown error",
+                errorCode: response.code || null,
+                isRefreshing: false
             });
         }
     },

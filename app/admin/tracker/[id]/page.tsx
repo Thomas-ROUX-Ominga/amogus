@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { useParams } from "next/navigation";
 import { useGameStore } from "@/lib/store/game-store";
@@ -9,6 +9,7 @@ import { ErrorView } from "@/components/game/error-view";
 import { PlayerList } from "@/components/admin/player-list";
 import { ProgressBar } from "@/components/admin/progress-bar";
 import { TrackerStats } from "@/components/admin/tracker-stats";
+import { RefreshButton } from "@/components/admin/refresh-button";
 import { AdminErrorBoundary } from "@/components/admin/error-boundary";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -17,6 +18,7 @@ export default function AdminTrackerPage() {
     const { id } = useParams();
     const { gameState, isLoading, error, errorCode, fetchGame } = useGameStore();
     const { userId } = useLocalUser();
+    const [lastSyncTime] = useState<number | null>(null);
 
     useEffect(() => {
         if (id) {
@@ -104,6 +106,7 @@ export default function AdminTrackerPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
+                            <RefreshButton gameId={id as string} />
                             <span className={`w-2 h-2 rounded-full animate-pulse ${
                                 gameState.status === "IN_PROGRESS" ? 'bg-green-500' : 
                                 gameState.status === "LOBBY" ? 'bg-yellow-500' : 
@@ -114,6 +117,15 @@ export default function AdminTrackerPage() {
                             </span>
                         </div>
                     </div>
+                    {lastSyncTime && (
+                        <div className="text-[8px] text-primary/40 tracking-widest text-right">
+                            Dernière synchro: {new Date(lastSyncTime).toLocaleTimeString('fr-FR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit'
+                            })}
+                        </div>
+                    )}
                 </div>
 
                 {/* Main Content */}

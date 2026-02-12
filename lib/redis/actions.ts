@@ -253,6 +253,7 @@ export async function completeQuest(
             updatedPlayers[playerIndex] = {
                 ...updatedPlayers[playerIndex],
                 completedQuests: updatedCompleted,
+                lastQuestCompleted: Date.now(), // Set timestamp for last completed quest
             };
 
             return {
@@ -282,6 +283,23 @@ export async function completeQuest(
             success: false,
             error: "Failed to record quest completion.",
             code: ERROR_CODES.ERR_QUEST_COMPLETE_FAILED,
+        };
+    }
+}
+
+export async function refreshGame(
+    gameId: string
+): Promise<ActionResponse<GameState>> {
+    try {
+        // Simply call getGame - this ensures fresh data from Redis
+        const result = await getGame(gameId);
+        return result;
+    } catch (error) {
+        console.error("Failed to refresh game:", error);
+        return {
+            success: false,
+            error: "Failed to refresh game data.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
         };
     }
 }

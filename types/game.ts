@@ -8,6 +8,7 @@ export interface Player {
     role?: PlayerRole;
     isAlive: boolean;
     completedQuests?: string[];
+    lastQuestCompleted?: number; // Timestamp of last completed quest
 }
 
 export interface GameState {
