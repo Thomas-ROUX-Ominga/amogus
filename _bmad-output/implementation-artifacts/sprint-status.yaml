@@ -59,12 +59,12 @@ development_status:
   3-4-conclusion-atomique-retour-home: done
   epic-3-retrospective: done
 
-  epic-4: in-progress
+  epic-4: done
   4-1-masquage-du-contenu-impostor-view: done
   4-2-ecran-de-succes-simule-effet-glitch: done
-  epic-4-retrospective: optional
+  epic-4-retrospective: done
 
-  epic-5: backlog
-  5-1-dashboard-admin-liste-des-joueurs: backlog
+  epic-5: in-progress
+  5-1-dashboard-admin-liste-des-joueurs: done
   5-2-suivi-individuel-rafraichissement-manual-sync: backlog
   epic-5-retrospective: optional

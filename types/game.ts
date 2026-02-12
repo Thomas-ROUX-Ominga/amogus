@@ -15,6 +15,7 @@ export interface GameState {
     status: GameStatus;
     players: Player[];
     createdAt: number;
+    creatorId?: string; // First player to join is considered the organizer
 }
 
 export interface ActionResponse<T> {

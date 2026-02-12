@@ -177,6 +177,8 @@ export async function joinGame(
         const updatedState: GameState = {
             ...state,
             players: [...state.players, newPlayer],
+            // Set creatorId if this is the first player joining
+            creatorId: state.players.length === 0 ? userId : state.creatorId,
         };
 
         await redis.set(stateKey, updatedState);
