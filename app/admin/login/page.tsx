@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Key } from "lucide-react";
 import { adminLogin } from "@/lib/redis/auth-actions";
 
-export default function AdminLoginPage() {
+function AdminLoginContent() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -119,5 +119,13 @@ export default function AdminLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><div className="text-primary">Loading...</div></div>}>
+      <AdminLoginContent />
+    </Suspense>
   );
 }
