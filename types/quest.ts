@@ -22,3 +22,21 @@ export interface QuestPool {
     medium: Quest[];
     long: Quest[];
 }
+
+// Batch types for Story 6.2
+export interface Batch {
+    id: string;
+    questCount: number;
+    quests: Quest[];
+    createdAt: string;
+}
+
+export interface BatchCreateInput {
+    totalQuests: number;
+}
+
+export interface BatchListItem {
+    id: string;
+    questCount: number;
+    createdAt: string;
+}

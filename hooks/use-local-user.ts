@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { v4 as uuidv4 } from "uuid";
 
 const STORAGE_KEY = "amogus_user_id";
 
@@ -19,7 +18,7 @@ export function useLocalUser() {
             let id = localStorage.getItem(STORAGE_KEY);
 
             if (!id) {
-                id = uuidv4();
+                id = globalThis.crypto.randomUUID();
                 localStorage.setItem(STORAGE_KEY, id);
             }
 
@@ -28,7 +27,7 @@ export function useLocalUser() {
         } catch (error) {
             console.error("[CRITICAL] Storage access failed:", error);
             // Fallback to session-only identity if localStorage is blocked
-            setUserId(prev => prev || uuidv4());
+            setUserId(prev => prev || globalThis.crypto.randomUUID());
         }
     }, []);
 

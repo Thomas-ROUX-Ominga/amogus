@@ -13,10 +13,10 @@ vi.mock("@/lib/redis/client", () => ({
     },
 }));
 
-// Mock uuid
-vi.mock("uuid", () => ({
-    v4: () => "test-uuid",
-}));
+// Mock crypto.randomUUID
+vi.stubGlobal("crypto", {
+    randomUUID: () => "test-uuid",
+});
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({

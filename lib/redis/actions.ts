@@ -1,13 +1,12 @@
 "use server";
 
-import { v4 as uuidv4 } from "uuid";
 import { redis, GAME_TTL_SECONDS } from "./client";
 import { GameState, ActionResponse, PlayerRole } from "@/types/game";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 
 export async function createGame(): Promise<ActionResponse<string>> {
     try {
-        const gameId = uuidv4();
+        const gameId = globalThis.crypto.randomUUID();
         const initialState: GameState = {
             id: gameId,
             status: "LOBBY",

@@ -71,7 +71,7 @@ development_status:
 
   epic-6: in-progress
   6-1-admin-authentication: done
-  6-2-batch-generation-and-logic: backlog
+  6-2-batch-generation-and-logic: done
   6-3-qr-and-localization: backlog
   epic-6-retrospective: optional
 

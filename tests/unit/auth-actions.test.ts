@@ -47,7 +47,8 @@ vi.mock("jose", () => ({
   }),
 }));
 
-import { verifyAdminCredentials, adminLogin, createAdminSession, verifyAdminSession, clearAdminSession } from "@/lib/redis/auth-actions";
+import { verifyAdminCredentials, adminLogin } from "@/lib/redis/auth-actions";
+import { createAdminSession, verifyAdminSession, clearAdminSession } from "@/lib/redis/auth-utils";
 import { redis } from "@/lib/redis/client";
 import bcrypt from "bcryptjs";
 

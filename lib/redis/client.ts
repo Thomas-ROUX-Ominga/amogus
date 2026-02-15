@@ -1,5 +1,3 @@
-import { createClient, RedisClientType } from "redis";
-
 const redisUrl = process.env.REDIS_URL;
 
 if (!redisUrl) {
@@ -7,18 +5,27 @@ if (!redisUrl) {
 }
 
 const globalForRedis = globalThis as unknown as {
-    redis: RedisClientType | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    redis: any | undefined;
 };
 
-let redisClient: RedisClientType | undefined;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let redisClient: any | undefined;
 
-if (redisUrl) {
+if (redisUrl && process.env.NEXT_RUNTIME !== 'edge') {
     if (!globalForRedis.redis) {
-        globalForRedis.redis = createClient({
-            url: redisUrl,
-        });
-        globalForRedis.redis.on('error', (err: unknown) => console.error('Redis Client Error', err));
-        globalForRedis.redis.connect().catch(console.error);
+        try {
+            // Using require to avoid Edge Runtime bundling issues
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const { createClient } = require("redis");
+            globalForRedis.redis = createClient({
+                url: redisUrl,
+            });
+            globalForRedis.redis.on('error', (err: unknown) => console.error('Redis Client Error', err));
+            globalForRedis.redis.connect().catch(console.error);
+        } catch (e) {
+            console.error("Failed to load redis package:", e);
+        }
     }
     redisClient = globalForRedis.redis;
 }
@@ -29,6 +36,7 @@ export interface RedisClient {
     get<T>(key: string): Promise<T | null>;
     set(key: string, value: unknown, ttlSeconds?: number): Promise<unknown>;
     del(key: string): Promise<number>;
+    keys(pattern: string): Promise<string[]>;
     atomicUpdate<T>(key: string, updater: (current: T | null) => T | null, ttlSeconds?: number): Promise<T | null>;
 }
 
@@ -68,6 +76,15 @@ export const redis: RedisClient = {
         } catch (error) {
             console.error("Redis Del Error:", error);
             throw error;
+        }
+    },
+    keys: async function (pattern: string): Promise<string[]> {
+        if (!redisClient) throw new Error("Redis client not initialized");
+        try {
+            return await redisClient.keys(pattern);
+        } catch (error) {
+            console.error("Redis Keys Error:", error);
+            return [];
         }
     },
     atomicUpdate: async function <T>(key: string, updater: (current: T | null) => T | null, ttlSeconds?: number): Promise<T | null> {
