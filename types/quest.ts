@@ -15,6 +15,7 @@ export interface Quest {
     instruction: string;
     options?: QuestOption[];
     answer?: string;
+    location?: string;
 }
 
 export interface QuestPool {

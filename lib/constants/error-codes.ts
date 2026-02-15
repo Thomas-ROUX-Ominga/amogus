@@ -19,6 +19,7 @@ export const ERROR_CODES = {
     ERR_INVALID_SESSION: "ERR_INVALID_SESSION",
     // Batch management error codes
     ERR_NOT_FOUND: "ERR_NOT_FOUND",
+    ERR_UNAUTHORIZED: "ERR_UNAUTHORIZED",
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_CODES;

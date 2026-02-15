@@ -57,7 +57,7 @@ describe('RefreshButton', () => {
 
     render(<RefreshButton gameId="test-game-id" />);
     
-    const button = screen.getByRole('button', { name: /actualisation/i });
+    const button = screen.getByRole('button', { name: /actualisation/i }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     expect(button.getAttribute('aria-busy')).toBe('true');
   });
@@ -69,7 +69,7 @@ describe('RefreshButton', () => {
 
     render(<RefreshButton gameId="test-game-id" />);
     
-    const button = screen.getByRole('button', { name: /actualiser/i });
+    const button = screen.getByRole('button', { name: /actualiser/i }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
   });
 

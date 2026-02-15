@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trash2, List, Calendar, AlertTriangle } from "lucide-react";
+import { Trash2, List, Calendar, AlertTriangle, Settings } from "lucide-react";
+import Link from "next/link";
 import { getAllBatches, deleteBatch } from "@/lib/redis/batch-actions";
 import { BatchListItem } from "@/types/quest";
 
@@ -153,14 +154,24 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
               </div>
             </div>
             
-            <button
-              onClick={() => setConfirmDeleteId(batch.id)}
-              disabled={deletingId === batch.id}
-              className="p-2 text-destructive hover:text-destructive/80 hover:bg-destructive/10 border border-destructive/30 hover:border-destructive/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Delete batch"
-            >
-              <Trash2 size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/admin/batches/${batch.id}`}
+                className="p-2 text-primary hover:text-primary/80 hover:bg-primary/10 border border-primary/30 hover:border-primary/50 transition-all"
+                title="Manage batch"
+              >
+                <Settings size={16} />
+              </Link>
+
+              <button
+                onClick={() => setConfirmDeleteId(batch.id)}
+                disabled={deletingId === batch.id}
+                className="p-2 text-destructive hover:text-destructive/80 hover:bg-destructive/10 border border-destructive/30 hover:border-destructive/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Delete batch"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
           </div>
         ))}
       </div>

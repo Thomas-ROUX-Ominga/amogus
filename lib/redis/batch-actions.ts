@@ -5,9 +5,20 @@ import { ActionResponse } from "@/types/game";
 import { Batch, BatchCreateInput, BatchListItem } from "@/types/quest";
 import { generateBatch } from "@/lib/quests/batch-generator";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
+import { verifyAdminSession } from "@/lib/redis/auth-utils";
 
 export async function createBatch(input: BatchCreateInput): Promise<ActionResponse<Batch>> {
   try {
+    // Verify admin session
+    const session = await verifyAdminSession();
+    if (!session.success) {
+      return {
+        success: false,
+        error: "Unauthorized",
+        code: ERROR_CODES.ERR_UNAUTHORIZED,
+      };
+    }
+
     // Validate input
     if (!input?.totalQuests || typeof input.totalQuests !== 'number') {
       return {
@@ -48,6 +59,16 @@ export async function createBatch(input: BatchCreateInput): Promise<ActionRespon
 
 export async function getAllBatches(): Promise<ActionResponse<BatchListItem[]>> {
   try {
+    // Verify admin session
+    const session = await verifyAdminSession();
+    if (!session.success) {
+      return {
+        success: false,
+        error: "Unauthorized",
+        code: ERROR_CODES.ERR_UNAUTHORIZED,
+      };
+    }
+
     // Get all batch keys
     const batchKeys = await redis.keys("batch:*");
     
@@ -92,6 +113,16 @@ export async function getAllBatches(): Promise<ActionResponse<BatchListItem[]>> 
 
 export async function deleteBatch(batchId: string): Promise<ActionResponse<void>> {
   try {
+    // Verify admin session
+    const session = await verifyAdminSession();
+    if (!session.success) {
+      return {
+        success: false,
+        error: "Unauthorized",
+        code: ERROR_CODES.ERR_UNAUTHORIZED,
+      };
+    }
+
     // Validate input
     if (!batchId?.trim()) {
       return {
@@ -153,6 +184,16 @@ export async function deleteBatch(batchId: string): Promise<ActionResponse<void>
 
 export async function getBatch(batchId: string): Promise<ActionResponse<Batch>> {
   try {
+    // Verify admin session
+    const session = await verifyAdminSession();
+    if (!session.success) {
+      return {
+        success: false,
+        error: "Unauthorized",
+        code: ERROR_CODES.ERR_UNAUTHORIZED,
+      };
+    }
+
     if (!batchId?.trim()) {
       return {
         success: false,
@@ -185,3 +226,77 @@ export async function getBatch(batchId: string): Promise<ActionResponse<Batch>> 
     };
   }
 }
+
+export async function updateQuestsLocations(
+  batchId: string,
+  locations: Record<string, string>
+): Promise<ActionResponse<Batch>> {
+  try {
+    // Verify admin session
+    const session = await verifyAdminSession();
+    if (!session.success) {
+      return {
+        success: false,
+        error: "Unauthorized",
+        code: ERROR_CODES.ERR_UNAUTHORIZED,
+      };
+    }
+
+    // Validate input
+    if (!batchId?.trim()) {
+      return {
+        success: false,
+        error: "Batch ID is required",
+        code: ERROR_CODES.ERR_INVALID_INPUT,
+      };
+    }
+
+    if (!locations || typeof locations !== 'object') {
+      return {
+        success: false,
+        error: "Valid locations object is required",
+        code: ERROR_CODES.ERR_INVALID_INPUT,
+      };
+    }
+
+    const batchKey = `batch:${batchId}`;
+    
+    // Get existing batch
+    const batch = await redis.get<Batch>(batchKey);
+    
+    if (!batch) {
+      return {
+        success: false,
+        error: "Batch not found",
+        code: ERROR_CODES.ERR_NOT_FOUND,
+      };
+    }
+
+    // Update quest locations atomically
+    const updatedQuests = batch.quests.map(quest => ({
+      ...quest,
+      location: locations[quest.id] || quest.location,
+    }));
+
+    const updatedBatch: Batch = {
+      ...batch,
+      quests: updatedQuests,
+    };
+
+    // Save updated batch
+    await redis.set(batchKey, updatedBatch);
+
+    return {
+      success: true,
+      data: updatedBatch,
+    };
+  } catch (error) {
+    console.error("Error updating quest locations:", error);
+    return {
+      success: false,
+      error: "Failed to update quest locations",
+      code: ERROR_CODES.ERR_SIGNAL_LOST,
+    };
+  }
+}
+

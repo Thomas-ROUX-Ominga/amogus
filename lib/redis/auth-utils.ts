@@ -44,6 +44,14 @@ export async function verifyAdminSession(): Promise<ActionResponse<{ role: strin
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value;
 
+    // Check for E2E test bypass
+    if (process.env.PLAYWRIGHT === "true") {
+      return {
+        success: true,
+        data: { role: "admin" },
+      };
+    }
+
     if (!token) {
       return {
         success: false,

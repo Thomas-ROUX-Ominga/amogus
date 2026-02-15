@@ -11,13 +11,21 @@ vi.mock('@/lib/redis/client', () => ({
   },
 }));
 
-import { createBatch, getAllBatches, deleteBatch } from '@/lib/redis/batch-actions';
+// Mock auth utils
+vi.mock('@/lib/redis/auth-utils', () => ({
+  verifyAdminSession: vi.fn(),
+}));
+
+import { createBatch, getAllBatches, deleteBatch, updateQuestsLocations } from '@/lib/redis/batch-actions';
 import { BatchCreateInput } from '@/types/quest';
 import { redis } from '@/lib/redis/client';
+import { verifyAdminSession } from '@/lib/redis/auth-utils';
 
 describe('Batch Actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default to authorized
+    (verifyAdminSession as any).mockResolvedValue({ success: true, data: { role: 'admin' } });
   });
 
   describe('createBatch', () => {
@@ -156,6 +164,104 @@ describe('Batch Actions', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Failed to delete batch');
+      expect(result.code).toBe('ERR_SIGNAL_LOST');
+    });
+  });
+
+  describe('updateQuestsLocations', () => {
+    it('should update quest locations successfully', async () => {
+      const mockBatch = {
+        id: 'batch-123',
+        questCount: 2,
+        quests: [
+          { id: 'quest-1', type: 'qcm', duration: 'short', title: 'Q1', instruction: 'Test' },
+          { id: 'quest-2', type: 'qcm', duration: 'medium', title: 'Q2', instruction: 'Test' },
+        ],
+        createdAt: '2026-02-15T10:00:00.000Z',
+      };
+
+      const locations = {
+        'quest-1': 'Machine à café',
+        'quest-2': 'Salle de réunion',
+      };
+
+      (redis.get as any).mockResolvedValue(mockBatch);
+      (redis.set as any).mockResolvedValue('OK');
+
+      const result = await updateQuestsLocations('batch-123', locations);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.quests[0].location).toBe('Machine à café');
+      expect(result.data?.quests[1].location).toBe('Salle de réunion');
+      expect(redis.set).toHaveBeenCalledWith(
+        'batch:batch-123',
+        expect.objectContaining({
+          quests: expect.arrayContaining([
+            expect.objectContaining({ id: 'quest-1', location: 'Machine à café' }),
+            expect.objectContaining({ id: 'quest-2', location: 'Salle de réunion' }),
+          ]),
+        })
+      );
+    });
+
+    it('should preserve existing locations when not updated', async () => {
+      const mockBatch = {
+        id: 'batch-123',
+        questCount: 2,
+        quests: [
+          { id: 'quest-1', type: 'qcm', duration: 'short', title: 'Q1', instruction: 'Test', location: 'Old Location' },
+          { id: 'quest-2', type: 'qcm', duration: 'medium', title: 'Q2', instruction: 'Test' },
+        ],
+        createdAt: '2026-02-15T10:00:00.000Z',
+      };
+
+      const locations = {
+        'quest-2': 'New Location',
+      };
+
+      (redis.get as any).mockResolvedValue(mockBatch);
+      (redis.set as any).mockResolvedValue('OK');
+
+      const result = await updateQuestsLocations('batch-123', locations);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.quests[0].location).toBe('Old Location');
+      expect(result.data?.quests[1].location).toBe('New Location');
+    });
+
+    it('should fail with invalid batch ID', async () => {
+      const result = await updateQuestsLocations('', {});
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Batch ID is required');
+      expect(result.code).toBe('ERR_INVALID_INPUT');
+    });
+
+    it('should fail with invalid locations object', async () => {
+      const result = await updateQuestsLocations('batch-123', null as any);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Valid locations object is required');
+      expect(result.code).toBe('ERR_INVALID_INPUT');
+    });
+
+    it('should fail when batch not found', async () => {
+      (redis.get as any).mockResolvedValue(null);
+
+      const result = await updateQuestsLocations('non-existent', { 'quest-1': 'Location' });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Batch not found');
+      expect(result.code).toBe('ERR_NOT_FOUND');
+    });
+
+    it('should handle Redis errors', async () => {
+      (redis.get as any).mockRejectedValue(new Error('Redis connection failed'));
+
+      const result = await updateQuestsLocations('batch-123', { 'quest-1': 'Location' });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Failed to update quest locations');
       expect(result.code).toBe('ERR_SIGNAL_LOST');
     });
   });
