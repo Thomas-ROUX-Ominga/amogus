@@ -50,7 +50,7 @@ jobs:
     name: Deploy
     runs-on: ubuntu-latest
     environment: production
-    needs: e2e-test
+    needs: unit-test
     permissions:
       contents: read
       pull-requests: read
