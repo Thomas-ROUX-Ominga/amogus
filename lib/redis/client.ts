@@ -37,6 +37,7 @@ export interface RedisClient {
     set(key: string, value: unknown, ttlSeconds?: number): Promise<unknown>;
     del(key: string): Promise<number>;
     keys(pattern: string): Promise<string[]>;
+    exists(key: string): Promise<number>;
     atomicUpdate<T>(key: string, updater: (current: T | null) => T | null, ttlSeconds?: number): Promise<T | null>;
 }
 
@@ -85,6 +86,15 @@ export const redis: RedisClient = {
         } catch (error) {
             console.error("Redis Keys Error:", error);
             return [];
+        }
+    },
+    exists: async function (key: string): Promise<number> {
+        if (!redisClient) throw new Error("Redis client not initialized");
+        try {
+            return await redisClient.exists(key);
+        } catch (error) {
+            console.error("Redis Exists Error:", error);
+            return 0;
         }
     },
     atomicUpdate: async function <T>(key: string, updater: (current: T | null) => T | null, ttlSeconds?: number): Promise<T | null> {

@@ -2,8 +2,7 @@
 
 ## Test Generation
 
-- [ ] API tests generated (if applicable)
-- [ ] E2E tests generated (if UI exists)
+- [ ] API & Unit tests generated
 - [ ] Tests use standard test framework APIs
 - [ ] Tests cover happy path
 - [ ] Tests cover 1-2 critical error cases

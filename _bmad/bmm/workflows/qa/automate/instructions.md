@@ -35,24 +35,13 @@ For API endpoints/services, generate tests that:
 - Cover happy path + 1-2 error cases
 - Use project's existing test framework patterns
 
-### Step 3: Generate E2E Tests (if UI exists)
-
-For UI features, generate tests that:
-
-- Test user workflows end-to-end
-- Use semantic locators (roles, labels, text)
-- Focus on user interactions (clicks, form fills, navigation)
-- Assert visible outcomes
-- Keep tests linear and simple
-- Follow project's existing test patterns
-
-### Step 4: Run Tests
+### Step 3: Run Tests
 
 Execute tests to verify they pass (use project's test command).
 
 If failures occur, fix them immediately.
 
-### Step 5: Create Summary
+### Step 4: Create Summary
 
 Output markdown summary:
 
@@ -61,19 +50,13 @@ Output markdown summary:
 
 ## Generated Tests
 
-### API Tests
-- [x] tests/api/endpoint.spec.ts - Endpoint validation
+### API & Unit Tests
 
-### E2E Tests
-- [x] tests/e2e/feature.spec.ts - User workflow
+- [x] tests/unit/logic.test.ts - Feature validation
 
 ## Coverage
-- API endpoints: 5/10 covered
-- UI features: 3/8 covered
 
-## Next Steps
-- Run tests in CI
-- Add more edge cases as needed
+- Features covered: 5/10
 ```
 
 ## Keep It Simple

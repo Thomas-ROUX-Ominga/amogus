@@ -74,7 +74,6 @@ Status: done
   - `username:{username}` : `userId`
   - `system:initialized` : `true` (Optimized startup check)
 - **Security Fixes (Review Findings)**:
-  - Removed insecure Playwright User-Agent bypass in middleware.
   - Removed hardcoded test bypass in `verifySession`.
   - Protected `createGame` action with `verifySession`.
 

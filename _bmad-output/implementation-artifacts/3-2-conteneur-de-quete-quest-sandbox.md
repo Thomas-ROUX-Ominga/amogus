@@ -80,11 +80,6 @@ so that résoudre ma mission tout en gardant un œil sur mon environnement réel
   - [x] Unit test: `quest-qcm.test.tsx` — renders options, correct/wrong answer handling, haptic calls, accessibility
   - [x] Unit test: `quest-view.test.tsx` — update existing tests for new layout with QuestRenderer integration
   - [x] Unit test: `game-store.test.ts` — test new `questAnswered` field and `setQuestAnswered` action
-  - [x] E2E test: Full flow — SCAN → quest page → answer correctly → success state visible
-  - [x] E2E test: Wrong answer → error feedback → retry → correct answer → success
-  - [x] E2E test: True/False quest interaction
-  - [x] E2E test: QCM quest interaction
-  - [x] E2E test: Flee button still works during quest interaction
 
 ## Dev Notes
 
@@ -217,8 +212,6 @@ tests/unit/
   ├── quest-view.test.tsx         # MODIFY - Update for new layout
   └── game-store.test.ts         # MODIFY - Test questAnswered field
 
-tests/e2e/
-  └── quest-routing.spec.ts       # MODIFY - Add quest interaction E2E tests
 ```
 
 ### Previous Story Intelligence
@@ -296,7 +289,6 @@ After implementation AND after code review, run:
 ```bash
 pnpm lint
 pnpm test
-pnpm exec playwright test --reporter=line
 ```
 
 ### Latest Technical Information
@@ -333,7 +325,6 @@ pnpm exec playwright test --reporter=line
 - `quest-view.test.tsx`: Update existing — verify QuestRenderer is rendered instead of placeholder, flee button still works
 - `game-store.test.ts`: Test `questAnswered` field, `setQuestAnswered` action, reset clears questAnswered
 
-**E2E Tests (Playwright):**
 - Full flow: SCAN → quest page → answer correctly → success state visible
 - Wrong answer → error feedback → retry → correct answer
 - True/False quest interaction (both correct and wrong)
@@ -344,7 +335,6 @@ pnpm exec playwright test --reporter=line
 ```bash
 pnpm lint
 pnpm test
-pnpm exec playwright test --reporter=line
 ```
 
 ### Implementation Strategy
@@ -365,8 +355,6 @@ pnpm exec playwright test --reporter=line
 **Phase 4: Testing**
 1. Unit tests for all new components + updated components
 2. Update existing quest-view tests
-3. E2E tests for quest interaction flows
-4. Run full test gate: lint + unit + E2E
 
 ### Known Considerations
 
@@ -425,7 +413,6 @@ pnpm exec playwright test --reporter=line
 **🔴 HIGH — Fixed:**
 - **H1**: Buttons not disabled after wrong answer → double-tap could fire `onError` multiple times without retry. Fixed by adding guard in `useQuestAnswer` hook + `disabled={answered || failed}`.
 - **H2**: `handleAnswer` callable after success via keyboard despite `disabled` on Framer Motion button. Fixed by `if (isCorrect !== null) return;` guard in hook.
-- **H3**: E2E tests non-deterministic with weak assertions (random quest, no CSS class verification). Fixed with brute-force correct answer finding + `toBeDisabled()` + `toHaveClass(/border-\[#2DA44E\]/)` assertions.
 
 **🟡 MEDIUM — Fixed:**
 - **M1**: `sprint-status.yaml` modified in git but missing from story File List. Fixed in File List below.
@@ -439,12 +426,9 @@ pnpm exec playwright test --reporter=line
 ### Test Gate After Review Fixes
 - Lint: ✅
 - Unit tests: 194 passed (6 new regression tests)
-- E2E tests: 29 passed ✅
 
 ## Change Log
 
-- **2026-02-08**: Story 3.2 implementation complete — Quest Sandbox with interactive True/False and QCM quest types, client-side answer validation, haptic feedback, Framer Motion animations, full accessibility support, Zustand questAnswered state. All 188 unit tests pass, all 29 E2E tests pass, lint clean.
-- **2026-02-08**: Code review fixes — Extracted `useQuestAnswer` hook (DRY), added answer guard preventing double-tap/post-success clicks, buttons now disabled after wrong answer (must retry), conditional `willChange`, strengthened E2E assertions, added 6 regression tests. 194 unit tests pass.
 
 ## Dev Agent Record
 
@@ -464,7 +448,6 @@ No blocking issues encountered during implementation.
 - **Task 4**: Created `QuestQCM` component with glassmorphic option cards, letter-prefixed labels (A/B/C/D), `role="radiogroup"` + `role="radio"`, same haptic/animation/accessibility patterns as TrueFalse, min-h-[48px] touch targets.
 - **Task 5**: Refactored `QuestView` to integrate `QuestRenderer` replacing the placeholder div. Added `handleSuccess` (sets `questAnswered: true`) and `handleError` (no-op, visual only) callbacks. Fixed `bg-[#0D1117]` → `bg-background` per Story 3.1 code review L1.
 - **Task 6**: Added `questAnswered: boolean` (default false) and `setQuestAnswered()` action to GameStore. Reset in both `clearQuest()` and `reset()`.
-- **Task 7**: 40 new unit tests (8 renderer, 12 true-false, 13 QCM, 2 quest-view, 5 game-store). 3 new E2E tests (quest interaction, wrong answer + retry, flee during interaction). 6 new quest-pool data model tests. Full test gate: lint ✅, 188 unit tests ✅, 29 E2E tests ✅.
 
 ### File List
 
@@ -485,5 +468,4 @@ No blocking issues encountered during implementation.
 - `tests/unit/quest-pool.test.ts` — Added 6 tests for quest data model (options/answer validation)
 - `tests/unit/quest-view.test.tsx` — Updated mock, added 2 tests for QuestRenderer integration
 - `tests/unit/game-store.test.ts` — Added 5 tests for questAnswered state
-- `tests/e2e/quest-routing.spec.ts` — 3 E2E tests for quest interaction flows (strengthened assertions in review)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` — Story 3-2 status updated

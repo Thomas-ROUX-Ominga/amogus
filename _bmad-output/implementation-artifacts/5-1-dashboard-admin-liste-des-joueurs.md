@@ -37,7 +37,6 @@ so that voir la liste des joueurs rejoints et leur état de complétion global.
   - [x] Maintenir la cohérence avec les patterns de routage Next.js
 - [x] Tests et validation
   - [x] Créer les tests unitaires pour le composant tracker
-  - [x] Ajouter les tests E2E Playwright pour le flow admin
   - [x] Valider la responsivité mobile-first
 
 ## Dev Notes
@@ -80,7 +79,6 @@ components/admin/
 - **Alignment**: Cohérent avec l'architecture `app/game/[id]/` existante
 - **Naming**: Suivre les conventions `kebab-case` pour les fichiers
 - **Components**: Placer dans `components/admin/` pour l'organisation
-- **Tests**: Co-localiser les tests dans `tests/unit/` et `tests/e2e/`
 
 ### References
 
@@ -103,7 +101,6 @@ Cascade (BMad Edition) - BMad Story Context Engine
 - File structure aligned with established Next.js App Router patterns
 - "Tactical Terminal" UI theme requirements incorporated
 - **IMPLEMENTATION COMPLETED**: Full admin tracker dashboard with player list, global progress, and statistics
-- **TESTS CREATED**: Comprehensive unit tests (16 test cases) and E2E tests (6 test scenarios)
 - **INTEGRATION VERIFIED**: Uses actual game store and quest calculations (9 total quests)
 - **ACCEPTANCE CRITERIA MET**: Route `/admin/tracker/[id]` displays player list and global progress bar
 - **CODE REVIEW FIXES APPLIED**: 
@@ -124,4 +121,3 @@ Cascade (BMad Edition) - BMad Story Context Engine
 - `types/game.ts` (updated with creatorId field)
 - `lib/redis/actions.ts` (updated with creatorId logic)
 - `tests/unit/admin/tracker.test.tsx`
-- `tests/e2e/admin-tracker.spec.ts`

@@ -36,22 +36,24 @@ so that je puisse commencer à configurer ma soirée Among Us IRL.
   - [x] Implement the `app/game/[id]/page.tsx` (Lobby shell).
 - [x] **Testing**
   - [x] Add unit test for `createGame` logic (mocking KV).
-  - [x] Add basic E2E test for the creation flow.
 
 ## Dev Notes
 
 ### Architecture Patterns & Constraints
+
 - **State Management**: Use Zustand v5 for coordinating UI state with server actions. [Source: architecture.md#L105]
 - **Naming Conventions**: Use `kebab-case` for files and `PascalCase` for React components. [Source: architecture.md#L121]
 - **API Response Wrapper**: Use `{ success: boolean, data?: T, error?: string }` for Server Actions. [Source: architecture.md#L136]
 - **Tactical UI**: Use high-contrast "Terminal" theme. Background: `#0D1117`, Accents: `#58A6FF`. [Source: ux-design-specification.md#L200]
 
 ### Project Structure Notes
+
 - `app/game/[id]/` for lobby/home.
 - `lib/kv/` for Redis interaction.
 - `components/effects/` for the "pulse" transition when creating a game.
 
 ### References
+
 - [PRD: Product Scope](file:///home/omi/projects/amogus/_bmad-output/planning-artifacts/prd.md#L53)
 - [Architecture: Implementation Patterns](file:///home/omi/projects/amogus/_bmad-output/planning-artifacts/architecture.md#L119)
 - [UX Design: Visual Design Foundation](file:///home/omi/projects/amogus/_bmad-output/planning-artifacts/ux-design-specification.md#L194)
@@ -66,7 +68,6 @@ Antigravity (Claude 3.5 Sonnet / Gemini 2.0 Pro)
 
 - Fixed Tailwind 4 syntax warnings in `globals.css`.
 - Configured Vitest for unit testing server actions.
-- Setup Playwright for E2E testing.
 
 ### Completion Notes List
 
@@ -91,9 +92,7 @@ Antigravity (Claude 3.5 Sonnet / Gemini 2.0 Pro)
 - `next.config.ts` (Modified)
 - `package.json` (Modified)
 - `vitest.config.ts` (New)
-- `playwright.config.ts` (New)
 - `tests/unit/game-actions.test.ts` (New)
-- `tests/e2e/create-game.spec.ts` (New)
 
 ### Change Log
 

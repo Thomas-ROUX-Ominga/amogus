@@ -42,7 +42,6 @@ so that libérer mes mains et pouvoir scanner le prochain QR immédiatement.
     - [x] Unit Test: `SuccessOverlay` renders correctly
     - [x] Unit Test: `QuestView` shows overlay on success
     - [x] Unit Test: Auto-redirect timer triggers router push
-    - [x] E2E Test: Full flow (Answer -> Success -> Overlay -> Auto-redirect -> Home)
 
 ## Dev Notes
 

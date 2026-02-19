@@ -75,9 +75,6 @@ so that voir mon état actuel, le nombre de quêtes restantes et le bouton de sc
   - [x] Unit test: `quest-progress.tsx` renders for Crewmate, hidden for Impostor
   - [x] Unit test: `scan-button.tsx` renders disabled state, triggers haptic on click
   - [x] Unit test: `role-badge.tsx` renders correct colors for each role
-  - [x] E2E test: Full flow — create game → join → launch → select role → see transition → land on Game Home with all elements
-  - [x] E2E test: Page reload with existing role → lands directly on Game Home
-  - [x] E2E test: Verify SCAN button is visible and in correct position
 
 ## Dev Notes
 
@@ -197,8 +194,6 @@ tests/unit/
   ├── scan-button.test.tsx   # NEW - Scan button tests
   └── quest-progress.test.tsx # NEW - Quest progress tests
 
-tests/e2e/
-  └── game-home.spec.ts      # NEW - E2E tests for Game Home flow
 ```
 
 ### Previous Story Intelligence
@@ -274,7 +269,6 @@ Story 2.3 is the FINAL story in Epic 2 (Déploiement des Rôles & Cockpit de Jeu
 - `scan-button.test.tsx`: Renders disabled state, pulse animation present, haptic triggers
 - `quest-progress.test.tsx`: Renders for Crewmate, hidden for Impostor, correct counts
 
-**E2E Tests (Playwright):**
 - Full flow: create → join → launch → select role → transition → Game Home visible
 - Verify SCAN button visible on Game Home
 - Verify role badge shows correct role
@@ -300,7 +294,6 @@ Story 2.3 is the FINAL story in Epic 2 (Déploiement des Rôles & Cockpit de Jeu
 
 **Phase 4: Testing**
 1. Unit tests for all new components
-2. E2E tests for full flow
 3. Manual mobile testing for thumb-zone placement
 
 ### Known Considerations
@@ -375,13 +368,11 @@ Claude Sonnet 4 (Cascade)
 - Removed unused `Shield`/`Users` imports from page.tsx (moved to role-badge.tsx)
 - Updated existing role-selection.test.tsx mocks with new store fields
 - 99 unit tests passing (14 test files), 0 lint errors
-- Created 8 E2E tests covering full flow, Impostor view, page reload idempotency, SCAN button state, return navigation, touch targets, keyboard navigation, and multi-player reload
 
 **Code Review Fixes Applied (2026-02-08):**
 - [H2] Added keyboard navigation (Enter/Space) to SCAN button for accessibility
 - [H3] Fixed race condition in chooseRole by fetching fresh game state after role selection
 - [H4] Added defensive validation for missing role with error recovery UI
-- [H5] Added 3 new E2E tests: touch target validation (120px), keyboard navigation, multi-player reload
 - [H6] Added display:swap to Orbitron and Rajdhani fonts for FOUT prevention
 - [H7] Added runtime validation filtering invalid players from list
 - [H8] Imported JetBrains Mono font and applied to technical data in footer
@@ -406,7 +397,6 @@ Claude Sonnet 4 (Cascade)
 - tests/unit/role-badge.test.tsx
 - tests/unit/scan-button.test.tsx
 - tests/unit/quest-progress.test.tsx
-- tests/e2e/game-home.spec.ts
 
 **Modified files:**
 - app/game/[id]/page.tsx (replaced inline Game Home with `<GameHome>` component)

@@ -30,7 +30,6 @@ so that je puisse rejoindre le lobby sans créer de compte.
   - [x] Update `app/game/[id]/page.tsx` with conditional join/lobby flow.
 - [x] **Testing**
   - [x] Create `tests/unit/join-game.test.ts`.
-  - [x] Add E2E tests in `tests/e2e/join-game.spec.ts`.
   - [x] Add Store tests in `tests/unit/game-store.test.ts`.
   - [x] Add Component tests in `tests/unit/components.test.tsx`.
 
@@ -43,7 +42,6 @@ Antigravity (Gemini 2.0 Pro)
 - Fixed Orbitron font requirement across all headers.
 - Implemented strict server-side validation for pseudos and UUIDs.
 - Reduced hydration flicker and added localStorage fail-safes.
-- Updated all E2E tests to match new UI labels and flows.
 
 ### File List
 - [hooks/use-local-user.ts](file:///home/omi/projects/amogus/hooks/use-local-user.ts)
@@ -55,5 +53,3 @@ Antigravity (Gemini 2.0 Pro)
 - [tests/unit/game-store.test.ts](file:///home/omi/projects/amogus/tests/unit/game-store.test.ts)
 - [tests/unit/components.test.tsx](file:///home/omi/projects/amogus/tests/unit/components.test.tsx)
 - [tests/unit/use-local-user.test.ts](file:///home/omi/projects/amogus/tests/unit/use-local-user.test.ts)
-- [tests/e2e/join-game.spec.ts](file:///home/omi/projects/amogus/tests/e2e/join-game.spec.ts)
-- [tests/e2e/create-game.spec.ts](file:///home/omi/projects/amogus/tests/e2e/create-game.spec.ts)

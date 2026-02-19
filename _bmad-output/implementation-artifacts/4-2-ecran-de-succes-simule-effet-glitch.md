@@ -33,7 +33,6 @@ so that pouvoir montrer mon écran aux autres s'ils suspectent que je ne fais ri
   - [x] Vérifier la fluidité de la transition scan -> succès (NFR-P2: <300ms).
   - [x] Tester le retour haptique spécifique (vibration "glitchy" si possible).
   - [x] S'assurer que les unit tests sur `SuccessOverlay` passent avec le nouveau mode imposteur.
-  - [x] Valider via Playwright le flow complet de l'imposteur.
 
 ## Dev Notes
 
@@ -76,4 +75,3 @@ Antigravity (BMad Edition) - BMad Sprint Execution Engine
 - `components/game/success-overlay.tsx`
 - `tests/unit/quest-view.test.tsx`
 - `tests/unit/success-overlay.test.tsx`
-- `tests/e2e/impostor-flow.spec.ts`

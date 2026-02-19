@@ -77,7 +77,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
     setError("");
 
     try {
-      const result = await createGame(batch.id);
+      const result = await createGame({ batchId: batch.id });
 
       if (!result.success) {
         setError(result.error || "Failed to launch game");

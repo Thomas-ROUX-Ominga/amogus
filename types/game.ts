@@ -19,6 +19,11 @@ export interface GameState {
     creatorId?: string; // First player to join is considered the organizer
     batchId?: string; // Linked batch for quest data
     questsTotal?: number; // Total number of quests in this game (from batch or pool)
+    questsPerPlayer?: {
+        short: number;
+        medium: number;
+        long: number;
+    }; // Quest distribution configuration
 }
 
 export interface ActionResponse<T> {

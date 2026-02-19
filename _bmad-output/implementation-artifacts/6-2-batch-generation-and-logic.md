@@ -44,7 +44,6 @@ so that the system automatically generates a balanced distribution of quest type
 - [x] Testing & Validation
   - [x] Unit Test: Batch generation algorithm and distribution logic
   - [x] Unit Test: Redis batch actions (create, read, delete)
-  - [x] E2E Test: Complete batch creation and management flow
 
 ## Dev Notes
 
@@ -76,7 +75,6 @@ so that the system automatically generates a balanced distribution of quest type
 ### Testing Standards
 
 - **Unit Tests**: Use Vitest for batch generation logic and Redis actions
-- **E2E Tests**: Use Playwright for complete UI flows (Redis mocked)
 - **Coverage**: Test edge cases for quest distribution (odd numbers, min/max values)
 - **Error Scenarios**: Test Redis connection failures and validation errors
 
@@ -87,7 +85,6 @@ From Story 6.1 (Admin Authentication):
 - **Authentication Pattern**: Use same middleware protection for `/admin/batches` routes
 - **UI Components**: Reuse the tactical terminal design system and Shadcn UI components
 - **Server Actions Pattern**: Follow the same pattern for form handling and error management
-- **Testing Setup**: Use same Redis mocking approach for E2E tests
 
 ### Dependencies & Libraries
 
@@ -150,7 +147,6 @@ Cascade (Penguin Alpha) - Advanced AI coding assistant
 - ✅ Created Redis batch storage with proper error handling and validation
 - ✅ Built responsive batch management UI following tactical terminal design
 - ✅ Added comprehensive unit tests for all batch functionality (14 tests passing)
-- ✅ Created E2E tests for complete user workflow
 - ✅ Validated all acceptance criteria implementation
 - ✅ Ensured architecture compliance with Redis patterns and server actions
 - ✅ AI-Review Fix: Switched to native `crypto.randomUUID()` for IDs (was using `uuid` package)
@@ -168,7 +164,6 @@ Cascade (Penguin Alpha) - Advanced AI coding assistant
 - components/admin/batch-form.tsx (NEW - batch creation form)
 - tests/unit/batch-generator.test.ts (NEW - unit tests for generation logic)
 - tests/unit/batch-actions.test.ts (NEW - unit tests for Redis actions)
-- tests/e2e/admin-batches.spec.ts (NEW - E2E tests for complete flow)
 
 **Files modified:**
 
@@ -180,4 +175,3 @@ Cascade (Penguin Alpha) - Advanced AI coding assistant
 ## Change Log
 
 - 2026-02-15: Created comprehensive story context with ultimate developer guide including architecture compliance, technical requirements, and previous story intelligence
-- 2026-02-15: Implemented complete batch management system with generation algorithm, Redis storage, UI components, and comprehensive testing (14 unit tests + E2E tests)

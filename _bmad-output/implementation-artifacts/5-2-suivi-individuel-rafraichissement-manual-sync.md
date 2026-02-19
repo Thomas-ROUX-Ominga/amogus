@@ -37,7 +37,6 @@ so that voir qui a terminé quelle quête le plus récemment.
   - [x] Afficher un timestamp de dernière synchronisation
 - [x] Tests et validation
   - [x] Tests unitaires pour la logique de rafraîchissement
-  - [x] Tests E2E pour le flux d'actualisation manuelle
   - [x] Validation de la mise à jour en temps réel des données
 
 ## Dev Notes
@@ -88,7 +87,6 @@ hooks/
 - **Components**: `PlayerList`, `ProgressBar`, `TrackerStats` sont implémentés
 - **Store Pattern**: `useGameStore` avec `fetchGame()` est établi
 - **Security**: Contrôle d'accès creatorId est en place
-- **Testing**: Structure de tests unitaires et E2E est définie
 
 **Code Patterns to Follow:**
 - **Component Structure**: Suivre le pattern établi dans `components/admin/`
@@ -131,14 +129,12 @@ Cascade (BMad Edition) - BMad Story Context Engine
 - ✅ Created PlayerQuestProgress component for detailed quest tracking
 - ✅ Added sync timestamp display in tracker header
 - ✅ Comprehensive unit tests for all new components
-- ✅ E2E test framework for admin refresh functionality
 
 **Technical Implementation:**
 - Manual refresh button with 2-second debounce protection
 - Real-time quest progress tracking with completion timestamps
 - Enhanced player list showing detailed quest statistics
 - French-localized UI with tactical terminal styling
-- Full test coverage including unit and E2E tests
 
 **Files Modified/Created:**
 - `components/admin/refresh-button.tsx` (NEW)
@@ -151,7 +147,6 @@ Cascade (BMad Edition) - BMad Story Context Engine
 - `tests/unit/components/admin/refresh-button.test.tsx` (NEW)
 - `tests/unit/components/admin/player-quest-progress.test.tsx` (NEW)
 - `tests/unit/admin/tracker.test.tsx` (UPDATED)
-- `tests/e2e/admin-refresh-tracker.spec.ts` (NEW)
 
 **Acceptance Criteria Met:**
 - ✅ AC1: Manual refresh fetches latest data from Vercel KV
@@ -161,7 +156,6 @@ Cascade (BMad Edition) - BMad Story Context Engine
 - ✅ Fixed missing File List documentation
 - ✅ Added haptic feedback implementation to RefreshButton
 - ✅ Fixed performance issue in refreshGameData method
-- ✅ Enhanced E2E tests with actual quest progress verification
 - ✅ Updated story status to "done" after all fixes applied
 
 ### File List
@@ -176,5 +170,4 @@ Cascade (BMad Edition) - BMad Story Context Engine
 - `tests/unit/components/admin/refresh-button.test.tsx` (NEW)
 - `tests/unit/components/admin/player-quest-progress.test.tsx` (NEW)
 - `tests/unit/admin/tracker.test.tsx` (UPDATED)
-- `tests/e2e/admin-refresh-tracker.spec.ts` (NEW)
 - `test-results/.last-run.json` (UPDATED)

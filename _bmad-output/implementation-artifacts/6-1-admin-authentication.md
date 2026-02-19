@@ -49,7 +49,6 @@ so that only I can access sensitive batch and game management tools.
   - [x] Define `AUTH_SECRET` in environment variables for JWT signing.
 - [x] Testing & Validation
   - [x] Unit Test: Auth logic in server actions.
-  - [x] E2E Test: UI flows for registration and login (Redis connection mocked).
 
 ## Dev Notes
 
@@ -58,7 +57,6 @@ so that only I can access sensitive batch and game management tools.
 - **Security**: Use `bcryptjs` for hashing the admin password stored in Redis. Use an HTTP-only, Secure, SameSite=Lax cookie for the session.
 - **Authentication Flow**: First-time visitors to admin routes get redirected to registration, subsequent visits require login.
 - **Libraries**: Use `lucide-react` for icons (Lock, Key, LogOut, User, Eye, EyeOff).
-- **Testing**: Use Playwright for E2E tests to verify UI flows (Redis mocked to avoid node:crypto issues).
 
 ### Project Structure Notes
 
@@ -80,7 +78,6 @@ so that only I can access sensitive batch and game management tools.
 - Implemented Next.js middleware for route protection with proper redirect logic
 - Built admin login page with tactical terminal aesthetic matching existing design system
 - Added admin layout with logout functionality
-- Created comprehensive unit and E2E tests for authentication flows
 
 ### Completion Notes List
 

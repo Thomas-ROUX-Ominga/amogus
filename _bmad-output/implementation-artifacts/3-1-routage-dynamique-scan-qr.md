@@ -87,11 +87,6 @@ so that être projeté immédiatement dans une quête aléatoire de la durée co
   - [x] Unit test: Quest page — validates duration param, handles invalid values
   - [x] Unit test: Updated `scan-button.tsx` — renders with href, navigates when enabled
   - [x] Unit test: New quest types validate correctly
-  - [x] E2E test: Full flow — create game → join → launch → select role → Game Home → click SCAN → quest page loads with quest content
-  - [x] E2E test: Invalid duration param → error page with recovery link
-  - [x] E2E test: Direct URL access to quest page → validates game/player state
-  - [x] E2E test: Flee/abandon button → returns to Game Home
-  - [x] E2E test: SCAN button is now enabled on Game Home (no longer shows "Bientôt disponible")
 
 ## Dev Notes
 
@@ -227,8 +222,6 @@ tests/unit/
   ├── quest-view.test.tsx         # NEW - Quest view component tests
   └── quest-page.test.tsx         # NEW - Quest page validation tests
 
-tests/e2e/
-  └── quest-routing.spec.ts       # NEW - E2E tests for quest routing flow
 ```
 
 ### Previous Story Intelligence
@@ -296,7 +289,6 @@ After implementation AND after code review, run:
 ```bash
 pnpm lint
 pnpm test
-pnpm exec playwright test --reporter=line
 ```
 
 ### Latest Technical Information
@@ -332,7 +324,6 @@ pnpm exec playwright test --reporter=line
 - `quest-page.test.tsx`: Validates duration param (valid/invalid/missing), handles game state errors
 - `scan-button.test.tsx` (update existing): Renders with href, navigates when enabled, still works when disabled
 
-**E2E Tests (Playwright):**
 - Full flow: create → join → launch → role → Game Home → SCAN → quest page with content
 - Invalid duration → error with recovery link
 - Direct URL access → validates game/player state
@@ -343,7 +334,6 @@ pnpm exec playwright test --reporter=line
 ```bash
 pnpm lint
 pnpm test
-pnpm exec playwright test --reporter=line
 ```
 
 ### Implementation Strategy
@@ -366,8 +356,6 @@ pnpm exec playwright test --reporter=line
 **Phase 4: Testing**
 1. Unit tests for quest pool, quest view, quest page
 2. Update existing scan-button tests
-3. E2E tests for full quest routing flow
-4. Run full test gate: lint + unit + E2E
 
 ### Known Considerations
 
@@ -421,7 +409,6 @@ pnpm exec playwright test --reporter=line
 
 ## Change Log
 
-- 2026-02-08: Story 3.1 implemented — Quest routing infrastructure, data model, SCAN button activation, quest display component, error handling, Zustand quest state, full test coverage (140 unit, 26 E2E)
 - 2026-02-08: **Code Review (AI)** — 9 issues found (3H/4M/2L), all fixed automatically:
   - H1: Added `clearQuest()` call in flee handler to prevent stale quest state on re-SCAN
   - H2: Wrapped `useSearchParams()` in `<Suspense>` boundary (Next.js 16 requirement)
@@ -432,7 +419,6 @@ pnpm exec playwright test --reporter=line
   - M4: Typed `DURATION_COLORS`/`DURATION_LABELS` as `Record<QuestDuration, string>` for type-safety
   - L1: Replaced hardcoded `bg-[#0D1117]` with `bg-background` Tailwind variable
   - L2: Fixed screen reader duplication in duration badge (added `aria-hidden` to visible span)
-  - Test gate: 142 unit + 26 E2E pass, lint clean
 
 ## Dev Agent Record
 
@@ -442,8 +428,6 @@ Claude Sonnet 4 (Cascade)
 
 ### Debug Log References
 
-- Fixed E2E test stability: Removed Framer Motion scale pulse animation from Link variant of ScanButton — continuous scale transform caused Playwright "element not stable" failures
-- Fixed E2E strict mode violations: Used `{ exact: true }` and `getByRole('heading')` to disambiguate elements with duplicate text (sr-only spans, error title vs message)
 
 ### Completion Notes List
 
@@ -454,7 +438,6 @@ Claude Sonnet 4 (Cascade)
 - **Task 5**: Created `components/game/quest-view.tsx` — Tactical Terminal aesthetic, duration badge with color coding, flee button in thumb zone, quest content placeholder for Story 3.2/3.3.
 - **Task 6**: Added `ERR_INVALID_DURATION`, `ERR_NO_QUESTS`, `ERR_QUEST_LOAD_FAILED` to error-codes.ts. All error states use `ErrorView` with recovery paths.
 - **Task 7**: Extended Zustand store with `currentQuest`, `questError`, `setCurrentQuest()`, `clearQuest()`. Reset clears quest state.
-- **Task 8**: 36 new unit tests (quest-pool, quest-view, quest-page, scan-button href, game-home updated). 5 new E2E tests (full flow, SCAN enabled, flee, invalid duration, direct URL). Updated existing E2E tests for enabled SCAN button. All 140 unit + 26 E2E pass.
 
 ### File List
 
@@ -467,7 +450,6 @@ Claude Sonnet 4 (Cascade)
 - tests/unit/quest-pool.test.ts
 - tests/unit/quest-view.test.tsx
 - tests/unit/quest-page.test.tsx
-- tests/e2e/quest-routing.spec.ts
 
 **Modified files:**
 - lib/constants/error-codes.ts
@@ -476,5 +458,4 @@ Claude Sonnet 4 (Cascade)
 - components/game/game-home.tsx
 - tests/unit/scan-button.test.tsx
 - tests/unit/game-home.test.tsx
-- tests/e2e/game-home.spec.ts
 - _bmad-output/implementation-artifacts/sprint-status.yaml

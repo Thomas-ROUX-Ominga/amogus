@@ -74,4 +74,3 @@ N/A
 - `components/game/quest-view.tsx`
 - `tests/unit/quest-page.test.tsx`
 - `tests/unit/quest-view.test.tsx`
-- `tests/e2e/impostor-flow.spec.ts`

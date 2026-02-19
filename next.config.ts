@@ -8,5 +8,6 @@ const withSerwist = withSerwistInit({
 
 export default withSerwist({
   // Next.js config options
+  serverExternalPackages: ["redis"],
   turbopack: {},
 });

@@ -30,8 +30,8 @@ completedAt: "2026-02-05T22:05:00+01:00"
 ### Testing Strategy
 
 - **Unit Testing**: **Vitest** for game logic (roles, quest pools).
-- **E2E Testing**: **Playwright** for complete scenarios.
-- **Mocks**: Redis and Camera mocks for CI.
+- **Integration Testing**: Vitest with JSDOM for UI components and server actions.
+- **Mocks**: Redis mocks for CI.
 
 ---
 

@@ -5,10 +5,20 @@ import { GameState, ActionResponse, PlayerRole } from "@/types/game";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { getBatch } from "./batch-actions";
 import { getTotalQuestsCount } from "@/lib/constants/quest-pool";
+import { generateShortCode } from "@/lib/utils/short-code.server";
 
 import { verifySession } from "./auth-utils";
 
-export async function createGame(batchId?: string): Promise<ActionResponse<string>> {
+export interface CreateGameInput {
+  batchId?: string;
+  questsPerPlayer?: {
+    short: number;
+    medium: number;
+    long: number;
+  };
+}
+
+export async function createGame(input?: CreateGameInput): Promise<ActionResponse<string>> {
     try {
         // Verify organizer session
         const session = await verifySession();
@@ -20,32 +30,60 @@ export async function createGame(batchId?: string): Promise<ActionResponse<strin
             };
         }
 
-        const gameId = globalThis.crypto.randomUUID();
+        // Generate short code instead of UUID
+        const shortCode = await generateShortCode();
         
-        // Fetch batch to get total quests count if batchId is provided
-        let questsTotal = getTotalQuestsCount(); // Default total from pool
+        // Extract batchId and validate quests per player
+        const batchId = input?.batchId;
+        const questsPerPlayer = input?.questsPerPlayer || { short: 2, medium: 2, long: 2 };
+        
+        // Validate quests per player if batch is provided
         if (batchId) {
             const batchResponse = await getBatch(batchId);
             if (batchResponse.success && batchResponse.data) {
-                questsTotal = batchResponse.data.quests.length;
+                const totalRequested = questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long;
+                const availableQuests = batchResponse.data.quests.length;
+                
+                if (totalRequested > availableQuests) {
+                    return {
+                        success: false,
+                        error: `Requested ${totalRequested} quests per player, but only ${availableQuests} available in batch.`,
+                        code: ERROR_CODES.ERR_INVALID_INPUT,
+                    };
+                }
             }
+        }
+        
+        // Fetch batch if batchId is provided
+        let questsTotal = getTotalQuestsCount(); // Default total from pool
+        if (batchId) {
+            const batchResponse = await getBatch(batchId);
+            if (!batchResponse.success || !batchResponse.data) {
+                return {
+                    success: false,
+                    error: `Failed to load batch [${batchId}]: ${batchResponse.error || "Unknown error"}`,
+                    code: ERROR_CODES.ERR_INVALID_INPUT,
+                };
+            }
+            questsTotal = batchResponse.data.quests.length;
         }
 
         const initialState: GameState = {
-            id: gameId,
+            id: shortCode,
             status: "LOBBY",
             players: [],
             createdAt: Date.now(),
             batchId,
             questsTotal,
+            questsPerPlayer,
         };
 
-        // Store game state in Redis with 24h TTL
-        await redis.set(`game:${gameId}:state`, initialState, GAME_TTL_SECONDS);
+        // Store game state in Redis with 24h TTL using short code key pattern
+        await redis.set(`game:${shortCode}:state`, initialState, GAME_TTL_SECONDS);
 
         return {
             success: true,
-            data: gameId,
+            data: shortCode,
         };
     } catch (error) {
         console.error("Failed to create game:", error);

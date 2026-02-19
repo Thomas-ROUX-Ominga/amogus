@@ -5,16 +5,38 @@ import { useRouter } from "next/navigation";
 import { ScanButton } from "@/components/game/scan-button";
 import { Terminal, Shield, ChevronRight, Hash } from "lucide-react";
 import { motion } from "framer-motion";
+import { isValidShortCode, normalizeShortCode } from "@/lib/utils/short-code";
 
 export default function Home() {
   const [gameId, setGameId] = useState("");
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const handleJoinByCode = (e: React.FormEvent) => {
     e.preventDefault();
-    if (gameId.trim()) {
-      router.push(`/game/${gameId.trim().toUpperCase()}`);
+    setError("");
+    
+    const normalizedCode = normalizeShortCode(gameId.trim());
+    
+    if (!normalizedCode) {
+      setError("Please enter a session code");
+      return;
     }
+    
+    // Validate as short code (6 chars) or allow longer codes for backward compatibility
+    // Validate format strictly
+    if (!isValidShortCode(normalizedCode)) {
+      setError("Invalid session code format (requires 6-char alphanumeric)");
+      return;
+    }
+    
+    router.push(`/game/${normalizedCode}`);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.toUpperCase();
+    setGameId(value);
+    setError(""); // Clear error on input
   };
 
   return (
@@ -64,15 +86,27 @@ export default function Home() {
                 <input
                   type="text"
                   value={gameId}
-                  onChange={(e) => setGameId(e.target.value.toUpperCase())}
-                  placeholder="SESSION_ID..."
-                  className="w-full bg-black/50 border-2 border-primary/20 p-5 pl-12 text-2xl font-black tracking-[0.3em] text-foreground placeholder:text-primary/10 focus:outline-none focus:border-primary transition-all rounded-none uppercase"
+                  onChange={handleInputChange}
+                  placeholder="6-CHAR CODE..."
+                  className={`w-full bg-black/50 border-2 p-5 pl-12 text-2xl font-black tracking-[0.3em] text-foreground placeholder:text-primary/10 focus:outline-none transition-all rounded-none uppercase ${
+                    error 
+                      ? 'border-destructive animate-pulse' 
+                      : 'border-primary/20 focus:border-primary'
+                  }`}
+                  maxLength={6}
                 />
               </div>
+              
+              {error && (
+                <div className="text-destructive text-[10px] uppercase tracking-widest text-center">
+                  {error}
+                </div>
+              )}
+              
               <button
                 type="submit"
-                disabled={!gameId.trim()}
-                className="w-full bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border-2 border-primary/30 hover:border-primary font-black py-4 transition-all flex items-center justify-center gap-2 group"
+                disabled={!gameId.trim() || !!error}
+                className="w-full bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border-2 border-primary/30 hover:border-primary font-black py-4 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="tracking-[0.4em] uppercase text-sm">Join Session</span>
                 <ChevronRight className="group-hover:translate-x-1 transition-transform" />

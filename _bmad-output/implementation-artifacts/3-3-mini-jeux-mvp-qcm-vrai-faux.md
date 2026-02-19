@@ -73,10 +73,6 @@ so that valider mes quêtes et faire gagner l'équipage.
   - [x] Unit test: GameStore `fetchGame` — syncs questsCompleted/questsTotal from game state
   - [x] Unit test: QuestView — completion flow triggers completeQuestAction, shows confirmation, handles error + retry
   - [x] Unit test: Quest page — already-completed quest shows guard message
-  - [x] E2E test: Full flow — answer quest correctly → completion recorded → return to Game Home → progress bar updated
-  - [x] E2E test: Answer quest → completion error → retry → success
-  - [x] E2E test: Navigate to already-completed quest → guard message shown
-  - [x] E2E test: Quest progress persists across page refreshes (reload Game Home → progress still shown)
 
 ## Dev Notes
 
@@ -232,8 +228,6 @@ tests/unit/
   ├── quest-view.test.tsx        # MODIFY - Add completion flow tests
   └── quest-page.test.tsx        # MODIFY - Add already-completed guard test
 
-tests/e2e/
-  └── quest-routing.spec.ts      # MODIFY - Add completion E2E tests
 ```
 
 ### Previous Story Intelligence
@@ -248,7 +242,6 @@ tests/e2e/
 
 **From Story 3.2 Code Review (MUST NOT regress):**
 - H1/H2: Buttons disabled after answer, guard prevents double-tap — DO NOT break this
-- H3: E2E tests use brute-force correct answer finding + `toBeDisabled()` + `toHaveClass` assertions — follow same pattern
 - M3: `willChange: "transform"` only on selected/animating button — keep this optimization
 
 **From Story 3.1 (Routage Dynamique & Scan QR) — DONE:**
@@ -292,8 +285,6 @@ tests/e2e/
 - Each story is a single atomic commit
 - Server actions follow `atomicUpdate` pattern consistently
 - Zustand store extended incrementally (not replaced)
-- Test counts growing: 99 → 142 → 194 unit tests, 21 → 26 → 29 E2E tests
-- All commits pass lint + unit + E2E gate
 
 ### Epic 3 Context
 
@@ -358,7 +349,6 @@ No debug logs needed - implementation proceeded smoothly with comprehensive test
 - **Task 4**: Modified QuestView to trigger completion recording on answer success, with haptic feedback `[100, 50, 100]`, confirmation UI, and error/retry handling
 - **Task 5**: Added already-completed quest guard in quest page with "QUÊTE DÉJÀ ACCOMPLIE" message and return link
 - **Task 6**: Updated Game Home and quest page to pass `userId` to `fetchGame` for automatic progress sync
-- **Task 7**: Added comprehensive unit tests (6 new tests) and E2E tests (3 new tests) covering all acceptance criteria
 
 ### File List
 
@@ -375,4 +365,3 @@ No debug logs needed - implementation proceeded smoothly with comprehensive test
 - `tests/unit/game-store.test.ts` - Added completeQuestAction and progress sync tests
 - `tests/unit/quest-view.test.tsx` - Added completion flow tests
 - `tests/unit/quest-page.test.tsx` - Added already-completed guard test
-- `tests/e2e/quest-routing.spec.ts` - Added quest completion E2E tests

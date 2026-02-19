@@ -10,12 +10,20 @@ vi.mock("@/lib/redis/client", () => ({
         set: vi.fn(),
         get: vi.fn(),
         atomicUpdate: vi.fn(),
+        exists: vi.fn(() => Promise.resolve(0)), // Mock exists to return 0 (no collision)
     },
 }));
 
-// Mock crypto.randomUUID
+// Mock crypto with getRandomValues for generateShortCode
 vi.stubGlobal("crypto", {
     randomUUID: () => "test-uuid",
+    getRandomValues: (arr: Uint32Array) => {
+        // Fill with predictable values for testing
+        for (let i = 0; i < arr.length; i++) {
+            arr[i] = i;
+        }
+        return arr;
+    },
 });
 
 // Mock auth-utils
@@ -35,11 +43,11 @@ describe("createGame", () => {
         const result = await createGame();
 
         expect(result.success).toBe(true);
-        expect(result.data).toBe("test-uuid");
+        expect(result.data).toBe("234567");
         expect(redis.set).toHaveBeenCalledWith(
-            "game:test-uuid:state",
+            "game:234567:state",
             expect.objectContaining({
-                id: "test-uuid",
+                id: "234567",
                 status: "LOBBY",
                 players: [],
             }),

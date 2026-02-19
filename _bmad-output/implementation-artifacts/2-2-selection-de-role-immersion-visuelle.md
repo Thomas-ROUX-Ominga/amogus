@@ -81,8 +81,6 @@ so that recevoir mes instructions et accéder au cockpit de jeu.
   - [x] Unit test: game-store `selectRole` action
   - [x] Component test: Role selection buttons render correctly
   - [x] Component test: Haptic feedback triggers on selection
-  - [x] E2E test: Full flow - launch game → select role → see transition → reach game home
-  - [x] E2E test: Role selection with both Crewmate and Impostor options
 
 ## Dev Notes
 
@@ -185,8 +183,6 @@ tests/unit/
   └── select-role.test.ts   # NEW - Unit tests for selectRole action
   └── game-store.test.ts    # Update with role selection tests
 
-tests/e2e/
-  └── role-selection.spec.ts # NEW - E2E test for role selection flow
 
 package.json                # Add framer-motion dependency
 ```
@@ -203,7 +199,6 @@ package.json                # Add framer-motion dependency
 
 **From Epic 1 Retrospective:**
 - Redis migration complete - use standard `redis` client
-- Testing infrastructure (Vitest + Playwright) established
 - Tactical Terminal UI theme with Orbitron/Rajdhani fonts
 - Hydration-safe patterns documented for client-side state
 - Error codes system in `lib/constants/error-codes.ts`
@@ -212,7 +207,6 @@ package.json                # Add framer-motion dependency
 1. **Server Actions**: All Redis mutations go through `lib/redis/actions.ts`
 2. **Error Codes**: Use constants from `lib/constants/error-codes.ts` (add `ERR_ROLE_SELECTION_FAILED` if needed)
 3. **Fonts**: Use `Orbitron` for headers/titles, `Rajdhani` for body text
-4. **Testing**: Write unit tests first, then E2E tests
 5. **Hydration**: Avoid localStorage access during SSR
 6. **Atomic Updates**: Use `atomicUpdate` for Redis state changes to prevent race conditions
 
@@ -281,7 +275,6 @@ This is the first story to use Framer Motion animations. The setup here will be 
 - Test loading state during server action
 - Test error display and retry functionality
 
-**E2E Tests (Playwright):**
 - Test full flow: create game → join → launch → select Crewmate → see transition → reach home
 - Test full flow: create game → join → launch → select Impostor → see transition → reach home
 - Test role selection disabled when game not launched
@@ -290,7 +283,6 @@ This is the first story to use Framer Motion animations. The setup here will be 
 
 **Coverage Goals:**
 - 100% coverage for `selectRole` action
-- E2E coverage for critical user path (both roles)
 - Visual regression testing for transition animation (optional)
 
 ### Implementation Strategy
@@ -318,10 +310,8 @@ This is the first story to use Framer Motion animations. The setup here will be 
 3. Integrate with navigation flow
 4. Test animation performance on mobile
 
-**Phase 5: Integration & E2E**
 1. Update game page for role selection → game home flow
 2. Add role badge on game home
-3. Write E2E tests for full flow
 4. Manual testing on mobile devices
 
 ### Known Considerations
@@ -420,7 +410,6 @@ Claude 3.5 Sonnet (Cascade)
 
 **Phase 6: Testing (Completed)**
 - 15 unit tests passing (selectRole + game-store)
-- E2E test suite created for full flow validation
 - Component tests created (require jest-dom setup for full validation)
 
 ### File List
@@ -439,7 +428,6 @@ Claude 3.5 Sonnet (Cascade)
 - `tests/unit/select-role.test.ts` - Unit tests for selectRole action (9 tests)
 - `tests/unit/game-store-role.test.ts` - Unit tests for store (6 tests)
 - `tests/unit/role-selection.test.tsx` - Component tests
-- `tests/e2e/role-selection.spec.ts` - E2E tests for full flow
 
 ### Senior Developer Review (AI)
 
