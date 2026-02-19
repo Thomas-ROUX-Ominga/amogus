@@ -7,32 +7,40 @@ vi.mock("@/lib/redis/client", () => ({
     get: vi.fn(),
     set: vi.fn(),
     del: vi.fn(),
+    keys: vi.fn(),
   },
 }));
 
 // Mock bcryptjs
-vi.mock("bcryptjs");
+vi.mock("bcryptjs", () => ({
+  default: {
+    hash: vi.fn(),
+    compare: vi.fn(),
+  },
+  hash: vi.fn(),
+  compare: vi.fn(),
+}));
 
-import { registerAdmin, getAdminUser, verifyAdminCredentials, adminExists } from "@/lib/redis/admin-db-actions";
+// Mock crypto.randomUUID
+if (typeof crypto === "undefined") {
+  // @ts-expect-error - Global crypto might not be defined in this environment
+  global.crypto = { randomUUID: () => "test-uuid" };
+} else {
+  vi.spyOn(crypto, "randomUUID").mockReturnValue("test-uuid" as never);
+}
+
+import { registerUser, getUserById, verifyUserCredentials, usersExist } from "@/lib/redis/admin-db-actions";
 import { redis } from "@/lib/redis/client";
 import bcrypt from "bcryptjs";
 
-describe("Admin DB Actions", () => {
+describe("User DB Actions (Multi-user)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe("registerAdmin", () => {
+  describe("registerUser", () => {
     it("should reject empty username", async () => {
-      const result = await registerAdmin("", "password123");
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("Username and password are required");
-      expect(result.code).toBe(ERROR_CODES.ERR_INVALID_INPUT);
-    });
-
-    it("should reject empty password", async () => {
-      const result = await registerAdmin("admin", "");
+      const result = await registerUser("", "password123");
       
       expect(result.success).toBe(false);
       expect(result.error).toBe("Username and password are required");
@@ -40,159 +48,88 @@ describe("Admin DB Actions", () => {
     });
 
     it("should reject short password", async () => {
-      const result = await registerAdmin("admin", "123");
+      const result = await registerUser("user1", "123");
       
       expect(result.success).toBe(false);
       expect(result.error).toBe("Password must be at least 8 characters");
-      expect(result.code).toBe(ERROR_CODES.ERR_INVALID_INPUT);
     });
 
-    it("should reject if admin already exists", async () => {
-      vi.mocked(redis.get).mockResolvedValue({ username: "existing" });
+    it("should reject if username already exists", async () => {
+      vi.mocked(redis.get).mockResolvedValue("existing-uuid");
       
-      const result = await registerAdmin("admin", "password123");
+      const result = await registerUser("user1", "password123");
       
       expect(result.success).toBe(false);
-      expect(result.error).toBe("Admin user already exists");
-      expect(result.code).toBe(ERROR_CODES.ERR_INVALID_INPUT);
+      expect(result.error).toBe("Username already taken");
     });
 
-    it("should register admin successfully", async () => {
+    it("should register user successfully with split keys", async () => {
       vi.mocked(redis.get).mockResolvedValue(null);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      vi.mocked(bcrypt.hash).mockResolvedValue("hashed_password" as any);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      vi.mocked(redis.set).mockResolvedValue("OK" as any);
+      vi.mocked(bcrypt.hash).mockResolvedValue("hashed_password" as never);
       
-      const result = await registerAdmin("admin", "password123");
+      const result = await registerUser("User1", "password123");
       
       expect(result.success).toBe(true);
       expect(bcrypt.hash).toHaveBeenCalledWith("password123", 10);
-      expect(redis.set).toHaveBeenCalledWith("admin:user", {
-        username: "admin",
+      
+      // Check username lookup key (normalized to lowercase)
+      expect(redis.set).toHaveBeenCalledWith("username:user1", "test-uuid");
+      
+      // Check user profile key
+      expect(redis.set).toHaveBeenCalledWith("user:test-uuid", {
+        id: "test-uuid",
+        username: "user1",
         passwordHash: "hashed_password",
         createdAt: expect.any(String),
       });
     });
   });
 
-  describe("getAdminUser", () => {
-    it("should return null if no admin exists", async () => {
+  describe("getUserById", () => {
+    it("should return error if user doesn't exist", async () => {
       vi.mocked(redis.get).mockResolvedValue(null);
-      
-      const result = await getAdminUser();
-      
+      const result = await getUserById("nonexistent");
       expect(result.success).toBe(false);
-      expect(result.error).toBe("No admin user found");
-      expect(result.code).toBe(ERROR_CODES.ERR_NO_SESSION);
     });
 
-    it("should return admin user if exists", async () => {
-      const mockAdmin = {
-        username: "admin",
-        passwordHash: "hashed_password",
-        createdAt: "2023-01-01T00:00:00.000Z",
-      };
-      vi.mocked(redis.get).mockResolvedValue(mockAdmin);
+    it("should return user if exists", async () => {
+      const mockUser = { id: "u1", username: "user1", passwordHash: "h1", createdAt: "..." };
+      vi.mocked(redis.get).mockResolvedValue(mockUser);
       
-      const result = await getAdminUser();
-      
+      const result = await getUserById("u1");
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockAdmin);
+      expect(result.data).toEqual(mockUser);
     });
   });
 
-  describe("verifyAdminCredentials", () => {
-    it("should reject empty credentials", async () => {
-      const result = await verifyAdminCredentials("", "");
+  describe("verifyUserCredentials", () => {
+    it("should verify valid credentials", async () => {
+      const mockUser = { id: "test-uuid", username: "user1", passwordHash: "hashed" };
+      vi.mocked(redis.get).mockImplementation(async (key) => {
+        if (key === "username:user1") return "test-uuid";
+        if (key === "user:test-uuid") return mockUser;
+        return null;
+      });
+      vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
       
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("Username and password are required");
-      expect(result.code).toBe(ERROR_CODES.ERR_INVALID_INPUT);
-    });
-
-    it("should reject if no admin exists", async () => {
-      vi.mocked(redis.get).mockResolvedValue(null);
-      
-      const result = await verifyAdminCredentials("admin", "password123");
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("Invalid credentials");
-      expect(result.code).toBe(ERROR_CODES.ERR_INVALID_CREDENTIALS);
-    });
-
-    it("should reject wrong username", async () => {
-      const mockAdmin = {
-        username: "admin",
-        passwordHash: "hashed_password",
-        createdAt: "2023-01-01T00:00:00.000Z",
-      };
-      vi.mocked(redis.get).mockResolvedValue(mockAdmin);
-      
-      const result = await verifyAdminCredentials("wronguser", "password123");
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("Invalid credentials");
-      expect(result.code).toBe(ERROR_CODES.ERR_INVALID_CREDENTIALS);
-    });
-
-    it("should reject wrong password", async () => {
-      const mockAdmin = {
-        username: "admin",
-        passwordHash: "hashed_password",
-        createdAt: "2023-01-01T00:00:00.000Z",
-      };
-      vi.mocked(redis.get).mockResolvedValue(mockAdmin);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      vi.mocked(bcrypt.compare).mockResolvedValue(false as any);
-      
-      const result = await verifyAdminCredentials("admin", "wrongpassword");
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("Invalid credentials");
-      expect(result.code).toBe(ERROR_CODES.ERR_INVALID_CREDENTIALS);
-    });
-
-    it("should accept valid credentials", async () => {
-      const mockAdmin = {
-        username: "admin",
-        passwordHash: "hashed_password",
-        createdAt: "2023-01-01T00:00:00.000Z",
-      };
-      vi.mocked(redis.get).mockResolvedValue(mockAdmin);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as any);
-      
-      const result = await verifyAdminCredentials("admin", "password123");
+      const result = await verifyUserCredentials("user1", "password");
       
       expect(result.success).toBe(true);
-      expect(result.data).toEqual({ success: true });
+      expect(result.data).toEqual({ userId: "test-uuid", username: "user1" });
     });
   });
 
-  describe("adminExists", () => {
-    it("should return false if no admin exists", async () => {
-      vi.mocked(redis.get).mockResolvedValue(null);
-      
-      const result = await adminExists();
-      
+  describe("usersExist", () => {
+    it("should return false if no username keys found", async () => {
+      vi.mocked(redis.keys).mockResolvedValue([]);
+      const result = await usersExist();
       expect(result).toBe(false);
     });
 
-    it("should return true if admin exists", async () => {
-      vi.mocked(redis.get).mockResolvedValue({ username: "admin" });
-      
-      const result = await adminExists();
-      
+    it("should return true if username keys exist", async () => {
+      vi.mocked(redis.keys).mockResolvedValue(["username:admin"]);
+      const result = await usersExist();
       expect(result).toBe(true);
-    });
-
-    it("should return false on Redis error", async () => {
-      vi.mocked(redis.get).mockRejectedValue(new Error("Redis error"));
-      
-      const result = await adminExists();
-      
-      expect(result).toBe(false);
     });
   });
 });

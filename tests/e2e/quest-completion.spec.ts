@@ -1,24 +1,44 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 test.describe("Quest Completion Flow", () => {
-    async function createJoinLaunchSelectRole(page: import("@playwright/test").Page) {
-        await page.goto("/");
+    async function createJoinLaunchSelectRole(page: Page) {
+        const username = `OrgComp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        // 1. Register/Login as Organizer
+        await page.goto("/register");
+        await page.fill('input[placeholder="New_ID..."]', username);
+        await page.fill('input[placeholder="Secret..."]', "securePass123");
+        await page.fill('input[placeholder="Repeat..."]', "securePass123");
+        await page.click('button:has-text("REGISTER OPERATOR")');
+        
+        await expect(page).toHaveURL(/\/login/);
+        await page.fill('input[placeholder="ID..."]', username);
+        await page.fill('input[placeholder="SECRET..."]', "securePass123");
+        await page.click('button:has-text("INITIALIZE SESSION")');
 
-        const createButton = page.getByRole("button", { name: /Créer une partie/i });
-        await createButton.click();
-        await expect(page).toHaveURL(/\/game\/.+/, { timeout: 10000 });
+        await expect(page).toHaveURL(/\/(admin\/batches|admin\/dashboard)/);
 
+        // 2. Create Batch (of 3)
+        await page.click('button:has-text("Create New Batch")');
+        await page.fill('input[type="number"]', "3");
+        await page.click('button:has-text("CREATE BATCH")');
+        await expect(page.locator("text=BATCH-").first()).toBeVisible();
+        await page.getByTitle("Manage batch").first().click();
+
+        // 3. Launch Game
+        await page.click('button:has-text("LAUNCH MISSION")');
+        await expect(page).toHaveURL(/\/game\/[a-f0-9-]{36}/, { timeout: 15000 });
+
+        // 4. Join as Player
         await page.fill('input[placeholder="ENTER PSEUDO..."]', "QuestPlayer");
         await page.click('button:has-text("REJOINDRE")');
         await expect(page.getByText("QuestPlayer")).toBeVisible({ timeout: 5000 });
 
-        const launchButton = page.getByRole("button", { name: /lancer la partie/i });
-        await launchButton.click();
+        // 5. Start Mission
+        await page.click('button:has-text("Lancer la partie")');
         await expect(page.getByText(/Mission Active/i)).toBeVisible({ timeout: 10000 });
 
-        const crewmateButton = page.getByRole("button", { name: /Crewmate/i });
-        await crewmateButton.click();
-
+        // 6. Select Role
+        await page.click('button:has-text("CREWMATE")');
         await expect(page.getByText(/Game Cockpit/i)).toBeVisible({ timeout: 5000 });
     }
 
@@ -30,11 +50,8 @@ test.describe("Quest Completion Flow", () => {
         const gameId = url.split("/game/")[1];
         expect(gameId).toBeTruthy();
 
-        // Check initial progress (should be 0)
-        // QuestProgress component usually shows "0 / X" or a progress bar.
-        // Let's verify the text content if possible, or just the presence.
-        // We expect "0 / "
-        await expect(page.locator('text=/^0\\s*\\/\\s*\\d+/')).toBeVisible();
+        // Check initial progress (should be 0/3)
+        await expect(page.getByText("0/3 quêtes accomplies")).toBeVisible();
 
         // Navigate to specific quest s1 (answer: TRUE)
         await page.goto(`/game/${gameId}/quest?duration=short&questId=s1`);
@@ -43,28 +60,16 @@ test.describe("Quest Completion Flow", () => {
         await expect(page.getByText("Vérification de Protocole")).toBeVisible();
 
         // Answer correctly (VRAI)
-        const trueButton = page.getByLabel("Répondre VRAI");
-        await trueButton.click();
-
-        // Check for error first (fast failure if something is wrong)
-        const errorMsg = page.getByText("ERREUR DE SAUVEGARDE");
-        if (await errorMsg.isVisible()) {
-            throw new Error("Quest completion failed with error message");
-        }
+        await page.getByLabel("Répondre VRAI").click();
 
         // Expect Celebration Overlay
-        // Use regex to match text with line break
         await expect(page.getByRole("heading", { name: /MISSION\s*ACCOMPLIE/i })).toBeVisible({ timeout: 15000 });
         
-        // Wait for auto-redirect (3s delay + buffer)
-        // The URL should change back to /game/[id]
+        // Wait for auto-redirect
         await expect(page).toHaveURL(new RegExp(`/game/${gameId}$`), { timeout: 15000 });
 
-        // Verify overlay is gone
-        await expect(page.getByText("MISSION ACCOMPLIE")).not.toBeVisible();
-
-        // Verify progress updated (should be 1)
-        await expect(page.locator('text=/^1\\s*\\/\\s*\\d+/')).toBeVisible();
+        // Verify progress updated
+        await expect(page.getByText("1/3 quêtes accomplies")).toBeVisible();
     });
 
     test("manual exit from success overlay", async ({ page }) => {
@@ -89,6 +94,6 @@ test.describe("Quest Completion Flow", () => {
         await expect(page).toHaveURL(new RegExp(`/game/${gameId}$`));
         
         // Verify progress updated
-        await expect(page.locator('text=/^1\\s*\\/\\s*\\d+/')).toBeVisible();
+        await expect(page.getByText("1/3 quêtes accomplies")).toBeVisible();
     });
 });

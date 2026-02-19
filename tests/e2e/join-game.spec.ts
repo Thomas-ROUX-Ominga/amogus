@@ -1,10 +1,38 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+async function setupGame(page: Page) {
+    const username = `OrgJoin_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    // 1. Register/Login as Organizer
+    await page.goto("/register");
+    await page.fill('input[placeholder="New_ID..."]', username);
+    await page.fill('input[placeholder="Secret..."]', "securePass123");
+    await page.fill('input[placeholder="Repeat..."]', "securePass123");
+    await page.click('button:has-text("REGISTER OPERATOR")');
+    
+    await expect(page).toHaveURL(/\/login/);
+    await page.fill('input[placeholder="ID..."]', username);
+    await page.fill('input[placeholder="SECRET..."]', "securePass123");
+    await page.click('button:has-text("INITIALIZE SESSION")');
+
+    await expect(page).toHaveURL(/\/(admin\/batches|admin\/dashboard)/);
+
+    // 2. Create Batch
+    await page.click('button:has-text("Create New Batch")');
+    await page.fill('input[type="number"]', "3");
+    await page.click('button:has-text("CREATE BATCH")');
+    await expect(page.locator("text=BATCH-").first()).toBeVisible();
+    await page.getByTitle("Manage batch").first().click();
+
+    // 3. Launch Game
+    await page.click('button:has-text("LAUNCH MISSION")');
+    await expect(page).toHaveURL(/\/game\/[a-f0-9-]{36}/, { timeout: 15000 });
+    
+    return page.url();
+}
 
 test.describe("Join Game Flow", () => {
     test("should allow a player to join a game and then persist identity on refresh", async ({ page }) => {
-        await page.goto("/");
-        await page.click('button:has-text("Créer une partie")');
-        await expect(page).toHaveURL(/\/game\/.+/);
+        await setupGame(page);
 
         // Wait for hydration and state load
         await expect(page.locator("text=Identify Yourself")).toBeVisible({ timeout: 10000 });
@@ -26,10 +54,7 @@ test.describe("Join Game Flow", () => {
         // 1. Create a game and join in context A
         const contextA = await browser.newContext();
         const pageA = await contextA.newPage();
-        await pageA.goto("/");
-        await pageA.click('button:has-text("Créer une partie")');
-        await expect(pageA).toHaveURL(/\/game\/.+/);
-        const gameUrl = pageA.url();
+        const gameUrl = await setupGame(pageA);
 
         await pageA.fill('input[placeholder="ENTER PSEUDO..."]', "LeadPlayer");
         await pageA.click('button:has-text("REJOINDRE")');

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { FileDown, Save, Edit2, Check } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { FileDown, Save, Edit2, Check, Play } from "lucide-react";
 import { Batch, Quest } from "@/types/quest";
 import { updateQuestsLocations } from "@/lib/redis/batch-actions";
+import { createGame } from "@/lib/redis/actions";
 import { generateQuestPDF, downloadPDF } from "@/lib/utils/pdf-utils";
 
 interface BatchDetailProps {
@@ -12,6 +14,7 @@ interface BatchDetailProps {
 }
 
 export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
+  const router = useRouter();
   const [locations, setLocations] = useState<Record<string, string>>(
     batch.quests.reduce((acc, quest) => {
       acc[quest.id] = quest.location || "";
@@ -20,6 +23,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
   );
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLaunching, setIsLaunching] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -68,6 +72,26 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
     }
   };
 
+  const handleLaunchGame = async () => {
+    setIsLaunching(true);
+    setError("");
+
+    try {
+      const result = await createGame(batch.id);
+
+      if (!result.success) {
+        setError(result.error || "Failed to launch game");
+        return;
+      }
+
+      router.push(`/game/${result.data}`);
+    } catch {
+      setError("An unexpected error occurred");
+    } finally {
+      setIsLaunching(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString("en-US", {
       year: "numeric",
@@ -105,6 +129,15 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
           </div>
 
           <div className="flex gap-3">
+            <button
+              onClick={handleLaunchGame}
+              disabled={isLaunching}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3 px-6 rounded-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs tracking-widest animate-pulse hover:animate-none"
+            >
+              <Play size={14} />
+              {isLaunching ? "INITIALIZING..." : "LAUNCH MISSION"}
+            </button>
+
             <button
               onClick={handleSaveLocations}
               disabled={isSaving}

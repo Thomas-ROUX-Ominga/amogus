@@ -2,69 +2,120 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PulseButton } from "@/components/effects/pulse-button";
-import { createGame } from "@/lib/redis/actions";
+import { ScanButton } from "@/components/game/scan-button";
+import { Terminal, Shield, ChevronRight, Hash } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function Home() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [gameId, setGameId] = useState("");
   const router = useRouter();
 
-  const handleCreateGame = async () => {
-    setIsLoading(true);
-    setError(null);
-    const response = await createGame();
-
-    if (response.success && response.data) {
-      router.push(`/game/${response.data}`);
-    } else {
-      setError(response.error || "Failed to create game");
-      setIsLoading(false);
+  const handleJoinByCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (gameId.trim()) {
+      router.push(`/game/${gameId.trim().toUpperCase()}`);
     }
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
-      <div className="max-w-2xl w-full border-2 border-primary/20 p-8 md:p-12 space-y-8 bg-black/50 backdrop-blur-sm">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-primary">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tighter font-orbitron">
-              AMOGUS <span className="text-foreground">COCKPIT</span>
-            </h1>
-          </div>
-          <p className="text-muted-foreground text-sm md:text-base leading-relaxed border-l-2 border-primary/20 pl-4">
-            System initialization complete. Waiting for operator command...
-          </p>
-        </div>
+    <main className="min-h-screen bg-black text-foreground font-mono overflow-hidden flex flex-col md:flex-row">
+      {/* LEFT PANEL: GUEST ACCESS (PRIMARY) */}
+      <section className="flex-1 flex flex-col items-center justify-center p-8 relative border-b md:border-b-0 md:border-r border-primary/10">
+        {/* Scanlines Effect */}
+        <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
+        
+        <div className="max-w-md w-full space-y-12 relative z-10">
+          <header className="space-y-4">
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-3"
+            >
+              <div className="p-2 border border-primary/30 bg-primary/5">
+                <Terminal className="text-primary w-6 h-6" />
+              </div>
+              <h1 className="text-3xl font-black uppercase tracking-tighter font-orbitron">
+                AMOGUS <span className="text-primary">COCKPIT</span>
+              </h1>
+            </motion.div>
+            <p className="text-muted-foreground text-xs uppercase tracking-[0.2em] border-l-2 border-primary/20 pl-4 py-1">
+              Mission Uplink Terminal [v2.0.0]
+            </p>
+          </header>
 
-        <div className="flex flex-col items-center justify-center py-12 border-y border-primary/10 gap-6">
-          <PulseButton onClick={handleCreateGame} isLoading={isLoading}>
-            Créer une partie
-          </PulseButton>
-
-          {error && (
-            <div className="text-[10px] text-destructive uppercase tracking-widest animate-in fade-in slide-in-from-bottom-2">
-              Error: {error}
+          <div className="space-y-8">
+            <div className="space-y-4">
+              <label className="text-[10px] uppercase tracking-widest text-primary/60 font-bold">Primary_Join_Method</label>
+              <ScanButton disabled={false} href="/scanner" />
             </div>
-          )}
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-primary/10" />
+              </div>
+              <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
+                <span className="bg-black px-4 text-primary/40">OR_Use_Code</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleJoinByCode} className="space-y-4">
+              <div className="relative group">
+                <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/30 group-focus-within:text-primary transition-colors" />
+                <input
+                  type="text"
+                  value={gameId}
+                  onChange={(e) => setGameId(e.target.value.toUpperCase())}
+                  placeholder="SESSION_ID..."
+                  className="w-full bg-black/50 border-2 border-primary/20 p-5 pl-12 text-2xl font-black tracking-[0.3em] text-foreground placeholder:text-primary/10 focus:outline-none focus:border-primary transition-all rounded-none uppercase"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={!gameId.trim()}
+                className="w-full bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border-2 border-primary/30 hover:border-primary font-black py-4 transition-all flex items-center justify-center gap-2 group"
+              >
+                <span className="tracking-[0.4em] uppercase text-sm">Join Session</span>
+                <ChevronRight className="group-hover:translate-x-1 transition-transform" />
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      {/* RIGHT PANEL: ORGANIZER ACCESS (SECONDARY) */}
+      <section className="md:w-1/4 bg-primary/5 flex flex-col items-center justify-center p-8 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10 flex items-center justify-center pointer-events-none">
+          <Shield className="w-64 h-64 text-primary" />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 text-[10px] md:text-xs text-muted-foreground uppercase tracking-widest pt-4">
-          <div className="flex flex-col gap-1">
-            <span className="text-primary/50">Version:</span>
-            <span>0.1.0-ALPHA</span>
+        <div className="space-y-8 relative z-10 text-center">
+          <div className="space-y-2">
+            <Shield className="w-12 h-12 text-primary/40 mx-auto" />
+            <h2 className="text-sm font-black uppercase tracking-[0.3em] font-orbitron">
+              Organizer
+            </h2>
           </div>
-          <div className="flex flex-col gap-1 text-right">
-            <span className="text-primary/50">Status:</span>
-            <span className="text-primary">Ready</span>
-          </div>
-        </div>
-      </div>
 
-      <div className="fixed bottom-4 left-4 text-[10px] text-muted-foreground/30 font-mono">
-        SECURE TERMINAL ACCESS // REDIS_CONNECTED
-      </div>
+          <p className="text-[9px] text-muted-foreground uppercase leading-relaxed tracking-widest max-w-[180px] mx-auto">
+            Authorized personnel only. Create batches and manage sessions.
+          </p>
+
+          <button
+            onClick={() => router.push("/login")}
+            className="w-full max-w-[200px] border border-primary/30 py-3 px-4 text-[10px] uppercase tracking-[0.2em] hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all font-bold"
+          >
+            Access Portal
+          </button>
+        </div>
+
+        <div className="absolute bottom-4 text-[8px] text-primary/20 uppercase tracking-widest">
+          Secure Terminal // Encrypted_Link
+        </div>
+      </section>
+
+      {/* Global Visual Decor */}
+      <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+      <div className="fixed bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
     </main>
   );
 }

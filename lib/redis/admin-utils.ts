@@ -1,15 +1,10 @@
-import { redis } from "./client";
-
-const ADMIN_KEY = "admin:user";
+import { usersExist } from "./admin-db-actions";
 
 export async function adminExists(): Promise<boolean> {
   try {
-    const adminData = await redis.get(ADMIN_KEY);
-    return !!adminData;
+    return await usersExist();
   } catch (error) {
-    console.warn("Failed to check admin existence (likely Edge runtime), assuming true to allow login:", error);
-    // If we can't check (e.g. Edge runtime), assume admin exists to let them try invalid login
-    // rather than forcing a redirect to register which might be wrong.
+    console.warn("Failed to check admin existence, assuming true to allow login:", error);
     return true;
   }
 }

@@ -26,3 +26,7 @@ export function getRandomQuest(duration: QuestDuration): Quest | null {
 export function isValidDuration(value: string | null): value is QuestDuration {
     return value === "short" || value === "medium" || value === "long";
 }
+
+export function getTotalQuestsCount(): number {
+    return (questPool.short?.length || 0) + (questPool.medium?.length || 0) + (questPool.long?.length || 0);
+}

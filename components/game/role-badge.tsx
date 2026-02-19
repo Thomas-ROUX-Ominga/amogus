@@ -11,12 +11,12 @@ interface RoleBadgeProps {
 const ROLE_CONFIG = {
     CREWMATE: {
         color: "#2DA44E",
-        label: "Crewmate",
+        label: "CREWMATE",
         Icon: Users,
     },
     IMPOSTOR: {
         color: "#DA3633",
-        label: "Imposteur",
+        label: "IMPOSTOR",
         Icon: Shield,
     },
 } as const;

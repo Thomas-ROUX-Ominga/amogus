@@ -16,7 +16,7 @@ export function RoleTransition({ role, gameId, onComplete }: RoleTransitionProps
 
     const roleColor = role === "CREWMATE" ? "#2DA44E" : "#DA3633";
     const RoleIcon = role === "CREWMATE" ? Users : Shield;
-    const roleLabel = role === "CREWMATE" ? "Crewmate" : "Imposteur";
+    const roleLabel = role === "CREWMATE" ? "CREWMATE" : "IMPOSTOR";
 
     useEffect(() => {
         const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

@@ -69,7 +69,7 @@ export const useGameStore = create<GameStore>((set) => ({
             if (userId) {
                 const player = response.data.players.find((p) => p.id === userId);
                 updates.questsCompleted = player?.completedQuests?.length ?? 0;
-                updates.questsTotal = getTotalQuests();
+                updates.questsTotal = response.data.questsTotal ?? getTotalQuests();
             }
 
             set(updates);
@@ -97,7 +97,7 @@ export const useGameStore = create<GameStore>((set) => ({
                 const updatedPlayer = response.data.players.find((p) => p.id === userId);
                 if (updatedPlayer) {
                     updates.questsCompleted = updatedPlayer.completedQuests?.length ?? 0;
-                    updates.questsTotal = getTotalQuests();
+                    updates.questsTotal = response.data.questsTotal ?? getTotalQuests();
                 }
             }
 

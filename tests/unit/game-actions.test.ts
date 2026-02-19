@@ -18,9 +18,12 @@ vi.stubGlobal("crypto", {
     randomUUID: () => "test-uuid",
 });
 
-// Mock next/navigation
-vi.mock("next/navigation", () => ({
-    redirect: vi.fn(),
+// Mock auth-utils
+vi.mock("@/lib/redis/auth-utils", () => ({
+    verifySession: vi.fn(() => Promise.resolve({ 
+        success: true, 
+        data: { userId: "test-user", username: "test-org", role: "organizer" } 
+    })),
 }));
 
 describe("createGame", () => {

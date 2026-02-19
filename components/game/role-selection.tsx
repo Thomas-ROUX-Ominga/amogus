@@ -62,10 +62,10 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                     <Users className="w-12 h-12 text-[#2DA44E] group-hover:scale-110 transition-transform" />
                     <div className="text-center">
                         <div className="text-2xl font-black uppercase tracking-wider text-[#2DA44E] font-rajdhani">
-                            Crewmate
+                            CREWMATE
                         </div>
                         <div className="text-xs text-[#2DA44E]/70 uppercase tracking-widest mt-1 font-rajdhani">
-                            Membre d&apos;équipage
+                            MEMBRE D&apos;ÉQUIPAGE
                         </div>
                     </div>
                 </motion.button>
@@ -81,10 +81,10 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                     <Shield className="w-12 h-12 text-[#DA3633] group-hover:scale-110 transition-transform" />
                     <div className="text-center">
                         <div className="text-2xl font-black uppercase tracking-wider text-[#DA3633] font-rajdhani">
-                            Imposteur
+                            IMPOSTOR
                         </div>
                         <div className="text-xs text-[#DA3633]/70 uppercase tracking-widest mt-1 font-rajdhani">
-                            Agent infiltré
+                            AGENT INFILTRÉ
                         </div>
                     </div>
                 </motion.button>

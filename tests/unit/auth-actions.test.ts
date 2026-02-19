@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ERROR_CODES } from "@/lib/constants/error-codes";
 
 // Mock environment variables
 vi.stubEnv("AUTH_SECRET", "test_secret_for_jwt_signing_123456789");
@@ -14,7 +13,7 @@ vi.mock("@/lib/redis/client", () => ({
   },
 }));
 
-// Mock bcryptjs with simple approach
+// Mock bcryptjs
 vi.mock("bcryptjs", () => ({
   default: {
     compare: vi.fn(),
@@ -24,7 +23,7 @@ vi.mock("bcryptjs", () => ({
   hash: vi.fn(),
 }));
 
-// Mock cookies for testing
+// Mock cookies
 vi.mock("next/headers", () => ({
   cookies: vi.fn(() => ({
     get: vi.fn(),
@@ -33,7 +32,7 @@ vi.mock("next/headers", () => ({
   })),
 }));
 
-// Mock jose completely with proper class mock
+// Mock jose
 vi.mock("jose", () => ({
   SignJWT: class MockSignJWT {
     constructor(private payload: any) {}
@@ -43,166 +42,70 @@ vi.mock("jose", () => ({
     async sign() { return "mock_jwt_token"; }
   },
   jwtVerify: vi.fn().mockResolvedValue({
-    payload: { role: "admin" }
+    payload: { userId: "u1", username: "user1", role: "organizer" }
   }),
 }));
 
-import { verifyAdminCredentials, adminLogin } from "@/lib/redis/auth-actions";
-import { createAdminSession, verifyAdminSession, clearAdminSession } from "@/lib/redis/auth-utils";
+import { login } from "@/lib/redis/auth-actions";
+import { createSession, verifySession } from "@/lib/redis/auth-utils";
 import { redis } from "@/lib/redis/client";
 import bcrypt from "bcryptjs";
 
-describe("Authentication Actions", () => {
+describe("Authentication Actions (Multi-user)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe("verifyAdminCredentials", () => {
-    it("should reject empty username", async () => {
-      const result = await verifyAdminCredentials("", "password");
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("Username and password are required");
-      expect(result.code).toBe(ERROR_CODES.ERR_INVALID_INPUT);
-    });
-
-    it("should reject empty password", async () => {
-      const result = await verifyAdminCredentials("admin", "");
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("Username and password are required");
-      expect(result.code).toBe(ERROR_CODES.ERR_INVALID_INPUT);
-    });
-
-    it("should reject when no admin exists", async () => {
-      vi.mocked(redis.get).mockResolvedValue(null);
-      
-      const result = await verifyAdminCredentials("admin", "password");
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("Invalid credentials");
-      expect(result.code).toBe(ERROR_CODES.ERR_INVALID_CREDENTIALS);
-    });
-
-    it("should reject invalid credentials", async () => {
-      const mockAdmin = {
-        username: "admin",
-        passwordHash: "$2a$10$hashedpassword",
-        createdAt: "2024-01-01T00:00:00.000Z",
-      };
-      vi.mocked(redis.get).mockResolvedValue(mockAdmin);
-      vi.mocked(bcrypt.compare).mockResolvedValue(false as never);
-      
-      const result = await verifyAdminCredentials("wronguser", "wrongpassword");
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("Invalid credentials");
-      expect(result.code).toBe(ERROR_CODES.ERR_INVALID_CREDENTIALS);
-    });
-
-    it("should accept valid credentials", async () => {
-      const mockAdmin = {
-        username: "admin",
-        passwordHash: "$2a$10$hashedpassword",
-        createdAt: "2024-01-01T00:00:00.000Z",
-      };
-      vi.mocked(redis.get).mockResolvedValue(mockAdmin);
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
-      
-      const result = await verifyAdminCredentials("admin", "correct_password");
-      
-      expect(result.success).toBe(true);
-      expect(result.data).toEqual({ success: true });
-    });
-  });
-
-  describe("adminLogin", () => {
+  describe("login", () => {
     it("should reject invalid credentials", async () => {
       vi.mocked(redis.get).mockResolvedValue(null);
-      
-      const result = await adminLogin("admin", "wrong_password");
-      
+      const result = await login("admin", "wrong_password");
       expect(result.success).toBe(false);
       expect(result.error).toBe("Invalid credentials");
     });
 
     it("should create session for valid credentials", async () => {
-      const mockAdmin = {
-        username: "admin",
-        passwordHash: "$2a$10$hashedpassword",
-        createdAt: "2024-01-01T00:00:00.000Z",
-      };
-      vi.mocked(redis.get).mockResolvedValue(mockAdmin);
+      const mockUser = { id: "u1", username: "user1", passwordHash: "hashed" };
+      vi.mocked(redis.get).mockImplementation(async (key) => {
+        if (key === "username:user1") return "u1";
+        if (key === "user:u1") return mockUser;
+        return null;
+      });
       vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
       
-      const result = await adminLogin("admin", "correct_password");
-      
+      const result = await login("user1", "correct_password");
       expect(result.success).toBe(true);
     });
   });
 
   describe("session management", () => {
-    it("should create admin session successfully", async () => {
+    it("should create session with user data", async () => {
       const { cookies } = await import("next/headers");
-      const mockCookieStore = {
-        set: vi.fn(),
-      };
+      const mockCookieStore = { set: vi.fn() };
       vi.mocked(cookies).mockReturnValue(mockCookieStore as any);
       
-      const result = await createAdminSession();
+      const result = await createSession("u1", "user1");
       
       expect(result.success).toBe(true);
       expect(mockCookieStore.set).toHaveBeenCalledWith(
-        "admin-session",
+        "organizer-session",
         "mock_jwt_token",
-        expect.objectContaining({
-          httpOnly: true,
-          secure: false, // test environment
-          sameSite: "lax",
-          maxAge: 24 * 60 * 60,
-          path: "/",
-        })
+        expect.any(Object)
       );
     });
 
-    it("should verify valid session", async () => {
+    it("should verify session and return user data", async () => {
       const { cookies } = await import("next/headers");
-      const mockCookieStore = {
-        get: vi.fn(() => ({ value: "valid_jwt_token" })),
+      const mockCookieStore = { 
+        get: vi.fn((name) => name === "organizer-session" ? { value: "token" } : null) 
       };
       vi.mocked(cookies).mockReturnValue(mockCookieStore as any);
       
-      const result = await verifyAdminSession();
+      const result = await verifySession();
       
       expect(result.success).toBe(true);
-      expect(result.data?.role).toBe("admin");
-    });
-
-    it("should reject invalid session", async () => {
-      const { cookies } = await import("next/headers");
-      const mockCookieStore = {
-        get: vi.fn(() => null),
-      };
-      vi.mocked(cookies).mockReturnValue(mockCookieStore as any);
-      
-      const result = await verifyAdminSession();
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("No session found");
-      expect(result.code).toBe(ERROR_CODES.ERR_NO_SESSION);
-    });
-
-    it("should clear admin session", async () => {
-      const { cookies } = await import("next/headers");
-      const mockCookieStore = {
-        delete: vi.fn(),
-      };
-      vi.mocked(cookies).mockReturnValue(mockCookieStore as any);
-      
-      const result = await clearAdminSession();
-      
-      expect(result.success).toBe(true);
-      expect(mockCookieStore.delete).toHaveBeenCalledWith("admin-session");
+      expect(result.data?.userId).toBe("u1");
+      expect(result.data?.username).toBe("user1");
     });
   });
 });

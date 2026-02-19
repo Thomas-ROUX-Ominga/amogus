@@ -3,15 +3,41 @@
 import { redis, GAME_TTL_SECONDS } from "./client";
 import { GameState, ActionResponse, PlayerRole } from "@/types/game";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
+import { getBatch } from "./batch-actions";
+import { getTotalQuestsCount } from "@/lib/constants/quest-pool";
 
-export async function createGame(): Promise<ActionResponse<string>> {
+import { verifySession } from "./auth-utils";
+
+export async function createGame(batchId?: string): Promise<ActionResponse<string>> {
     try {
+        // Verify organizer session
+        const session = await verifySession();
+        if (!session.success) {
+            return {
+                success: false,
+                error: "Unauthorized access: Organizer credentials required.",
+                code: ERROR_CODES.ERR_UNAUTHORIZED,
+            };
+        }
+
         const gameId = globalThis.crypto.randomUUID();
+        
+        // Fetch batch to get total quests count if batchId is provided
+        let questsTotal = getTotalQuestsCount(); // Default total from pool
+        if (batchId) {
+            const batchResponse = await getBatch(batchId);
+            if (batchResponse.success && batchResponse.data) {
+                questsTotal = batchResponse.data.quests.length;
+            }
+        }
+
         const initialState: GameState = {
             id: gameId,
             status: "LOBBY",
             players: [],
             createdAt: Date.now(),
+            batchId,
+            questsTotal,
         };
 
         // Store game state in Redis with 24h TTL

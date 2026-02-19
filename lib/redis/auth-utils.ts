@@ -7,11 +7,17 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || "fallback-secret-change-in-production"
 );
 
-const COOKIE_NAME = "admin-session";
+const COOKIE_NAME = "organizer-session"; // Renamed from admin-session for clarity
 
-export async function createAdminSession(): Promise<ActionResponse<void>> {
+export interface SessionPayload {
+  userId: string;
+  username: string;
+  role: string;
+}
+
+export async function createSession(userId: string, username: string): Promise<ActionResponse<void>> {
   try {
-    const token = await new SignJWT({ role: "admin" })
+    const token = await new SignJWT({ userId, username, role: "organizer" })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
       .setExpirationTime("24h")
@@ -30,7 +36,7 @@ export async function createAdminSession(): Promise<ActionResponse<void>> {
       success: true,
     };
   } catch (error) {
-    console.error("Error creating admin session:", error);
+    console.error("Error creating session:", error);
     return {
       success: false,
       error: "Failed to create session",
@@ -39,18 +45,12 @@ export async function createAdminSession(): Promise<ActionResponse<void>> {
   }
 }
 
-export async function verifyAdminSession(): Promise<ActionResponse<{ role: string }>> {
+export async function verifySession(): Promise<ActionResponse<SessionPayload>> {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get(COOKIE_NAME)?.value;
+    const token = cookieStore.get(COOKIE_NAME)?.value || cookieStore.get("admin-session")?.value;
 
-    // Check for E2E test bypass
-    if (process.env.PLAYWRIGHT === "true") {
-      return {
-        success: true,
-        data: { role: "admin" },
-      };
-    }
+    // Removed insecure test bypass
 
     if (!token) {
       return {
@@ -62,20 +62,16 @@ export async function verifyAdminSession(): Promise<ActionResponse<{ role: strin
 
     const { payload } = await jwtVerify(token, JWT_SECRET);
     
-    if (payload.role !== "admin") {
-      return {
-        success: false,
-        error: "Invalid session",
-        code: ERROR_CODES.ERR_INVALID_SESSION,
-      };
-    }
-
     return {
       success: true,
-      data: { role: payload.role as string },
+      data: {
+        userId: (payload.userId as string) || "legacy-admin",
+        username: (payload.username as string) || "admin",
+        role: (payload.role as string) || "organizer",
+      },
     };
   } catch (error) {
-    console.error("Error verifying admin session:", error);
+    console.error("Error verifying session:", error);
     return {
       success: false,
       error: "Invalid session",
@@ -84,16 +80,17 @@ export async function verifyAdminSession(): Promise<ActionResponse<{ role: strin
   }
 }
 
-export async function clearAdminSession(): Promise<ActionResponse<void>> {
+export async function clearSession(): Promise<ActionResponse<void>> {
   try {
     const cookieStore = await cookies();
     cookieStore.delete(COOKIE_NAME);
+    cookieStore.delete("admin-session");
 
     return {
       success: true,
     };
   } catch (error) {
-    console.error("Error clearing admin session:", error);
+    console.error("Error clearing session:", error);
     return {
       success: false,
       error: "Failed to clear session",
@@ -101,3 +98,12 @@ export async function clearAdminSession(): Promise<ActionResponse<void>> {
     };
   }
 }
+
+// Backward compatibility aliases
+export async function createAdminSession() { return createSession("legacy-admin", "admin"); }
+export async function verifyAdminSession() { 
+  const res = await verifySession();
+  if (res.success) return { success: true, data: { role: "admin" } };
+  return res;
+}
+export async function clearAdminSession() { return clearSession(); }

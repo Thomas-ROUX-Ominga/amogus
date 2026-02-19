@@ -1,28 +1,34 @@
 "use server";
 
 import { ActionResponse } from "@/types/game";
-import { verifyAdminCredentials as verifyAdminCredentialsDB } from "./admin-db-actions";
-import { createAdminSession, clearAdminSession as clearSessionUtils } from "./auth-utils";
+import { 
+  verifyUserCredentials, 
+  registerUser as registerUserDB 
+} from "./admin-db-actions";
+import { 
+  createSession, 
+  clearSession as clearSessionUtils 
+} from "./auth-utils";
 
-export async function clearAdminSession() {
+export async function clearSession() {
   return await clearSessionUtils();
 }
 
-export async function verifyAdminCredentials(
-  username: string,
-  password: string
-): Promise<ActionResponse<{ success: boolean }>> {
-  return await verifyAdminCredentialsDB(username, password);
+/**
+ * @deprecated Use clearSession
+ */
+export async function clearAdminSession() {
+  return await clearSession();
 }
 
-export async function adminLogin(
+export async function login(
   username: string,
   password: string
 ): Promise<ActionResponse<void>> {
   // First verify credentials
-  const verificationResult = await verifyAdminCredentials(username, password);
+  const verificationResult = await verifyUserCredentials(username, password);
   
-  if (!verificationResult.success) {
+  if (!verificationResult.success || !verificationResult.data) {
     return {
       success: false,
       error: verificationResult.error,
@@ -30,6 +36,23 @@ export async function adminLogin(
     };
   }
 
-  // Then create session
-  return await createAdminSession();
+  // Then create session with userId and username
+  return await createSession(
+    verificationResult.data.userId, 
+    verificationResult.data.username
+  );
+}
+
+/**
+ * @deprecated Use login
+ */
+export async function adminLogin(u: string, p: string) {
+  return await login(u, p);
+}
+
+export async function register(
+  username: string,
+  password: string
+): Promise<ActionResponse<void>> {
+  return await registerUserDB(username, password);
 }
