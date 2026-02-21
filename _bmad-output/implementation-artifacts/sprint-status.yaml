@@ -78,7 +78,7 @@ development_status:
 
   epic-7: in-progress
   7-1-setup-from-batch-short-codes: done
-  7-2-real-time-lobby-sync: backlog
+  7-2-real-time-lobby-sync: done
   epic-7-retrospective: optional
 
   epic-8: backlog

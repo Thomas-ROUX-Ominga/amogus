@@ -3,14 +3,14 @@
 import { useEffect, useCallback, useState } from "react";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { useParams } from "next/navigation";
-import { useGameStore } from "@/lib/store/game-store";
+import { useGameStore, useRealTimeGamePolling } from "@/lib/store/game-store";
 import { useLocalUser } from "@/hooks/use-local-user";
 import { JoinForm } from "@/components/game/join-form";
 import { ErrorView } from "@/components/game/error-view";
 import { RoleSelection } from "@/components/game/role-selection";
 import { RoleTransition } from "@/components/effects/role-transition";
 import { GameHome } from "@/components/game/game-home";
-import { Rocket, Loader2 } from "lucide-react";
+import { Rocket, Loader2, Wifi, WifiOff } from "lucide-react";
 
 export default function LobbyPage() {
     const { id } = useParams();
@@ -19,11 +19,50 @@ export default function LobbyPage() {
     const [showTransition, setShowTransition] = useState(false);
     const [showGameHome, setShowGameHome] = useState(false);
 
+    // Real-time polling for lobby updates
+    const { 
+        gameState: realTimeGameState, 
+        isConnected, 
+        isGameInProgress: realTimeGameInProgress,
+        playerCount: realTimePlayerCount,
+        newPlayers
+    } = useRealTimeGamePolling(id as string || '', userId ?? undefined, true);
+
+    // Use real-time data when available, fallback to store data
+    const currentGameState = realTimeGameState || gameState;
+    const currentPlayerCount = realTimePlayerCount || currentGameState?.players.length || 0;
+    const currentGameInProgress = realTimeGameInProgress || currentGameState?.status === 'IN_PROGRESS';
+
     useEffect(() => {
         if (id) {
             fetchGame(id as string, userId ?? undefined);
         }
     }, [id, userId, fetchGame]);
+
+    // Game start detection - redirect when game starts
+    useEffect(() => {
+        if (currentGameInProgress && currentGameState && !showTransition && !showGameHome) {
+            const currentPlayer = currentGameState.players.find((p) => p.id === userId);
+            
+            // Haptic feedback for game start
+            try {
+                if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+                    navigator.vibrate([100, 50, 100]);
+                }
+            } catch {
+                // Ignore haptic failures
+            }
+            
+            // If player has no role, they need to select one first
+            if (!currentPlayer?.role) {
+                // Role selection will be handled by existing logic below
+                return;
+            }
+            
+            // Player has role, show game home (using setTimeout to avoid setState in effect)
+            setTimeout(() => setShowGameHome(true), 0);
+        }
+    }, [currentGameInProgress, currentGameState, userId, showTransition, showGameHome]);
 
     const handleLaunch = useCallback(async () => {
         if (!id || isLaunching) return;
@@ -40,12 +79,11 @@ export default function LobbyPage() {
     }, [id, isLaunching, launch]);
 
     // Check if the current user is already in the player list
-    const isJoined = gameState?.players.some((p) => p.id === userId);
-    const canLaunch = gameState && gameState.players.length >= 1 && gameState.status === "LOBBY";
-    const isGameInProgress = gameState?.status === "IN_PROGRESS";
+    const isJoined = currentGameState?.players.some((p) => p.id === userId);
+    const canLaunch = currentGameState && currentPlayerCount >= 1 && currentGameState.status === "LOBBY";
     
     // Get current player's role
-    const currentPlayer = gameState?.players.find((p) => p.id === userId);
+    const currentPlayer = currentGameState?.players.find((p) => p.id === userId);
     const hasRole = currentPlayer?.role !== undefined;
 
     const handleRoleSelected = useCallback(() => {
@@ -59,7 +97,7 @@ export default function LobbyPage() {
 
     // Derive whether to show game home: either after transition completes,
     // or directly if player already has a role (idempotency / page reload)
-    const shouldShowGameHome = isGameInProgress && hasRole && (showGameHome || !showTransition);
+    const shouldShowGameHome = currentGameInProgress && hasRole && (showGameHome || !showTransition);
 
     if (isLoading || !userId) {
         return (
@@ -95,11 +133,11 @@ export default function LobbyPage() {
 
     // Show game home after role selection
     if (shouldShowGameHome && currentPlayer) {
-        return <GameHome gameState={gameState!} currentPlayer={currentPlayer} userId={userId} />;
+        return <GameHome gameState={currentGameState!} currentPlayer={currentPlayer} userId={userId} />;
     }
 
     // Show role selection when game is IN_PROGRESS and no role selected yet
-    if (isGameInProgress && !hasRole) {
+    if (currentGameInProgress && !hasRole) {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <div className="max-w-2xl w-full border-2 border-primary/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgba(var(--primary),0.05)]">
@@ -127,11 +165,27 @@ export default function LobbyPage() {
                     <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
                         {isJoined ? "Cockpit Terminal" : "Inbound Entry"}
                     </h1>
-                    <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full animate-pulse ${isJoined ? 'bg-primary' : 'bg-yellow-500'}`} />
-                        <span className="text-[10px] text-primary/80 tracking-widest">
-                            {isJoined ? "SESSION_ACTIVE" : "PENDING_AUTH"}
-                        </span>
+                    <div className="flex items-center gap-4">
+                        {/* Connection Status Indicator */}
+                        <div className="flex items-center gap-1">
+                            {isConnected ? (
+                                <Wifi className="w-3 h-3 text-green-400" />
+                            ) : (
+                                <WifiOff className="w-3 h-3 text-red-400" />
+                            )}
+                            <span className={`text-[8px] tracking-widest ${
+                                isConnected ? 'text-green-400/80' : 'text-red-400/80'
+                            }`}>
+                                {isConnected ? 'SYNC' : 'OFFLINE'}
+                            </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full animate-pulse ${isJoined ? 'bg-primary' : 'bg-yellow-500'}`} />
+                            <span className="text-[10px] text-primary/80 tracking-widest">
+                                {isJoined ? "SESSION_ACTIVE" : "PENDING_AUTH"}
+                            </span>
+                        </div>
                     </div>
                 </div>
 
@@ -145,29 +199,43 @@ export default function LobbyPage() {
                                     Game Identifier
                                 </label>
                                 <div className="text-xl md:text-2xl font-black tracking-tight text-foreground break-all">
-                                    {gameState?.id}
+                                    {currentGameState?.id}
                                 </div>
                             </div>
 
                             <div className="space-y-4">
                                 <label className="text-[8px] text-primary/50 uppercase block tracking-widest">
-                                    Manifest: Crew Members ({gameState?.players.length})
+                                    Manifest: Crew Members ({currentPlayerCount})
                                 </label>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                    {gameState?.players.map((player) => (
-                                        <div
-                                            key={player.id}
-                                            className={`p-3 border text-xs tracking-widest uppercase flex items-center justify-between ${player.id === userId
-                                                ? 'border-primary bg-primary/10 text-primary font-bold'
-                                                : 'border-white/10 bg-white/5 text-muted-foreground'
+                                    {currentGameState?.players.map((player, index) => {
+                                        const isNewPlayer = newPlayers?.some(np => np.id === player.id);
+                                        return (
+                                            <div
+                                                key={player.id}
+                                                className={`p-3 border text-xs tracking-widest uppercase flex items-center justify-between animate-in fade-in zoom-in-95 duration-300 ${
+                                                    player.id === userId
+                                                        ? 'border-primary bg-primary/10 text-primary font-bold'
+                                                        : isNewPlayer
+                                                        ? 'border-green-500/50 bg-green-500/10 text-green-400 animate-pulse'
+                                                        : 'border-white/10 bg-white/5 text-muted-foreground'
                                                 }`}
-                                        >
-                                            <span>{player.name}</span>
-                                            {player.id === userId && (
-                                                <span className="text-[8px] opacity-50 px-2 py-0.5 border border-primary/50">YOU</span>
-                                            )}
-                                        </div>
-                                    ))}
+                                                style={{ animationDelay: `${index * 100}ms` }}
+                                            >
+                                                <span className="flex items-center gap-2">
+                                                    {player.name}
+                                                    {isNewPlayer && (
+                                                        <span className="text-[8px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded border border-green-500/30">
+                                                            NEW
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                {player.id === userId && (
+                                                    <span className="text-[8px] opacity-50 px-2 py-0.5 border border-primary/50">YOU</span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
@@ -205,7 +273,7 @@ export default function LobbyPage() {
                                 </div>
                             )}
 
-                            {!launchError && !canLaunch && gameState?.players.length === 0 && (
+                            {!launchError && !canLaunch && currentPlayerCount === 0 && (
                                 <div className="p-4 border-l-4 border-yellow-500/30 bg-yellow-500/5 text-xs text-yellow-500/80 italic tracking-wide">
                                     Awaiting crew members before launch authorization...
                                 </div>

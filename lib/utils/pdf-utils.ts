@@ -16,7 +16,7 @@ export async function generateQuestPDF(quests: Quest[]): Promise<Blob> {
   });
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
+  // const pageHeight = doc.internal.pageSize.getHeight();
   const questsPerPage = 6;
   
   for (let i = 0; i < quests.length; i++) {

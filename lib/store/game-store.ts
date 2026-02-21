@@ -1,8 +1,10 @@
 import { create } from "zustand";
+import React from "react";
 import { GameState, PlayerRole } from "@/types/game";
 import { Quest } from "@/types/quest";
 import { getGame, joinGame, startGame, selectRole, completeQuest, refreshGame } from "@/lib/redis/actions";
 import { getQuestGamesByDuration } from "@/lib/constants/quest-pool";
+import useSWR from "swr";
 
 function getTotalQuests(): number {
     return getQuestGamesByDuration("short").length + getQuestGamesByDuration("medium").length + getQuestGamesByDuration("long").length;
@@ -38,6 +40,71 @@ interface GameStore {
     clearQuest: () => void;
     setQuestAnswered: (answered: boolean) => void;
     reset: () => void;
+}
+
+// Real-time polling hook for lobby updates
+export function useRealTimeGamePolling(gameId: string, userId?: string, enabled = true) {
+    const { refreshGameData } = useGameStore();
+    const previousPlayerIds = React.useRef<Set<string>>(new Set());
+    
+    const fetcher = async () => {
+        if (!gameId) return null;
+        
+        await refreshGameData(gameId, userId);
+        const currentState = useGameStore.getState().gameState;
+        
+        if (!currentState) return null;
+        
+        // Detect new players by comparing with previous state
+        const currentPlayerIds = new Set(currentState.players.map(p => p.id));
+        const newPlayerIds = Array.from(currentPlayerIds).filter(id => !previousPlayerIds.current.has(id));
+        const newPlayers = currentState.players.filter(p => newPlayerIds.includes(p.id));
+        
+        // Update previous player IDs for next comparison
+        previousPlayerIds.current = currentPlayerIds;
+        
+        return {
+            ...currentState,
+            newPlayers,
+            playerCount: currentState.players.length,
+            isGameInProgress: currentState.status === 'IN_PROGRESS'
+        };
+    };
+
+    const {
+        data,
+        error,
+        isLoading,
+        mutate
+    } = useSWR(
+        enabled && gameId ? `game:${gameId}:poll` : null,
+        fetcher,
+        {
+            refreshInterval: 2000, // 2-second polling
+            revalidateOnFocus: true,
+            revalidateOnReconnect: true,
+            errorRetryCount: 3,
+            errorRetryInterval: 1000,
+        }
+    );
+
+    // Cleanup previous player IDs when hook unmounts or gameId changes
+    React.useEffect(() => {
+        if (!enabled || !gameId) {
+            previousPlayerIds.current.clear();
+        }
+    }, [gameId, enabled]);
+
+    return {
+        gameState: data,
+        error,
+        isLoading,
+        mutate,
+        isConnected: !error && !isLoading,
+        playerCount: data?.players.length ?? 0,
+        isGameInProgress: data?.status === 'IN_PROGRESS',
+        newPlayers: data?.newPlayers ?? []
+    };
 }
 
 export const useGameStore = create<GameStore>((set) => ({
