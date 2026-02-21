@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import QuestPage from "@/app/game/[id]/quest/page";
 import { useGameStore } from "@/lib/store/game-store";
 
@@ -132,7 +132,7 @@ describe("QuestPage", () => {
         expect(screen.getByText("RÔLE NON ASSIGNÉ")).toBeTruthy();
     });
 
-    it("should render quest view when quest is loaded", () => {
+    it("should render quest view when quest is loaded", async () => {
         vi.mocked(useGameStore).mockReturnValue({
             ...baseStoreState,
             gameState: {
@@ -145,13 +145,21 @@ describe("QuestPage", () => {
                 id: "s1",
                 type: "true-false",
                 duration: "short",
-                title: "Test Quest",
-                instruction: "Test instruction",
+                location: "Module de survie",
             },
         });
         render(<QuestPage />);
-        expect(screen.getByText("Test Quest")).toBeTruthy();
-        expect(screen.getByText("Test instruction")).toBeTruthy();
+        
+        // Wait for the quest content to load (async operation)
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 0));
+        });
+        
+        // Check for any quest content (title and instruction from QuestGame)
+        expect(screen.getByRole("heading", { level: 2 })).toBeTruthy();
+        expect(screen.getByText(/Vrai ou Faux \?$/)).toBeTruthy();
+        expect(screen.getByLabelText("Répondre VRAI")).toBeTruthy();
+        expect(screen.getByLabelText("Répondre FAUX")).toBeTruthy();
     });
 
     it("should call fetchGame on mount", () => {

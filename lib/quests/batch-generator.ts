@@ -3,39 +3,9 @@ import { Batch, BatchCreateInput, Quest, QuestDuration, QuestType } from '@/type
 // Extension registry - available quest types in the system
 const AVAILABLE_QUEST_TYPES: QuestType[] = ['true-false', 'qcm', 'form', 'single-input'];
 
-// Sample quest templates for generation
-const QUEST_TEMPLATES = {
-  'true-false': [
-    { title: 'System Check', instruction: 'Verify system integrity' },
-    { title: 'Security Scan', instruction: 'Scan for security threats' },
-    { title: 'Data Validation', instruction: 'Validate data integrity' },
-  ],
-  'qcm': [
-    { title: 'Protocol Selection', instruction: 'Choose the correct protocol' },
-    { title: 'Route Planning', instruction: 'Select the optimal route' },
-    { title: 'Resource Allocation', instruction: 'Distribute resources efficiently' },
-  ],
-  'form': [
-    { title: 'Status Report', instruction: 'Report current status' },
-    { title: 'Mission Log', instruction: 'Log mission details' },
-    { title: 'Equipment Check', instruction: 'Verify equipment status' },
-  ],
-  'single-input': [
-    { title: 'Code Entry', instruction: 'Enter access code' },
-    { title: 'Coordinate Input', instruction: 'Input target coordinates' },
-    { title: 'Frequency Tuning', instruction: 'Set communication frequency' },
-  ],
-};
-
 function getRandomQuestType(): QuestType {
   const randomIndex = Math.floor(Math.random() * AVAILABLE_QUEST_TYPES.length);
   return AVAILABLE_QUEST_TYPES[randomIndex];
-}
-
-function getQuestTemplate(type: QuestType) {
-  const templates = QUEST_TEMPLATES[type];
-  const randomIndex = Math.floor(Math.random() * templates.length);
-  return templates[randomIndex];
 }
 
 function distributeQuests(totalCount: number): { short: number; medium: number; long: number } {
@@ -51,14 +21,11 @@ function distributeQuests(totalCount: number): { short: number; medium: number; 
 
 function createQuest(duration: QuestDuration): Quest {
   const type = getRandomQuestType();
-  const template = getQuestTemplate(type);
   
   return {
     id: globalThis.crypto.randomUUID(),
     type,
     duration,
-    title: template.title,
-    instruction: template.instruction,
   };
 }
 

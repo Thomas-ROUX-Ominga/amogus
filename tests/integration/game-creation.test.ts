@@ -26,7 +26,7 @@ vi.mock('@/lib/utils/short-code.server', () => ({
 }));
 
 vi.mock('@/lib/constants/quest-pool', () => ({
-  getTotalQuestsCount: vi.fn().mockReturnValue(30),
+  getTotalQuestGamesCount: vi.fn().mockReturnValue(30),
 }));
 
 describe('Game Creation Integration', () => {
@@ -46,8 +46,7 @@ describe('Game Creation Integration', () => {
             id: `quest-${i}`,
             type: 'true-false' as const,
             duration: 'short' as const,
-            title: `Quest ${i}`,
-            instruction: `Instruction for quest ${i}`,
+            location: `Zone ${i}`,
           })),
           createdAt: new Date().toISOString(),
         },
@@ -88,8 +87,7 @@ describe('Game Creation Integration', () => {
             id: `quest-${i}`,
             type: 'true-false' as const,
             duration: 'short' as const,
-            title: `Quest ${i}`,
-            instruction: `Instruction for quest ${i}`,
+            location: `Zone ${i}`,
           })),
           createdAt: new Date().toISOString(),
         },
@@ -129,8 +127,7 @@ describe('Game Creation Integration', () => {
             id: `quest-${i}`,
             type: 'true-false' as const,
             duration: 'short' as const,
-            title: `Quest ${i}`,
-            instruction: `Instruction for quest ${i}`,
+            location: `Zone ${i}`,
           })),
           createdAt: new Date().toISOString(),
         },

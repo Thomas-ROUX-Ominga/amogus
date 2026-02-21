@@ -2,11 +2,11 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { Check, X } from "lucide-react";
-import { Quest } from "@/types/quest";
+import { QuestGame } from "@/types/quest";
 import { useQuestAnswer } from "@/hooks/use-quest-answer";
 
 interface QuestTrueFalseProps {
-    quest: Quest;
+    quest: QuestGame;
     onSuccess: () => void;
     onError: () => void;
 }

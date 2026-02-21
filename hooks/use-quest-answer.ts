@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Quest } from "@/types/quest";
+import { QuestGame } from "@/types/quest";
 
 interface UseQuestAnswerReturn {
     selectedValue: string | null;
@@ -13,7 +13,7 @@ interface UseQuestAnswerReturn {
 }
 
 export function useQuestAnswer(
-    quest: Quest,
+    quest: QuestGame,
     onSuccess: () => void,
     onError: () => void
 ): UseQuestAnswerReturn {

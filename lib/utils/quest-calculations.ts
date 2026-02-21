@@ -1,13 +1,13 @@
-import { getQuestsByDuration } from "@/lib/constants/quest-pool";
+import { getQuestGamesByDuration } from "@/lib/constants/quest-pool";
 
 /**
  * Calculate the total number of quests available in the game
  * This is a shared utility to avoid duplication across components
  */
 export function getTotalQuests(): number {
-    return getQuestsByDuration("short").length + 
-           getQuestsByDuration("medium").length + 
-           getQuestsByDuration("long").length;
+    return getQuestGamesByDuration("short").length + 
+           getQuestGamesByDuration("medium").length + 
+           getQuestGamesByDuration("long").length;
 }
 
 /**

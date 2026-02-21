@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { X, Clock, Check, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Quest, QuestDuration } from "@/types/quest";
+import { Quest, QuestDuration, QuestGame } from "@/types/quest";
 import { useGameStore } from "@/lib/store/game-store";
+import { getRandomQuestGame } from "@/lib/constants/quest-pool";
 import { QuestRenderer } from "@/components/game/quest-renderer";
 import { SuccessOverlay } from "@/components/game/success-overlay";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
@@ -40,6 +41,39 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
     const isImpostor = currentPlayer?.role === "IMPOSTOR";
     const completionTriggered = useRef(false);
     const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
+    
+    // Fetch QuestGame based on Quest metadata
+    const [questGame, setQuestGame] = useState<QuestGame | null>(null);
+    const [isLoadingGame, setIsLoadingGame] = useState(true);
+    
+    useEffect(() => {
+        const loadQuestGame = () => {
+            if (quest.id === "impostor-sim") {
+                // Impostor simulated quest - create a fake QuestGame
+                const impostorGame = {
+                    id: quest.id,
+                    type: quest.type,
+                    duration: quest.duration,
+                    title: "SIGNAL OVERRIDE",
+                    instruction: "PROTOCOL DE CAMOUFLAGE ACTIF",
+                    options: [
+                        { label: "VRAI", value: "true" },
+                        { label: "FAUX", value: "false" }
+                    ],
+                    answer: "true"
+                };
+                setQuestGame(impostorGame);
+                setIsLoadingGame(false);
+            } else {
+                // Regular quest - fetch QuestGame
+                const game = getRandomQuestGame(quest.type, quest.duration);
+                setQuestGame(game);
+                setIsLoadingGame(false);
+            }
+        };
+
+        loadQuestGame();
+    }, [quest]);
 
     const triggerSuccessFlow = useCallback(() => {
         setShowSuccessOverlay(true);
@@ -159,23 +193,51 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
             <div className="flex-1 space-y-6">
                 {!isImpostor && (
                     <>
-                        <div className="p-6 border border-primary/20 bg-black/50 backdrop-blur-sm relative overflow-hidden">
-                            <h2 className="text-xl font-bold font-orbitron text-primary mb-4 tracking-wide">
-                                {quest.title}
-                            </h2>
-                            <div className="w-full h-px bg-primary/20 mb-4" />
-                            <p className="text-base text-foreground/90 font-rajdhani leading-relaxed">
-                                {quest.instruction}
-                            </p>
-                        </div>
+                        {isLoadingGame ? (
+                            <div className="p-6 border border-primary/20 bg-black/50 backdrop-blur-sm relative overflow-hidden">
+                                <div className="text-center space-y-4">
+                                    <div className="animate-pulse">
+                                        <div className="h-6 bg-primary/20 rounded mb-4"></div>
+                                        <div className="h-4 bg-primary/10 rounded mb-2"></div>
+                                        <div className="h-4 bg-primary/10 rounded w-3/4 mx-auto"></div>
+                                    </div>
+                                    <p className="text-sm text-primary/60 font-rajdhani">Chargement de la quête...</p>
+                                </div>
+                            </div>
+                        ) : !questGame ? (
+                            <div className="p-6 border border-destructive/30 bg-destructive/5 backdrop-blur-sm text-center space-y-4">
+                                <AlertTriangle className="w-8 h-8 text-destructive mx-auto" />
+                                <p className="text-sm text-destructive/80 font-rajdhani">
+                                    Données de quête invalides. Options ou réponse manquantes.
+                                </p>
+                                <a 
+                                    href={`/game/${gameId}`}
+                                    className="inline-block min-h-[44px] leading-[44px] px-6 border border-primary/30 text-primary/70 font-rajdhani text-sm uppercase tracking-widest hover:bg-primary/10 transition-colors touch-manipulation"
+                                >
+                                    Retour au Game Home
+                                </a>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="p-6 border border-primary/20 bg-black/50 backdrop-blur-sm relative overflow-hidden">
+                                    <h2 className="text-xl font-bold font-orbitron text-primary mb-4 tracking-wide">
+                                        {questGame.title}
+                                    </h2>
+                                    <div className="w-full h-px bg-primary/20 mb-4" />
+                                    <p className="text-base text-foreground/90 font-rajdhani leading-relaxed">
+                                        {questGame.instruction}
+                                    </p>
+                                </div>
 
-                        {/* Interactive Quest Area */}
-                        <QuestRenderer
-                            quest={quest}
-                            gameId={gameId}
-                            onSuccess={handleSuccess}
-                            onError={handleError}
-                        />
+                                {/* Interactive Quest Area */}
+                                <QuestRenderer
+                                    quest={questGame}
+                                    gameId={gameId}
+                                    onSuccess={handleSuccess}
+                                    onError={handleError}
+                                />
+                            </>
+                        )}
                     </>
                 )}
             </div>

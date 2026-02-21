@@ -1,0 +1,42 @@
+[
+  {
+    "id": "l1",
+    "type": "qcm",
+    "duration": "long",
+    "title": "Enquête de Sabotage",
+    "instruction": "Trois systèmes ont été sabotés simultanément. Analysez les indices et identifiez le secteur compromis.",
+    "options": [
+      {"label": "Secteur médical", "value": "a"},
+      {"label": "Salle des machines", "value": "b"},
+      {"label": "Pont de commandement", "value": "c"},
+      {"label": "Soute cargo", "value": "d"}
+    ],
+    "answer": "b"
+  },
+  {
+    "id": "l2",
+    "type": "true-false",
+    "duration": "long",
+    "title": "Protocole d'Urgence",
+    "instruction": "Le protocole d'urgence Omega-9 nécessite l'approbation de 3 membres d'équipage minimum pour être activé. Vrai ou Faux ?",
+    "options": [
+      {"label": "VRAI", "value": "true"},
+      {"label": "FAUX", "value": "false"}
+    ],
+    "answer": "true"
+  },
+  {
+    "id": "l3",
+    "type": "qcm",
+    "duration": "long",
+    "title": "Réparation Critique",
+    "instruction": "Le bouclier thermique est endommagé à 67%. Quelle séquence de réparation est correcte ?",
+    "options": [
+      {"label": "Isoler → Souder → Tester", "value": "a"},
+      {"label": "Tester → Isoler → Souder", "value": "b"},
+      {"label": "Souder → Tester → Isoler", "value": "c"},
+      {"label": "Isoler → Tester → Souder", "value": "d"}
+    ],
+    "answer": "a"
+  }
+]

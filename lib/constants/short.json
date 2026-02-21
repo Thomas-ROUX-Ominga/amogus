@@ -1,0 +1,40 @@
+[
+  {
+    "id": "s1",
+    "type": "true-false",
+    "duration": "short",
+    "title": "Vérification de Protocole",
+    "instruction": "Le vaisseau spatial possède exactement 12 modules de survie. Vrai ou Faux ?",
+    "options": [
+      {"label": "VRAI", "value": "true"},
+      {"label": "FAUX", "value": "false"}
+    ],
+    "answer": "true"
+  },
+  {
+    "id": "s2",
+    "type": "qcm",
+    "duration": "short",
+    "title": "Code d'Accès",
+    "instruction": "Quel est le code d'accès au terminal principal ?",
+    "options": [
+      {"label": "4815", "value": "a"},
+      {"label": "1623", "value": "b"},
+      {"label": "4242", "value": "c"},
+      {"label": "0007", "value": "d"}
+    ],
+    "answer": "c"
+  },
+  {
+    "id": "s3",
+    "type": "true-false",
+    "duration": "short",
+    "title": "Alerte Oxygène",
+    "instruction": "Le niveau d'oxygène du secteur B est critique. Vrai ou Faux ?",
+    "options": [
+      {"label": "VRAI", "value": "true"},
+      {"label": "FAUX", "value": "false"}
+    ],
+    "answer": "true"
+  }
+]

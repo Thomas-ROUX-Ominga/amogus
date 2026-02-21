@@ -1,13 +1,22 @@
-export type QuestType = "true-false" | "qcm" | "form" | "single-input";
+export type QuestType = "true-false" | "qcm" | "form" | "single-input" | "number-input";
 
 export type QuestDuration = "short" | "medium" | "long";
 
+// Quest metadata assigned to players
+export interface Quest {
+    id: string;
+    type: QuestType;
+    duration: QuestDuration;
+    location?: string;
+}
+
+// QuestGame - actual game content with questions and answers
 export interface QuestOption {
     label: string;
     value: string;
 }
 
-export interface Quest {
+export interface QuestGame {
     id: string;
     type: QuestType;
     duration: QuestDuration;
@@ -15,7 +24,7 @@ export interface Quest {
     instruction: string;
     options?: QuestOption[];
     answer?: string;
-    location?: string;
+    // Add other fields as needed for different game types
 }
 
 export interface QuestPool {

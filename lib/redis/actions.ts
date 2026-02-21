@@ -4,7 +4,7 @@ import { redis, GAME_TTL_SECONDS } from "./client";
 import { GameState, ActionResponse, PlayerRole } from "@/types/game";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { getBatch } from "./batch-actions";
-import { getTotalQuestsCount } from "@/lib/constants/quest-pool";
+import { getTotalQuestGamesCount } from "@/lib/constants/quest-pool";
 import { generateShortCode } from "@/lib/utils/short-code.server";
 
 import { verifySession } from "./auth-utils";
@@ -55,7 +55,7 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
         }
         
         // Fetch batch if batchId is provided
-        let questsTotal = getTotalQuestsCount(); // Default total from pool
+        let questsTotal = getTotalQuestGamesCount(); // Default total from pool
         if (batchId) {
             const batchResponse = await getBatch(batchId);
             if (!batchResponse.success || !batchResponse.data) {

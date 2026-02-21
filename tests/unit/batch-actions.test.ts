@@ -174,8 +174,8 @@ describe('Batch Actions', () => {
         id: 'batch-123',
         questCount: 2,
         quests: [
-          { id: 'quest-1', type: 'qcm', duration: 'short', title: 'Q1', instruction: 'Test' },
-          { id: 'quest-2', type: 'qcm', duration: 'medium', title: 'Q2', instruction: 'Test' },
+          { id: 'quest-1', type: 'qcm', duration: 'short', location: 'Zone A' },
+          { id: 'quest-2', type: 'qcm', duration: 'medium', location: 'Zone B' },
         ],
         createdAt: '2026-02-15T10:00:00.000Z',
       };
@@ -209,8 +209,8 @@ describe('Batch Actions', () => {
         id: 'batch-123',
         questCount: 2,
         quests: [
-          { id: 'quest-1', type: 'qcm', duration: 'short', title: 'Q1', instruction: 'Test', location: 'Old Location' },
-          { id: 'quest-2', type: 'qcm', duration: 'medium', title: 'Q2', instruction: 'Test' },
+          { id: 'quest-1', type: 'qcm', duration: 'short', location: 'Old Location' },
+          { id: 'quest-2', type: 'qcm', duration: 'medium', location: 'Zone B' },
         ],
         createdAt: '2026-02-15T10:00:00.000Z',
       };

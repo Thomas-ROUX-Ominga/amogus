@@ -14,6 +14,11 @@ vi.mock("@/lib/redis/client", () => ({
     },
 }));
 
+// Mock quest-pool functions
+vi.mock("@/lib/constants/quest-pool", () => ({
+    getTotalQuestGamesCount: vi.fn(() => 9), // Mock total quest count
+}));
+
 // Mock crypto with getRandomValues for generateShortCode
 vi.stubGlobal("crypto", {
     randomUUID: () => "test-uuid",

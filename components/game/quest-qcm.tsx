@@ -1,11 +1,11 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Quest } from "@/types/quest";
+import { QuestGame } from "@/types/quest";
 import { useQuestAnswer } from "@/hooks/use-quest-answer";
 
 interface QuestQCMProps {
-    quest: Quest;
+    quest: QuestGame;
     onSuccess: () => void;
     onError: () => void;
 }

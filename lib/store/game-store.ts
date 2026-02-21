@@ -2,10 +2,10 @@ import { create } from "zustand";
 import { GameState, PlayerRole } from "@/types/game";
 import { Quest } from "@/types/quest";
 import { getGame, joinGame, startGame, selectRole, completeQuest, refreshGame } from "@/lib/redis/actions";
-import { getQuestsByDuration } from "@/lib/constants/quest-pool";
+import { getQuestGamesByDuration } from "@/lib/constants/quest-pool";
 
 function getTotalQuests(): number {
-    return getQuestsByDuration("short").length + getQuestsByDuration("medium").length + getQuestsByDuration("long").length;
+    return getQuestGamesByDuration("short").length + getQuestGamesByDuration("medium").length + getQuestGamesByDuration("long").length;
 }
 
 interface GameStore {

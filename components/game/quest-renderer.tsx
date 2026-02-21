@@ -1,13 +1,13 @@
 "use client";
 
-import { Quest } from "@/types/quest";
+import { QuestGame } from "@/types/quest";
 import { QuestTrueFalse } from "@/components/game/quest-true-false";
 import { QuestQCM } from "@/components/game/quest-qcm";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 interface QuestRendererProps {
-    quest: Quest;
+    quest: QuestGame;
     gameId: string;
     onSuccess: () => void;
     onError: () => void;

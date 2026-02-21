@@ -69,16 +69,10 @@ describe('Batch Generator', () => {
         expect(quest).toHaveProperty('id');
         expect(quest).toHaveProperty('type');
         expect(quest).toHaveProperty('duration');
-        expect(quest).toHaveProperty('title');
-        expect(quest).toHaveProperty('instruction');
         
         expect(typeof quest.id).toBe('string');
-        expect(typeof quest.title).toBe('string');
-        expect(typeof quest.instruction).toBe('string');
         
         expect(quest.id.length).toBeGreaterThan(0);
-        expect(quest.title.length).toBeGreaterThan(0);
-        expect(quest.instruction.length).toBeGreaterThan(0);
       });
     });
 

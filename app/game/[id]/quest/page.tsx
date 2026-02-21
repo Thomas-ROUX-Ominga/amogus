@@ -9,8 +9,8 @@ import { useLocalUser } from "@/hooks/use-local-user";
 import { ErrorView } from "@/components/game/error-view";
 import { QuestView } from "@/components/game/quest-view";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
-import { isValidDuration, getRandomQuest, getQuestsByDuration, getQuestById } from "@/lib/constants/quest-pool";
-import { QuestDuration } from "@/types/quest";
+import { isValidDuration, getRandomQuestGame, getQuestGamesByDuration, getQuestGameById } from "@/lib/constants/quest-pool";
+import { QuestDuration, Quest } from "@/types/quest";
 
 export default function QuestPage() {
     return (
@@ -70,20 +70,27 @@ function QuestPageContent() {
         if (gameState && !currentQuest) {
             // Role check for Impostors - Story 4.1
             const currentPlayer = gameState.players.find((p) => p.id === userId);
-            if (currentPlayer?.role === "IMPOSTOR") {
+            const isImpostor = currentPlayer?.role === "IMPOSTOR";
+            if (isImpostor && isValidDuration(duration)) {
                 setCurrentQuest({
                     id: "impostor-sim",
-                    type: "true-false", // Keep type for TS compatibility but it's irrelevant for UI
+                    type: "true-false",
                     duration: (isValidDuration(duration) ? duration : "short") as QuestDuration,
-                    title: "SIGNAL OVERRIDE",
-                    instruction: "PROTOCOL DE CAMOUFLAGE ACTIF",
+                    location: "Système de camouflage",
                 });
                 return;
             }
 
             if (questId) {
-                const quest = getQuestById(questId);
-                if (quest) {
+                const questGame = getQuestGameById(questId);
+                if (questGame) {
+                    // Convert QuestGame to Quest for now (temporary fix)
+                    const quest: Quest = {
+                        id: questGame.id,
+                        type: questGame.type,
+                        duration: questGame.duration,
+                        location: "Zone de quête", // TODO: This should come from actual quest assignment
+                    };
                     setCurrentQuest(quest);
                     // Haptic feedback on successful quest load
                     try {
@@ -95,8 +102,15 @@ function QuestPageContent() {
                     }
                 }
             } else if (isValidDuration(duration)) {
-                const quest = getRandomQuest(duration);
-                if (quest) {
+                const questGame = getRandomQuestGame("true-false", duration); // TODO: This needs to be updated to get type from somewhere
+                if (questGame) {
+                    // Convert QuestGame to Quest for now (temporary fix)
+                    const quest: Quest = {
+                        id: questGame.id,
+                        type: questGame.type,
+                        duration: questGame.duration,
+                        location: "Zone de quête", // TODO: This should come from actual quest assignment
+                    };
                     setCurrentQuest(quest);
                     // Haptic feedback on successful quest load
                     try {
@@ -230,7 +244,7 @@ function QuestPageContent() {
     if (!currentQuest) {
         if (gameState && isValidDuration(duration)) {
             // Check if quest pool is empty (deterministic check, no random)
-            if (getQuestsByDuration(duration).length === 0) {
+            if (getQuestGamesByDuration(duration).length === 0) {
                 return (
                     <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                         <ErrorView
