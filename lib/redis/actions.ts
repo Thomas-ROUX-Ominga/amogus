@@ -35,7 +35,18 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
         
         // Extract batchId and validate quests per player
         const batchId = input?.batchId;
-        const questsPerPlayer = input?.questsPerPlayer || { short: 2, medium: 2, long: 2 };
+        const defaultQuestsPerPlayer = { short: 1, medium: 1, long: 1 }; // 3 quests minimum
+        const questsPerPlayer = input?.questsPerPlayer || defaultQuestsPerPlayer;
+        
+        // Validate minimum quests per player (must be at least 3 total)
+        const totalRequested = questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long;
+        if (totalRequested < 3) {
+            return {
+                success: false,
+                error: "Minimum 3 quests per player required (1 short + 1 medium + 1 long)",
+                code: ERROR_CODES.ERR_INVALID_INPUT,
+            };
+        }
         
         // Validate quests per player if batch is provided
         if (batchId) {

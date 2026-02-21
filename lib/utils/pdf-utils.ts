@@ -3,11 +3,10 @@ import QRCode from 'qrcode';
 import { Quest } from '@/types/quest';
 
 /**
- * Generate a PDF containing QR codes for each quest in a batch
- * Each page contains:
+ * Generate a PDF containing QR codes for quests (6 per page in 2x3 grid)
+ * Each page contains 6 quests with:
  * - QR code pointing to /quest/{questId}
- * - Location label (if provided)
- * - Quest format (S/M/L based on duration)
+ * - Location value
  */
 export async function generateQuestPDF(quests: Quest[]): Promise<Blob> {
   const doc = new jsPDF({
@@ -18,65 +17,49 @@ export async function generateQuestPDF(quests: Quest[]): Promise<Blob> {
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
+  const questsPerPage = 6;
   
   for (let i = 0; i < quests.length; i++) {
     const quest = quests[i];
+    const positionOnPage = i % questsPerPage;
     
-    // Add new page for each quest (except the first one)
-    if (i > 0) {
+    // Add new page when needed
+    if (i > 0 && positionOnPage === 0) {
       doc.addPage();
     }
 
     // Generate QR code as data URL
     const qrCodeUrl = `/quest/${quest.id}`;
     const qrDataUrl = await QRCode.toDataURL(qrCodeUrl, {
-      width: 400,
-      margin: 2,
+      width: 250,
+      margin: 1,
       color: {
         dark: '#000000',
         light: '#FFFFFF',
       },
     });
 
-    // Calculate centered positions
-    const qrSize = 100; // mm
-    const qrX = (pageWidth - qrSize) / 2;
-    const qrY = 40;
+    // Calculate positions for 2x3 grid
+    const qrSize = 50; // Same size as before
+    const row = Math.floor(positionOnPage / 2);
+    const col = positionOnPage % 2;
+    const columnX = col === 0 ? pageWidth / 4 : (pageWidth * 3) / 4;
+    const rowY = 40 + row * 55; // 40mm top margin, 55mm spacing between rows
+    const qrX = columnX - qrSize / 2;
+    const qrY = rowY;
 
     // Add QR code image
     doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
 
-    // Add location label if provided
+    // Add location value if provided
     if (quest.location) {
-      doc.setFontSize(16);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      const locationY = qrY + qrSize + 20;
-      doc.text(`Location: ${quest.location}`, pageWidth / 2, locationY, {
+      const locationY = qrY + qrSize + 8;
+      doc.text(quest.location, columnX, locationY, {
         align: 'center',
       });
     }
-
-    // Add quest format (S/M/L)
-    const formatMap: Record<string, string> = {
-      short: 'S',
-      medium: 'M',
-      long: 'L',
-    };
-    const format = formatMap[quest.duration] || 'M';
-    
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    const formatY = quest.location ? qrY + qrSize + 35 : qrY + qrSize + 20;
-    doc.text(`Format: ${format}`, pageWidth / 2, formatY, {
-      align: 'center',
-    });
-
-    // Add quest ID at the bottom for reference
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Quest ID: ${quest.id}`, pageWidth / 2, pageHeight - 20, {
-      align: 'center',
-    });
   }
 
   // Return as Blob for download

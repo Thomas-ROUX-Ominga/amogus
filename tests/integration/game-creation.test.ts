@@ -70,7 +70,7 @@ describe('Game Creation Integration', () => {
           id: 'AH72X9',
           batchId: 'batch-123',
           questsTotal: 12,
-          questsPerPlayer: { short: 2, medium: 2, long: 2 },
+          questsPerPlayer: { short: 1, medium: 1, long: 1 },
         }),
         86400
       );

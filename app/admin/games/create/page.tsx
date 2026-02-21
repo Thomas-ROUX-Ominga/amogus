@@ -13,10 +13,12 @@ export default function CreateGamePage() {
   const [batches, setBatches] = useState<BatchListItem[]>([]);
   const [selectedBatch, setSelectedBatch] = useState("");
   const [questsPerPlayer, setQuestsPerPlayer] = useState({
-    short: 2,
-    medium: 2,
-    long: 2,
+    short: 1,
+    medium: 1,
+    long: 1,
   });
+  const totalQuests = questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long;
+  const isValidTotal = totalQuests >= 3;
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -43,6 +45,13 @@ export default function CreateGamePage() {
     setSuccess("");
 
     try {
+      // Validate minimum quests per player
+      const totalQuests = questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long;
+      if (totalQuests < 3) {
+        setError("Minimum 3 quests per player required (1 short + 1 medium + 1 long)");
+        return;
+      }
+
       const input: CreateGameInput = {
         batchId: selectedBatch || undefined,
         questsPerPlayer,
@@ -183,6 +192,11 @@ export default function CreateGamePage() {
             
             <p className="text-[10px] text-primary/60 mt-4">
               Total per player: {questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long} quests
+              {questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long < 3 && (
+                <span className="text-destructive block mt-1">
+                  ⚠ Minimum 3 quests required
+                </span>
+              )}
             </p>
           </div>
 
@@ -202,7 +216,7 @@ export default function CreateGamePage() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isCreating}
+            disabled={isCreating || !isValidTotal}
             className="w-full bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border-2 border-primary/30 hover:border-primary font-black py-4 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={16} />
