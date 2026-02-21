@@ -22,7 +22,6 @@ export function useLocalUser() {
                 localStorage.setItem(STORAGE_KEY, id);
             }
 
-            // eslint-disable-next-line
             setUserId(id);
         } catch (error) {
             console.error("[CRITICAL] Storage access failed:", error);

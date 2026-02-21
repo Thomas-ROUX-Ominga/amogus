@@ -153,7 +153,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
         if (isImpostor && !completionTriggered.current) {
             // Story 4.2: Trigger success flow immediately for impostors
             completionTriggered.current = true;
-            triggerSuccessFlow(); // eslint-disable-line react-hooks/set-state-in-effect
+            triggerSuccessFlow();
         }
     }, [isImpostor, triggerSuccessFlow]);
 
