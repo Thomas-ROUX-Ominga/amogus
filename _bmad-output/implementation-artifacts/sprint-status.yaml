@@ -81,11 +81,11 @@ development_status:
   7-2-real-time-lobby-sync: done
   epic-7-retrospective: done
 
-  epic-8: in-progress
+  epic-8: done
   8-1-in-app-camera-scanner: done
   8-2-dynamic-content-mapper: done
   8-3-atomic-success-flow-flicker-fix: done
-  epic-8-retrospective: optional
+  epic-8-retrospective: done
 
   epic-9: backlog
   9-1-seamless-impostor-scan: backlog
