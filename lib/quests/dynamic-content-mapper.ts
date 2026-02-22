@@ -1,6 +1,6 @@
 import { Quest, QuestGame, QuestType, QuestDuration } from "@/types/quest";
 import { getQuestGamesByDuration } from "@/lib/constants/quest-pool";
-import { getQuestMetadata, getPlayerFailedQuests } from "@/lib/redis/actions";
+import { getQuestMetadata, getPlayerFailedQuests, getGame } from "@/lib/redis/actions";
 
 export interface QuestContentResult {
     content: QuestGame;
@@ -26,6 +26,18 @@ export class DynamicContentMapper {
         userId: string
     ): Promise<QuestContentResult | null> {
         try {
+            // Story 9.1: Early role check to prevent content loading for impostors
+            const gameResponse = await getGame(gameId);
+            if (gameResponse.success && gameResponse.data) {
+                const currentPlayer = gameResponse.data.players.find(p => p.id === userId);
+                const isImpostor = currentPlayer?.role === "IMPOSTOR";
+                
+                if (isImpostor) {
+                    // Don't load any content for impostors - Story 9.1
+                    return null;
+                }
+            }
+
             // Step 1: Get quest metadata (Format/Type) from Redis
             const metadataResponse = await getQuestMetadata(questId);
             if (!metadataResponse.success || !metadataResponse.data) {

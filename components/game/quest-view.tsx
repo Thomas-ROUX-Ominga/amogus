@@ -47,24 +47,16 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
     const [isLoadingGame, setIsLoadingGame] = useState(true);
     
     useEffect(() => {
+        // Story 9.1: Skip all quest content loading for impostors
+        if (isImpostor) {
+            // Don't load any content for impostors - silent success
+            setIsLoadingGame(false);
+            return;
+        }
+
         const loadQuestGame = () => {
-            if (quest.id === "impostor-sim") {
-                // Impostor simulated quest - create a fake QuestGame
-                const impostorGame = {
-                    id: quest.id,
-                    type: quest.type,
-                    duration: quest.duration,
-                    title: "SIGNAL OVERRIDE",
-                    instruction: "PROTOCOL DE CAMOUFLAGE ACTIF",
-                    options: [
-                        { label: "VRAI", value: "true" },
-                        { label: "FAUX", value: "false" }
-                    ],
-                    answer: "true"
-                };
-                setQuestGame(impostorGame);
-                setIsLoadingGame(false);
-            } else if (currentQuestContent && currentQuestContent.content.id === quest.id) {
+            // Removed impostor-sim fallback completely - Story 9.1 requirement
+            if (currentQuestContent && currentQuestContent.content.id === quest.id) {
                 // Story 8.2: Use dynamic content from store
                 setQuestGame(currentQuestContent.content);
                 setIsLoadingGame(false);
@@ -77,7 +69,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
         };
 
         loadQuestGame();
-    }, [quest, currentQuestContent]);
+    }, [quest, currentQuestContent, isImpostor]);
 
     const triggerSuccessFlow = useCallback(() => {
         setShowSuccessOverlay(true);
@@ -157,14 +149,15 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
         router.push(`/game/${gameId}`);
     }, [clearQuest, router, gameId]);
 
-    // Impostor Immediate Success Effect
+    // Impostor Immediate Success Effect - Story 9.1
     useEffect(() => {
-        if (isImpostor && !completionTriggered.current) {
+        if (isImpostor && !completionTriggered.current && !showSuccessOverlay) {
             // Story 4.2: Trigger success flow immediately for impostors
             completionTriggered.current = true;
-            triggerSuccessFlow();
+            // Use setTimeout to ensure component mount before showing overlay
+            setTimeout(() => triggerSuccessFlow(), 0);
         }
-    }, [isImpostor, triggerSuccessFlow]);
+    }, [isImpostor, triggerSuccessFlow, showSuccessOverlay]);
 
     const containerVariants = prefersReducedMotion
         ? {}
@@ -200,6 +193,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
 
             {/* Quest Content — top section */}
             <div className="flex-1 space-y-6">
+                {/* Story 9.1: Show NO content for impostors */}
                 {!isImpostor && (
                     <>
                         {isLoadingGame ? (

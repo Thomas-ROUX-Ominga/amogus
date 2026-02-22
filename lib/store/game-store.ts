@@ -319,6 +319,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Story 8.2: Dynamic Content Mapper actions
     loadDynamicQuestContent: async (questId: string, gameId: string, userId: string) => {
+        // Story 9.1: Skip content loading for impostors
+        const currentState = get();
+        const currentPlayer = currentState.gameState?.players.find(p => p.id === userId);
+        const isImpostor = currentPlayer?.role === "IMPOSTOR";
+        
+        if (isImpostor) {
+            // Don't load any content for impostors
+            set({ currentQuestContent: null });
+            return;
+        }
+
         try {
             const contentResult = await DynamicContentMapper.getQuestContent(questId, gameId, userId);
             if (contentResult) {
