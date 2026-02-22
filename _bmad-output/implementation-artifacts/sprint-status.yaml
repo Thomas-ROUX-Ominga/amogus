@@ -76,10 +76,10 @@ development_status:
   6-4-auth-model-fix: done
   epic-6-retrospective: done
 
-  epic-7: in-progress
+  epic-7: done
   7-1-setup-from-batch-short-codes: done
   7-2-real-time-lobby-sync: done
-  epic-7-retrospective: optional
+  epic-7-retrospective: done
 
   epic-8: backlog
   8-1-in-app-camera-scanner: backlog
