@@ -90,7 +90,7 @@ development_status:
   epic-9: in-progress
   9-1-seamless-impostor-scan: done
   9-2-credible-tracker: done
-  epic-9-retrospective: optional
+  epic-9-retrospective: done
 
   epic-10: backlog
   10-1-interactive-admin-dashboard: backlog
