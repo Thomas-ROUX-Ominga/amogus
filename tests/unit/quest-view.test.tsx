@@ -152,12 +152,13 @@ describe("QuestView", () => {
         expect(screen.queryByText(/Zone d'interaction/)).toBeNull();
     });
 
-    it("should show completion confirmation when quest is answered and completion succeeds", () => {
+    it("should NOT show completion status display (atomic flow)", () => {
         mockStoreState.questAnswered = true;
         mockStoreState.isCompletingQuest = false;
         mockStoreState.completionError = null;
         render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
-        expect(screen.getByText("MISSION ENREGISTRÉE")).toBeTruthy();
+        // Should NOT show the old completion status message
+        expect(screen.queryByText("MISSION ENREGISTRÉE")).toBeNull();
     });
 
     it("should show completion error with retry button on failure", () => {
@@ -201,7 +202,7 @@ describe("QuestView", () => {
         });
     });
 
-    it("should auto-redirect after delay when completion succeeds", async () => {
+    it("should auto-redirect after exactly 1500ms when completion succeeds", async () => {
         vi.useFakeTimers();
         mockStoreState.questAnswered = true;
         mockStoreState.isCompletingQuest = false;
@@ -210,7 +211,7 @@ describe("QuestView", () => {
         
         render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
         
-        // Allow the useEffect to run and the promise to resolve
+        // Allow useEffect to run and promise to resolve
         await act(async () => {
             await Promise.resolve();
             await Promise.resolve();
@@ -223,9 +224,9 @@ describe("QuestView", () => {
                    content.includes('ACCOMPLIE');
         })).toBeTruthy();
         
-        // Fast-forward time for the redirect timer
+        // Fast-forward time for redirect timer (1500ms for background redirect)
         await act(async () => {
-            vi.advanceTimersByTime(2500);
+            vi.advanceTimersByTime(1500);
         });
         
         expect(mockPush).toHaveBeenCalledWith("/game/game-123");
@@ -284,9 +285,9 @@ describe("QuestView", () => {
                    content.includes('ACCOMPLIE');
         })).toBeTruthy();
 
-        // Fast-forward for redirect
+        // Fast-forward for redirect (1500ms for background redirect)
         await act(async () => {
-            vi.advanceTimersByTime(2500);
+            vi.advanceTimersByTime(1500);
         });
 
         expect(mockPush).toHaveBeenCalledWith("/game/game-123");
@@ -315,5 +316,131 @@ describe("QuestView", () => {
         expect(screen.getByRole('heading', { name: /MISSION/i })).toBeTruthy();
 
         vi.useRealTimers();
+    });
+
+    // New tests for atomic flow (Story 8.3)
+    it("should implement atomic flow - success overlay appears for exactly 2 seconds", async () => {
+        vi.useFakeTimers();
+        mockStoreState.questAnswered = true;
+        mockStoreState.isCompletingQuest = false;
+        mockStoreState.completionError = null;
+        mockCompleteQuestAction.mockResolvedValue(true);
+        
+        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        
+        // Allow useEffect to run and promise to resolve
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        // SuccessOverlay should be present
+        const successOverlay = screen.getByText((content, element) => {
+            return element?.tagName.toLowerCase() === 'h1' && 
+                   content.includes('MISSION') && 
+                   content.includes('ACCOMPLIE');
+        });
+        expect(successOverlay).toBeTruthy();
+        
+        // Should NOT redirect before 1500ms (when background redirect starts)
+        await act(async () => {
+            vi.advanceTimersByTime(1499);
+        });
+        expect(mockPush).not.toHaveBeenCalled();
+        
+        // Should start redirect at 1500ms (background redirect starts)
+        await act(async () => {
+            vi.advanceTimersByTime(1);
+        });
+        expect(mockPush).toHaveBeenCalledWith("/game/game-123");
+        
+        vi.useRealTimers();
+    });
+
+    it("should implement background redirect during overlay animation", async () => {
+        vi.useFakeTimers();
+        mockStoreState.questAnswered = true;
+        mockStoreState.isCompletingQuest = false;
+        mockStoreState.completionError = null;
+        mockCompleteQuestAction.mockResolvedValue(true);
+        
+        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        
+        // Allow useEffect to run and promise to resolve
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        // SuccessOverlay should be present
+        expect(screen.getByText((content, element) => {
+            return element?.tagName.toLowerCase() === 'h1' && 
+                   content.includes('MISSION') && 
+                   content.includes('ACCOMPLIE');
+        })).toBeTruthy();
+        
+        // Background redirect should happen at 1500ms (during overlay animation)
+        await act(async () => {
+            vi.advanceTimersByTime(1500);
+        });
+        
+        // Redirect should have been called
+        expect(mockPush).toHaveBeenCalledWith("/game/game-123");
+        expect(mockClearQuest).toHaveBeenCalled();
+        
+        vi.useRealTimers();
+    });
+
+    it("should not show intermediate screens during atomic flow", async () => {
+        mockStoreState.questAnswered = true;
+        mockStoreState.isCompletingQuest = false;
+        mockStoreState.completionError = null;
+        mockCompleteQuestAction.mockResolvedValue(true);
+        
+        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        
+        // Allow useEffect to run and promise to resolve
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        // Should NOT show completion status message
+        expect(screen.queryByText("MISSION ENREGISTRÉE")).toBeNull();
+        
+        // Should NOT show loading state during success flow
+        expect(screen.queryByText("Enregistrement...")).toBeNull();
+        
+        // Should show SuccessOverlay
+        expect(screen.getByText((content, element) => {
+            return element?.tagName.toLowerCase() === 'h1' && 
+                   content.includes('MISSION') && 
+                   content.includes('ACCOMPLIE');
+        })).toBeTruthy();
+    });
+
+    it("should not show manual exit button during atomic flow", async () => {
+        mockStoreState.questAnswered = true;
+        mockStoreState.isCompletingQuest = false;
+        mockStoreState.completionError = null;
+        mockCompleteQuestAction.mockResolvedValue(true);
+        
+        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        
+        // Allow useEffect to run and promise to resolve
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        // SuccessOverlay should be present
+        expect(screen.getByText((content, element) => {
+            return element?.tagName.toLowerCase() === 'h1' && 
+                   content.includes('MISSION') && 
+                   content.includes('ACCOMPLIE');
+        })).toBeTruthy();
+        
+        // Should NOT show manual exit button
+        expect(screen.queryByText("Retour au Cockpit")).toBeNull();
     });
 });

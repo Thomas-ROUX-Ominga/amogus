@@ -6,11 +6,21 @@ import { X } from 'lucide-react';
 
 interface SuccessOverlayProps {
   onManualExit: () => void;
+  onAutoExit?: () => void;
   reducedMotion?: boolean;
   isImpostor?: boolean;
+  duration?: number;
+  allowManualExit?: boolean;
 }
 
-export function SuccessOverlay({ onManualExit, reducedMotion = false, isImpostor = false }: SuccessOverlayProps) {
+export function SuccessOverlay({ 
+  onManualExit, 
+  onAutoExit, 
+  reducedMotion = false, 
+  isImpostor = false, 
+  duration = 2000,
+  allowManualExit = true
+}: SuccessOverlayProps) {
   useEffect(() => {
     // Haptic feedback pattern
     // Crewmate: [50, 50, 50, 50, 200]
@@ -26,6 +36,20 @@ export function SuccessOverlay({ onManualExit, reducedMotion = false, isImpostor
       }
     }
   }, [isImpostor]);
+
+  // Auto-dismiss after specified duration with background redirect
+  useEffect(() => {
+    if (duration > 0 && onAutoExit) {
+      // Start background redirect at 1500ms to complete by 2000ms overlay duration
+      const redirectTimer = setTimeout(() => {
+        if (onAutoExit) {
+          onAutoExit();
+        }
+      }, duration - 500); // Start 500ms before overlay ends
+
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [duration, onAutoExit]);
 
   const containerVariants = reducedMotion 
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
@@ -105,17 +129,19 @@ export function SuccessOverlay({ onManualExit, reducedMotion = false, isImpostor
         animate={reducedMotion ? { opacity: 1 } : { y: 0, opacity: 1 }}
         transition={{ delay: 0.5 }}
       >
-        <button 
-          onClick={onManualExit}
-          className={`flex items-center gap-2 px-6 py-3 border-2 rounded font-rajdhani font-bold uppercase tracking-wider transition-colors ${
-            isImpostor 
-              ? 'border-[#DA3633]/50 text-[#DA3633] hover:bg-[#DA3633]/10' 
-              : 'border-green-500/50 text-green-500 hover:bg-green-500/10'
-          }`}
-        >
-          <X size={18} />
-          Retour au Cockpit
-        </button>
+        {allowManualExit && (
+          <button 
+            onClick={onManualExit}
+            className={`flex items-center gap-2 px-6 py-3 border-2 rounded font-rajdhani font-bold uppercase tracking-wider transition-colors ${
+              isImpostor 
+                ? 'border-[#DA3633]/50 text-[#DA3633] hover:bg-[#DA3633]/10' 
+                : 'border-green-500/50 text-green-500 hover:bg-green-500/10'
+            }`}
+          >
+            <X size={18} />
+            Retour au Cockpit
+          </button>
+        )}
       </motion.div>
 
       {isImpostor && (

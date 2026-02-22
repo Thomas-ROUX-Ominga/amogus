@@ -29,7 +29,7 @@ const DURATION_LABELS: Record<QuestDuration, string> = {
     long: "LONG",
 };
 
-const REDIRECT_DELAY_MS = 2500;
+const SUCCESS_OVERLAY_DURATION_MS = 2000;
 
 export function QuestView({ quest, gameId, userId }: QuestViewProps) {
     const router = useRouter();
@@ -106,20 +106,21 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
         }
     }, [questAnswered, userId, gameId, quest.id, completeQuestAction, triggerSuccessFlow]);
 
-    // Auto-redirect after success overlay
-    useEffect(() => {
-        if (showSuccessOverlay) {
-            const timer = setTimeout(() => {
-                clearQuest();
-                router.push(`/game/${gameId}`);
-            }, REDIRECT_DELAY_MS);
-
-            return () => {
-                clearTimeout(timer);
-                clearQuest();
-            };
+    // Handle background redirect during success overlay
+    const handleAutoRedirect = useCallback(async () => {
+        // Initiate background redirect asynchronously first
+        try {
+            await router.push(`/game/${gameId}`);
+            // Only clear quest state after successful redirect
+            clearQuest();
+        } catch (error) {
+            console.error('Redirect failed:', error);
+            // Fallback: try again after a short delay
+            setTimeout(() => router.push(`/game/${gameId}`), 100);
         }
-    }, [showSuccessOverlay, clearQuest, router, gameId]);
+    }, [clearQuest, router, gameId]);
+
+    // Remove the old auto-redirect useEffect since we handle it in SuccessOverlay
 
     const handleManualExit = useCallback(() => {
         clearQuest();
@@ -250,9 +251,9 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                 )}
             </div>
 
-            {/* Completion Status Area */}
+            {/* Loading and Error States - Success completion shows atomic overlay */}
             {questAnswered && (
-                <div className="space-y-3">
+                <>
                     {isCompletingQuest && (
                         <div className="p-4 border border-primary/20 bg-black/30 text-center" role="status" aria-live="polite">
                             <span className="text-sm text-primary/80 font-rajdhani tracking-wide animate-pulse">
@@ -261,24 +262,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                         </div>
                     )}
 
-                    {!isCompletingQuest && !completionError && (
-                        <motion.div
-                            {...(prefersReducedMotion ? {} : { initial: { opacity: 0 }, animate: { opacity: 1 } })}
-                            transition={prefersReducedMotion ? {} : { duration: 0.3 }}
-                            className="p-4 border border-[#2DA44E]/30 bg-[#2DA44E]/10 text-center"
-                            role="status"
-                            aria-live="polite"
-                        >
-                            <div className="flex items-center justify-center gap-2">
-                                <Check className="w-5 h-5 text-[#2DA44E]" aria-hidden="true" />
-                                <span className="text-sm font-bold text-[#2DA44E] font-orbitron tracking-wide">
-                                    MISSION ENREGISTRÉE
-                                </span>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {!isCompletingQuest && completionError && (
+                    {completionError && (
                         <div className="p-4 border border-destructive/30 bg-destructive/10 space-y-3" role="alert" aria-live="assertive">
                             <div className="flex items-center justify-center gap-2">
                                 <AlertTriangle className="w-5 h-5 text-destructive" aria-hidden="true" />
@@ -308,7 +292,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                             )}
                         </div>
                     )}
-                </div>
+                </>
             )}
 
             {/* Flee Button — bottom thumb zone */}
@@ -337,8 +321,11 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                 {showSuccessOverlay && (
                     <SuccessOverlay 
                         onManualExit={handleManualExit} 
+                        onAutoExit={handleAutoRedirect}
                         reducedMotion={!!prefersReducedMotion}
                         isImpostor={isImpostor}
+                        duration={SUCCESS_OVERLAY_DURATION_MS}
+                        allowManualExit={false}
                     />
                 )}
             </AnimatePresence>
