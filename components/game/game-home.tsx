@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { useEffect } from "react";
 import { GameState, Player } from "@/types/game";
 import { useGameStore } from "@/lib/store/game-store";
 import { RoleBadge } from "@/components/game/role-badge";
@@ -9,6 +10,7 @@ import { QuestProgress } from "@/components/game/quest-progress";
 import { ScanButton } from "@/components/game/scan-button";
 import { CameraScanner } from "@/components/game/camera-scanner";
 import { useCameraScanner } from "@/hooks/use-camera-scanner";
+import { getBatch } from "@/lib/redis/batch-actions";
 
 interface GameHomeProps {
     gameState: GameState;
@@ -17,12 +19,65 @@ interface GameHomeProps {
 }
 
 export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
-    const { questsCompleted, questsTotal, isLoading } = useGameStore();
+    const { 
+        questsCompleted, 
+        questsTotal, 
+        isLoading,
+        impostorQuestsInitialized,
+        initializeImpostorQuests,
+        generateImpostorQuestAssignments,
+        completeImpostorQuest,
+        setImpostorQuestLocation
+    } = useGameStore();
     
     // Camera scanner state management
-    const { isOpen, openScanner, closeScanner, handleScan } = useCameraScanner({
+    const { isOpen, openScanner, closeScanner, handleScan: originalHandleScan } = useCameraScanner({
         gameId: gameState.id,
     });
+
+    // Wrapper for handleScan to also complete impostor quests
+    const handleScan = async (questId: string) => {
+        // For impostors, also mark quest as completed in their fake quest list
+        if (currentPlayer.role === "IMPOSTOR") {
+            const { getImpostorQuestData } = useGameStore.getState();
+            const impostorQuestData = getImpostorQuestData();
+            
+            // Find the next uncompleted quest and mark it as complete
+            const nextUncompletedQuest = impostorQuestData.quests.find(q => !q.completed);
+            if (nextUncompletedQuest) {
+                // Set location based on current quest being scanned
+                const location = `Scanned Location ${Date.now() % 100}`; // Simple location placeholder
+                setImpostorQuestLocation(nextUncompletedQuest.id, location);
+                completeImpostorQuest(nextUncompletedQuest.id);
+            }
+        }
+
+        // Call original handleScan for navigation
+        await originalHandleScan(questId);
+    };
+
+    // Initialize impostor quests when player is an impostor and quests aren't initialized yet
+    useEffect(() => {
+        const initializeImpostorQuestsIfNeeded = async () => {
+            if (currentPlayer.role === "IMPOSTOR" && !impostorQuestsInitialized && gameState.batchId) {
+                try {
+                    // Load batch data to generate fake quest assignments
+                    const batchResponse = await getBatch(gameState.batchId);
+                    if (batchResponse.success && batchResponse.data && gameState.questsPerPlayer) {
+                        const fakeAssignments = generateImpostorQuestAssignments(
+                            batchResponse.data.quests,
+                            gameState.questsPerPlayer
+                        );
+                        initializeImpostorQuests(fakeAssignments);
+                    }
+                } catch (error) {
+                    console.error("Failed to initialize impostor quests:", error);
+                }
+            }
+        };
+
+        initializeImpostorQuestsIfNeeded();
+    }, [currentPlayer.role, impostorQuestsInitialized, gameState.batchId, gameState.questsPerPlayer, initializeImpostorQuests, generateImpostorQuestAssignments]);
     
     // Defensive validation: ensure role exists
     if (!currentPlayer.role) {

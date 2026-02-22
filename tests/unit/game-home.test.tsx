@@ -106,9 +106,9 @@ describe("GameHome", () => {
         expect(screen.getByText("Progression des quêtes")).toBeTruthy();
     });
 
-    it("should not render quest progress for Impostor", () => {
+    it("should render quest progress for Impostor", () => {
         render(<GameHome gameState={mockGameState} currentPlayer={impostorPlayer} userId="user-2" />);
-        expect(screen.queryByText("Progression des quêtes")).toBeNull();
+        expect(screen.getByText("Progression des quêtes")).toBeTruthy();
     });
 
     it("should render 'Retour à l'accueil' link", () => {

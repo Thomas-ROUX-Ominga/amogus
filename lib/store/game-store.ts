@@ -35,6 +35,10 @@ interface GameStore {
     failedQuests: Record<string, string[]>;
     isFailedQuestsLoading: boolean;
 
+    // Story 9.2: Impostor Credible Tracker state
+    impostorQuests: Array<Quest & { completed: boolean; location?: string }>;
+    impostorQuestsInitialized: boolean;
+
     // Actions
     fetchGame: (id: string, userId?: string) => Promise<void>;
     refreshGameData: (id: string, userId?: string) => Promise<void>;
@@ -52,6 +56,14 @@ interface GameStore {
     recordFailedQuest: (gameId: string, userId: string, questId: string, contentId: string) => Promise<boolean>;
     loadFailedQuests: (gameId: string, userId: string) => Promise<void>;
     clearQuestContent: () => void;
+    
+    // Story 9.2: Impostor Credible Tracker actions
+    initializeImpostorQuests: (quests: Array<Quest & { completed: boolean; location?: string }>) => void;
+    completeImpostorQuest: (questId: string) => void;
+    setImpostorQuestLocation: (questId: string, location: string) => void;
+    getImpostorProgress: () => number;
+    getImpostorQuestData: () => { quests: Array<Quest & { completed: boolean; location?: string }>; completed: number; total: number; percentage: number; };
+    generateImpostorQuestAssignments: (batchQuests: Quest[], distribution: { short: number; medium: number; long: number }) => Array<Quest & { completed: boolean; location?: string }>;
 }
 
 // Real-time polling hook for lobby updates
@@ -142,6 +154,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     currentQuestContent: null,
     failedQuests: {},
     isFailedQuestsLoading: false,
+
+    // Story 9.2: Impostor Credible Tracker state
+    impostorQuests: [],
+    impostorQuestsInitialized: false,
 
     fetchGame: async (id: string, userId?: string) => {
         set({ isLoading: true, error: null, errorCode: null });
@@ -315,6 +331,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         currentQuestContent: null,
         failedQuests: {},
         isFailedQuestsLoading: false,
+        impostorQuests: [],
+        impostorQuestsInitialized: false,
     }),
 
     // Story 8.2: Dynamic Content Mapper actions
@@ -387,4 +405,79 @@ export const useGameStore = create<GameStore>((set, get) => ({
         currentQuest: null, 
         questAnswered: false 
     }),
+
+    // Story 9.2: Impostor Credible Tracker actions
+    initializeImpostorQuests: (quests: Array<Quest & { completed: boolean; location?: string }>) => {
+        set({ 
+            impostorQuests: quests,
+            impostorQuestsInitialized: true 
+        });
+    },
+
+    completeImpostorQuest: (questId: string) => {
+        set((state) => ({
+            impostorQuests: state.impostorQuests.map((quest) =>
+                quest.id === questId ? { ...quest, completed: true } : quest
+            )
+        }));
+    },
+
+    setImpostorQuestLocation: (questId: string, location: string) => {
+        set((state) => ({
+            impostorQuests: state.impostorQuests.map((quest) =>
+                quest.id === questId ? { ...quest, location } : quest
+            )
+        }));
+    },
+
+    getImpostorProgress: () => {
+        const { impostorQuests } = get();
+        if (impostorQuests.length === 0) return 0;
+        const completed = impostorQuests.filter(q => q.completed).length;
+        return Math.round((completed / impostorQuests.length) * 100);
+    },
+
+    getImpostorQuestData: () => {
+        const { impostorQuests } = get();
+        const completed = impostorQuests.filter(q => q.completed).length;
+        const total = impostorQuests.length;
+        const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+        
+        return {
+            quests: impostorQuests,
+            completed,
+            total,
+            percentage
+        };
+    },
+
+    generateImpostorQuestAssignments: (batchQuests: Quest[], distribution: { short: number; medium: number; long: number }) => {
+        const assignments: Array<Quest & { completed: boolean; location?: string }> = [];
+
+        const shortQuests = batchQuests.filter(q => q.duration === 'short');
+        const mediumQuests = batchQuests.filter(q => q.duration === 'medium');
+        const longQuests = batchQuests.filter(q => q.duration === 'long');
+
+        // Helper to select random quests and assign locations
+        const selectRandomQuests = (quests: Quest[], count: number) => {
+            const shuffled = [...quests].sort(() => Math.random() - 0.5);
+            return shuffled.slice(0, Math.min(count, quests.length));
+        };
+
+        // Select quests from each duration
+        const selectedShort = selectRandomQuests(shortQuests, distribution.short);
+        const selectedMedium = selectRandomQuests(mediumQuests, distribution.medium);
+        const selectedLong = selectRandomQuests(longQuests, distribution.long);
+
+        // Create assignments - location will be set when scanning
+        [...selectedShort, ...selectedMedium, ...selectedLong].forEach((quest) => {
+            assignments.push({
+                ...quest,
+                location: undefined, // Will be set when QR code is scanned
+                completed: false
+            });
+        });
+
+        return assignments;
+    },
 }));

@@ -1,16 +1,71 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QuestProgress } from "@/components/game/quest-progress";
+import { QuestType, QuestDuration } from "@/types/quest";
+
+// Mock the store
+const mockUseGameStore = vi.hoisted(() => vi.fn());
+
+vi.mock('@/lib/store/game-store', () => ({
+    useGameStore: mockUseGameStore,
+}));
 
 describe("QuestProgress", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      // Default mock with required properties
+      mockUseGameStore.mockReturnValue({
+        getImpostorQuestData: () => ({
+            quests: [],
+            completed: 0,
+            total: 0,
+            percentage: 0,
+        }),
+        impostorQuestsInitialized: false,
+      });
+    });
+
     it("should render for Crewmate role", () => {
         render(<QuestProgress role="CREWMATE" completed={0} total={0} />);
         expect(screen.getByText("Progression des quêtes")).toBeTruthy();
     });
 
-    it("should not render for Impostor role", () => {
-        const { container } = render(<QuestProgress role="IMPOSTOR" completed={0} total={0} />);
-        expect(container.innerHTML).toBe("");
+    it("should render loading state for Impostor role when not initialized", () => {
+        mockUseGameStore.mockReturnValue({
+            getImpostorQuestData: () => ({
+                quests: [],
+                completed: 0,
+                total: 0,
+                percentage: 0,
+            }),
+            impostorQuestsInitialized: false,
+        } as const);
+
+        render(<QuestProgress role="IMPOSTOR" completed={0} total={0} />);
+        expect(screen.getByText("Progression des quêtes")).toBeTruthy();
+        // Should show loading skeleton
+        expect(screen.getByText("Progression des quêtes").closest('.p-4')?.querySelector('.animate-pulse')).toBeTruthy();
+    });
+
+    it("should render quest list for Impostor role when initialized", () => {
+        mockUseGameStore.mockReturnValue({
+            getImpostorQuestData: () => ({
+                quests: [
+                    { id: 'quest1', type: 'qcm' as QuestType, duration: 'short' as QuestDuration, location: 'Salle des machines', completed: false },
+                    { id: 'quest2', type: 'true-false' as QuestType, duration: 'medium' as QuestDuration, location: 'Pont de commandement', completed: true },
+                ],
+                completed: 1,
+                total: 2,
+                percentage: 50,
+            }),
+            impostorQuestsInitialized: true,
+        } as const);
+
+        render(<QuestProgress role="IMPOSTOR" completed={0} total={0} />);
+        expect(screen.getByText("Progression des quêtes")).toBeTruthy();
+        expect(screen.getByText("1/2 quêtes accomplies")).toBeTruthy();
+        expect(screen.getByText("Quête 1")).toBeTruthy();
+        expect(screen.getByText("📍 Salle des machines")).toBeTruthy();
     });
 
     it("should show placeholder text when total is 0", () => {
