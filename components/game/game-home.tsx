@@ -7,6 +7,8 @@ import { useGameStore } from "@/lib/store/game-store";
 import { RoleBadge } from "@/components/game/role-badge";
 import { QuestProgress } from "@/components/game/quest-progress";
 import { ScanButton } from "@/components/game/scan-button";
+import { CameraScanner } from "@/components/game/camera-scanner";
+import { useCameraScanner } from "@/hooks/use-camera-scanner";
 
 interface GameHomeProps {
     gameState: GameState;
@@ -16,6 +18,11 @@ interface GameHomeProps {
 
 export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     const { questsCompleted, questsTotal, isLoading } = useGameStore();
+    
+    // Camera scanner state management
+    const { isOpen, openScanner, closeScanner, handleScan } = useCameraScanner({
+        gameId: gameState.id,
+    });
     
     // Defensive validation: ensure role exists
     if (!currentPlayer.role) {
@@ -100,7 +107,18 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     </div>
 
                     {/* SCAN Button (thumb zone — bottom) */}
-                    <ScanButton disabled={false} href={`/game/${gameState.id}/quest?duration=short`} />
+                    <ScanButton 
+                        disabled={false} 
+                        onClick={openScanner}
+                        gameId={gameState.id}
+                    />
+
+                    {/* Camera Scanner Overlay */}
+                    <CameraScanner
+                        isOpen={isOpen}
+                        onClose={closeScanner}
+                        onScan={handleScan}
+                    />
 
                     {/* No Dead End — Return link */}
                     <Link

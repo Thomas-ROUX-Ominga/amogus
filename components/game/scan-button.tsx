@@ -8,9 +8,10 @@ interface ScanButtonProps {
     disabled?: boolean;
     onClick?: () => void;
     href?: string;
+    gameId?: string; // Added for camera scanner integration
 }
 
-export function ScanButton({ disabled = true, onClick, href }: ScanButtonProps) {
+export function ScanButton({ disabled = true, onClick, href, gameId }: ScanButtonProps) {
     const prefersReducedMotion = useReducedMotion();
 
     const handlePress = () => {

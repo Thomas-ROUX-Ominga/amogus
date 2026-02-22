@@ -5,6 +5,9 @@ import { useGameStore } from "@/lib/store/game-store";
 import { GameState, Player } from "@/types/game";
 
 vi.mock("@/lib/store/game-store");
+vi.mock("next/navigation", () => ({
+    useRouter: vi.fn(),
+}));
 
 const mockGameState: GameState = {
     id: "game-123",
@@ -86,11 +89,11 @@ describe("GameHome", () => {
         expect(screen.getByText("SCANNER")).toBeTruthy();
     });
 
-    it("should render SCAN button as enabled link", () => {
+    it("should render SCAN button as enabled button", () => {
         render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
-        const link = screen.getByRole("link", { name: /Scanner/i });
-        expect(link).toBeTruthy();
-        expect(link.getAttribute("href")).toContain("/quest?duration=short");
+        const button = screen.getByRole("button", { name: /Scanner/i });
+        expect(button).toBeTruthy();
+        expect(button).not.toBeDisabled();
     });
 
     it("should not show 'Bientôt disponible' on SCAN button", () => {
