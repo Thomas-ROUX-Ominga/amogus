@@ -34,7 +34,7 @@ const REDIRECT_DELAY_MS = 2500;
 export function QuestView({ quest, gameId, userId }: QuestViewProps) {
     const router = useRouter();
     const prefersReducedMotion = useReducedMotion();
-    const { gameState, clearQuest, setQuestAnswered, completeQuestAction, isCompletingQuest, completionError, completionErrorCode, questAnswered } = useGameStore();
+    const { gameState, clearQuest, setQuestAnswered, completeQuestAction, isCompletingQuest, completionError, completionErrorCode, questAnswered, currentQuestContent, recordFailedQuest } = useGameStore();
     
     // Story 4.1: Identify player role
     const currentPlayer = gameState?.players.find(p => p.id === userId);
@@ -64,6 +64,10 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                 };
                 setQuestGame(impostorGame);
                 setIsLoadingGame(false);
+            } else if (currentQuestContent && currentQuestContent.content.id === quest.id) {
+                // Story 8.2: Use dynamic content from store
+                setQuestGame(currentQuestContent.content);
+                setIsLoadingGame(false);
             } else {
                 // Regular quest - fetch QuestGame
                 const game = getRandomQuestGame(quest.type, quest.duration);
@@ -73,7 +77,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
         };
 
         loadQuestGame();
-    }, [quest]);
+    }, [quest, currentQuestContent]);
 
     const triggerSuccessFlow = useCallback(() => {
         setShowSuccessOverlay(true);
@@ -133,8 +137,12 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
     }, [userId, gameId, quest.id, completeQuestAction, triggerSuccessFlow]);
 
     const handleError = useCallback(() => {
+        // Story 8.2: Record failed quest when user gets wrong answer
+        if (userId && currentQuestContent && !isImpostor) {
+            recordFailedQuest(gameId, userId, quest.id, currentQuestContent.contentId);
+        }
         // No store update on error — visual feedback only (handled by quest components)
-    }, []);
+    }, [userId, currentQuestContent, isImpostor, gameId, quest.id, recordFailedQuest]);
 
     const handleFlee = useCallback(() => {
         try {

@@ -35,6 +35,10 @@ const baseStoreState = {
     questsTotal: 0,
     currentQuest: null,
     questAnswered: false,
+    // Story 8.2: Add new state properties
+    currentQuestContent: null,
+    failedQuests: {},
+    isFailedQuestsLoading: false,
     fetchGame: mockFetchGame,
     join: vi.fn(),
     launch: vi.fn(),
@@ -44,6 +48,11 @@ const baseStoreState = {
     setQuestAnswered: vi.fn(),
     clearQuest: vi.fn(),
     reset: vi.fn(),
+    // Story 8.2: Add new actions
+    loadDynamicQuestContent: vi.fn(),
+    recordFailedQuest: vi.fn().mockResolvedValue(true),
+    loadFailedQuests: vi.fn(),
+    clearQuestContent: vi.fn(),
 };
 
 describe("QuestPage", () => {

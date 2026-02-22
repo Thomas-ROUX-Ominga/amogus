@@ -83,7 +83,7 @@ development_status:
 
   epic-8: in-progress
   8-1-in-app-camera-scanner: done
-  8-2-dynamic-content-mapper: backlog
+  8-2-dynamic-content-mapper: done
   8-3-atomic-success-flow-flicker-fix: backlog
   epic-8-retrospective: optional
 

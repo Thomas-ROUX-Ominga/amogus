@@ -50,3 +50,18 @@ export interface BatchListItem {
     questCount: number;
     createdAt: string;
 }
+
+// Story 8.2: Dynamic Content Mapper types
+export interface PlayerState {
+    // This would be extended from existing player state in game.ts
+    // Adding failed quest tracking capability
+    failedQuests?: {
+        [questId: string]: string[]; // Array of content IDs that were failed
+    };
+}
+
+export interface QuestContentResult {
+    content: QuestGame;
+    contentId: string;
+    isRotation: boolean; // true if this is a rotation due to previous failure
+}

@@ -1,9 +1,10 @@
 import { create } from "zustand";
 import React from "react";
 import { GameState, PlayerRole } from "@/types/game";
-import { Quest } from "@/types/quest";
-import { getGame, joinGame, startGame, selectRole, completeQuest, refreshGame } from "@/lib/redis/actions";
+import { Quest, QuestContentResult } from "@/types/quest";
+import { getGame, joinGame, startGame, selectRole, completeQuest, refreshGame, addFailedQuest, getPlayerFailedQuests } from "@/lib/redis/actions";
 import { getQuestGamesByDuration } from "@/lib/constants/quest-pool";
+import { DynamicContentMapper } from "@/lib/quests/dynamic-content-mapper";
 import useSWR from "swr";
 
 function getTotalQuests(): number {
@@ -28,6 +29,11 @@ interface GameStore {
     questsTotal: number;
     currentQuest: Quest | null;
     questAnswered: boolean;
+    
+    // Story 8.2: Dynamic Content Mapper state
+    currentQuestContent: QuestContentResult | null;
+    failedQuests: Record<string, string[]>;
+    isFailedQuestsLoading: boolean;
 
     // Actions
     fetchGame: (id: string, userId?: string) => Promise<void>;
@@ -40,6 +46,12 @@ interface GameStore {
     clearQuest: () => void;
     setQuestAnswered: (answered: boolean) => void;
     reset: () => void;
+    
+    // Story 8.2: Dynamic Content Mapper actions
+    loadDynamicQuestContent: (questId: string, gameId: string, userId: string) => Promise<void>;
+    recordFailedQuest: (gameId: string, userId: string, questId: string, contentId: string) => Promise<boolean>;
+    loadFailedQuests: (gameId: string, userId: string) => Promise<void>;
+    clearQuestContent: () => void;
 }
 
 // Real-time polling hook for lobby updates
@@ -107,7 +119,7 @@ export function useRealTimeGamePolling(gameId: string, userId?: string, enabled 
     };
 }
 
-export const useGameStore = create<GameStore>((set) => ({
+export const useGameStore = create<GameStore>((set, get) => ({
     gameState: null,
     isLoading: false,
     isLaunching: false,
@@ -125,6 +137,11 @@ export const useGameStore = create<GameStore>((set) => ({
     questsTotal: 0,
     currentQuest: null,
     questAnswered: false,
+    
+    // Story 8.2: Dynamic Content Mapper state
+    currentQuestContent: null,
+    failedQuests: {},
+    isFailedQuestsLoading: false,
 
     fetchGame: async (id: string, userId?: string) => {
         set({ isLoading: true, error: null, errorCode: null });
@@ -294,6 +311,69 @@ export const useGameStore = create<GameStore>((set) => ({
         questsCompleted: 0,
         questsTotal: 0,
         currentQuest: null,
-        questAnswered: false
+        questAnswered: false,
+        currentQuestContent: null,
+        failedQuests: {},
+        isFailedQuestsLoading: false,
+    }),
+
+    // Story 8.2: Dynamic Content Mapper actions
+    loadDynamicQuestContent: async (questId: string, gameId: string, userId: string) => {
+        try {
+            const contentResult = await DynamicContentMapper.getQuestContent(questId, gameId, userId);
+            if (contentResult) {
+                set({ currentQuestContent: contentResult });
+            } else {
+                set({ currentQuestContent: null });
+            }
+        } catch (error) {
+            console.error("Failed to load dynamic quest content:", error);
+            set({ currentQuestContent: null });
+        }
+    },
+
+    recordFailedQuest: async (gameId: string, userId: string, questId: string, contentId: string) => {
+        try {
+            const response = await addFailedQuest(gameId, userId, questId, contentId);
+            if (response.success) {
+                // Refresh failed quests after recording
+                await get().loadFailedQuests(gameId, userId);
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error("Failed to record failed quest:", error);
+            return false;
+        }
+    },
+
+    loadFailedQuests: async (gameId: string, userId: string) => {
+        set({ isFailedQuestsLoading: true });
+        try {
+            const response = await getPlayerFailedQuests(gameId, userId);
+            if (response.success) {
+                set({ 
+                    failedQuests: response.data ?? {}, 
+                    isFailedQuestsLoading: false 
+                });
+            } else {
+                set({ 
+                    failedQuests: {}, 
+                    isFailedQuestsLoading: false 
+                });
+            }
+        } catch (error) {
+            console.error("Failed to load failed quests:", error);
+            set({ 
+                failedQuests: {}, 
+                isFailedQuestsLoading: false 
+            });
+        }
+    },
+
+    clearQuestContent: () => set({ 
+        currentQuestContent: null,
+        currentQuest: null, 
+        questAnswered: false 
     }),
 }));

@@ -43,8 +43,11 @@ function QuestPageContent() {
         error,
         errorCode,
         currentQuest,
+        currentQuestContent,
         setCurrentQuest,
         fetchGame,
+        loadDynamicQuestContent,
+        loadFailedQuests,
     } = useGameStore();
 
     const gameId = id as string;
@@ -54,6 +57,26 @@ function QuestPageContent() {
             fetchGame(id as string, userId ?? undefined);
         }
     }, [id, userId, fetchGame]);
+
+    // Load failed quests when game and user are available
+    useEffect(() => {
+        if (gameState && userId && gameState.status === "IN_PROGRESS") {
+            loadFailedQuests(gameId, userId);
+        }
+    }, [gameState, userId, gameId, loadFailedQuests]);
+
+    // Update quest metadata when dynamic content loads
+    useEffect(() => {
+        if (currentQuestContent && currentQuest && questId) {
+            // Update quest with correct metadata from dynamic content
+            const updatedQuest: Quest = {
+                ...currentQuest,
+                type: currentQuestContent.content.type,
+                duration: currentQuestContent.content.duration,
+            };
+            setCurrentQuest(updatedQuest);
+        }
+    }, [currentQuestContent, currentQuest, questId, setCurrentQuest]);
 
     // Select a random quest once game is loaded and duration is valid
     const questError = useMemo(() => {
@@ -82,24 +105,26 @@ function QuestPageContent() {
             }
 
             if (questId) {
-                const questGame = getQuestGameById(questId);
-                if (questGame) {
-                    // Convert QuestGame to Quest for now (temporary fix)
-                    const quest: Quest = {
-                        id: questGame.id,
-                        type: questGame.type,
-                        duration: questGame.duration,
-                        location: "Zone de quête", // TODO: This should come from actual quest assignment
-                    };
-                    setCurrentQuest(quest);
-                    // Haptic feedback on successful quest load
-                    try {
-                        if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-                            navigator.vibrate([30]);
-                        }
-                    } catch {
-                        // Ignore haptic failures
+                // Story 8.2: Use dynamic content mapper for questId-based content
+                loadDynamicQuestContent(questId, gameId, userId!);
+                
+                // Set quest metadata from Redis (not from content pool)
+                // This ensures we get the correct quest metadata, not content metadata
+                const quest: Quest = {
+                    id: questId,
+                    type: "true-false", // Will be updated when dynamic content loads
+                    duration: "short", // Will be updated when dynamic content loads  
+                    location: "Zone de quête",
+                };
+                setCurrentQuest(quest);
+                
+                // Haptic feedback on successful quest load
+                try {
+                    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+                        navigator.vibrate([30]);
                     }
+                } catch {
+                    // Ignore haptic failures
                 }
             } else if (isValidDuration(duration)) {
                 const questGame = getRandomQuestGame("true-false", duration); // TODO: This needs to be updated to get type from somewhere
@@ -123,7 +148,7 @@ function QuestPageContent() {
                 }
             }
         }
-    }, [gameState, duration, questId, currentQuest, setCurrentQuest, userId]);
+    }, [gameState, duration, questId, currentQuest, setCurrentQuest, userId, gameId, loadDynamicQuestContent]);
 
     // Loading state
     if (isLoading || !userId) {

@@ -6,6 +6,7 @@ import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { getBatch } from "./batch-actions";
 import { getTotalQuestGamesCount } from "@/lib/constants/quest-pool";
 import { generateShortCode } from "@/lib/utils/short-code.server";
+import { Quest, QuestGame } from "@/types/quest";
 
 import { verifySession } from "./auth-utils";
 
@@ -451,6 +452,100 @@ export async function selectRole(
         return {
             success: false,
             error: "Signal lost while assigning role.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
+}
+
+// Quest metadata actions for Story 8.2
+export async function getQuestMetadata(questId: string): Promise<ActionResponse<Quest>> {
+    try {
+        // First try to get from batch-specific metadata
+        const batchQuestKey = `batch:quest:${questId}`;
+        let questMetadata = await redis.get<Quest>(batchQuestKey);
+        
+        // If not found in batch, try default pool metadata
+        if (!questMetadata) {
+            const defaultQuestKey = `quest:default:${questId}`;
+            questMetadata = await redis.get<Quest>(defaultQuestKey);
+        }
+        
+        if (!questMetadata) {
+            return {
+                success: false,
+                error: `Quest metadata not found for questId: ${questId}`,
+                code: ERROR_CODES.ERR_NOT_FOUND,
+            };
+        }
+        
+        return {
+            success: true,
+            data: questMetadata,
+        };
+    } catch (error) {
+        console.error("Failed to get quest metadata:", error);
+        return {
+            success: false,
+            error: "Failed to retrieve quest metadata.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
+}
+
+export async function getPlayerFailedQuests(gameId: string, userId: string): Promise<ActionResponse<Record<string, string[]>>> {
+    try {
+        const failedQuestsKey = `game:${gameId}:player:${userId}:failed-quests`;
+        const failedQuests = await redis.get<Record<string, string[]>>(failedQuestsKey);
+        
+        return {
+            success: true,
+            data: failedQuests ?? {},
+        };
+    } catch (error) {
+        console.error("Failed to get player failed quests:", error);
+        return {
+            success: false,
+            error: "Failed to retrieve failed quest data.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
+}
+
+export async function addFailedQuest(
+    gameId: string, 
+    userId: string, 
+    questId: string, 
+    contentId: string
+): Promise<ActionResponse<void>> {
+    try {
+        const failedQuestsKey = `game:${gameId}:player:${userId}:failed-quests`;
+        
+        let validationError: ActionResponse<void> | null = null;
+        
+        await redis.atomicUpdate<Record<string, string[]>>(failedQuestsKey, (failedQuests) => {
+            const current = failedQuests ?? {};
+            const questFailed = current[questId] ?? [];
+            
+            // Avoid duplicates
+            if (!questFailed.includes(contentId)) {
+                current[questId] = [...questFailed, contentId];
+            }
+            
+            return current;
+        }, GAME_TTL_SECONDS);
+        
+        if (validationError) {
+            return validationError;
+        }
+        
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error("Failed to add failed quest:", error);
+        return {
+            success: false,
+            error: "Failed to record failed quest.",
             code: ERROR_CODES.ERR_SIGNAL_LOST,
         };
     }
