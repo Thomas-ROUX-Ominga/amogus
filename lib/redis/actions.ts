@@ -8,7 +8,7 @@ import { getTotalQuestGamesCount } from "@/lib/constants/quest-pool";
 import { generateShortCode } from "@/lib/utils/short-code.server";
 import { Quest, QuestGame } from "@/types/quest";
 
-import { verifySession } from "./auth-utils";
+import { verifySession, createPlayerSession, verifyPlayerSession } from "./auth-utils";
 
 export interface CreateGameInput {
   batchId?: string;
@@ -257,6 +257,12 @@ export async function joinGame(
         };
 
         await redis.set(stateKey, updatedState);
+        
+        // Secure the player's identity moving forward
+        const sessionResult = await createPlayerSession(userId, gameId);
+        if (!sessionResult.success) {
+            console.error("Failed to establish secure session:", sessionResult.error);
+        }
 
         return {
             success: true,
@@ -278,6 +284,15 @@ export async function completeQuest(
     questId: string
 ): Promise<ActionResponse<{ completedQuests: string[]; questsCompleted: number }>> {
     try {
+        const sessionCheck = await verifyPlayerSession(userId, gameId);
+        if (!sessionCheck.success) {
+            return {
+                success: false,
+                error: sessionCheck.error || "Session verification failed",
+                code: sessionCheck.code || "ERR_INVALID_SESSION"
+            };
+        }
+
         const stateKey = `game:${gameId}:state`;
 
         let validationError: ActionResponse<{ completedQuests: string[]; questsCompleted: number }> | null = null;
@@ -312,6 +327,16 @@ export async function completeQuest(
             }
 
             const player = state.players[playerIndex];
+            
+            if (!player.isAlive) {
+                validationError = {
+                    success: false,
+                    error: "Cannot complete quest: player is eliminated.",
+                    code: ERROR_CODES.ERR_INVALID_STATE,
+                };
+                return null;
+            }
+
             const completed = player.completedQuests ?? [];
 
             // Idempotent: already completed — return success without duplicating
@@ -394,6 +419,15 @@ export async function selectRole(
     }
 
     try {
+        const sessionCheck = await verifyPlayerSession(userId, gameId);
+        if (!sessionCheck.success) {
+            return {
+                success: false,
+                error: sessionCheck.error || "Session verification failed",
+                code: sessionCheck.code || "ERR_INVALID_SESSION"
+            };
+        }
+
         const stateKey = `game:${gameId}:state`;
 
         let validationError: ActionResponse<{ role: PlayerRole }> | null = null;
@@ -546,6 +580,98 @@ export async function addFailedQuest(
         return {
             success: false,
             error: "Failed to record failed quest.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
+}
+
+export async function eliminatePlayer(
+    gameId: string,
+    userId: string
+): Promise<ActionResponse<{ isAlive: boolean }>> {
+    try {
+        const sessionCheck = await verifyPlayerSession(userId, gameId);
+        if (!sessionCheck.success) {
+            return {
+                success: false,
+                error: sessionCheck.error || "Session verification failed",
+                code: sessionCheck.code || "ERR_INVALID_SESSION"
+            };
+        }
+
+        const stateKey = `game:${gameId}:state`;
+
+        let validationError: ActionResponse<{ isAlive: boolean }> | null = null;
+
+        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
+            if (!state) {
+                validationError = {
+                    success: false,
+                    error: "Game session not found.",
+                    code: ERROR_CODES.GAME_NOT_FOUND,
+                };
+                return null;
+            }
+
+            if (state.status !== "IN_PROGRESS") {
+                validationError = {
+                    success: false,
+                    error: "Cannot eliminate player: game is not in progress.",
+                    code: ERROR_CODES.ERR_INVALID_STATE,
+                };
+                return null;
+            }
+
+            const playerIndex = state.players.findIndex((p) => p.id === userId);
+            if (playerIndex === -1) {
+                validationError = {
+                    success: false,
+                    error: "Player not found in game.",
+                    code: ERROR_CODES.ERR_INVALID_SIGNATURE,
+                };
+                return null;
+            }
+
+            const player = state.players[playerIndex];
+            
+            // Idempotent: already eliminated - return success without changing state
+            if (!player.isAlive) {
+                validationError = {
+                    success: true,
+                    data: { isAlive: false },
+                };
+                return null;
+            }
+
+            const updatedPlayers = [...state.players];
+            updatedPlayers[playerIndex] = {
+                ...updatedPlayers[playerIndex],
+                isAlive: false,
+            };
+
+            return {
+                ...state,
+                players: updatedPlayers,
+            };
+        }, GAME_TTL_SECONDS);
+
+        if (validationError) {
+            return validationError;
+        }
+
+        // Extract updated player data from result
+        const updatedPlayer = result?.players.find((p) => p.id === userId);
+        const isAlive = updatedPlayer?.isAlive ?? false;
+
+        return {
+            success: true,
+            data: { isAlive },
+        };
+    } catch (error) {
+        console.error("Failed to eliminate player:", error);
+        return {
+            success: false,
+            error: "Failed to eliminate player.",
             code: ERROR_CODES.ERR_SIGNAL_LOST,
         };
     }

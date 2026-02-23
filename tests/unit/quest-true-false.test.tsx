@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QuestTrueFalse } from "@/components/game/quest-true-false";
-import { Quest } from "@/types/quest";
+import { QuestGame } from "@/types/quest";
 
-const mockQuest: Quest = {
+const mockQuest: QuestGame = {
     id: "s1",
     type: "true-false",
     duration: "short",

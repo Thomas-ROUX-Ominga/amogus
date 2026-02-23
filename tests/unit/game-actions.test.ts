@@ -37,6 +37,8 @@ vi.mock("@/lib/redis/auth-utils", () => ({
         success: true, 
         data: { userId: "test-user", username: "test-org", role: "organizer" } 
     })),
+    createPlayerSession: vi.fn(() => Promise.resolve({ success: true })),
+    verifyPlayerSession: vi.fn(() => Promise.resolve({ success: true })),
 }));
 
 describe("createGame", () => {

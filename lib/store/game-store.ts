@@ -2,7 +2,7 @@ import { create } from "zustand";
 import React from "react";
 import { GameState, PlayerRole } from "@/types/game";
 import { Quest, QuestContentResult } from "@/types/quest";
-import { getGame, joinGame, startGame, selectRole, completeQuest, refreshGame, addFailedQuest, getPlayerFailedQuests } from "@/lib/redis/actions";
+import { getGame, joinGame, startGame, selectRole, completeQuest, refreshGame, addFailedQuest, getPlayerFailedQuests, eliminatePlayer } from "@/lib/redis/actions";
 import { getQuestGamesByDuration } from "@/lib/constants/quest-pool";
 import { DynamicContentMapper } from "@/lib/quests/dynamic-content-mapper";
 import useSWR from "swr";
@@ -39,6 +39,11 @@ interface GameStore {
     impostorQuests: Array<Quest & { completed: boolean; location?: string }>;
     impostorQuestsInitialized: boolean;
 
+    // Story 10.2: Self-Elimination Flow state
+    isEliminating: boolean;
+    eliminationError: string | null;
+    eliminationErrorCode: string | null;
+
     // Actions
     fetchGame: (id: string, userId?: string) => Promise<void>;
     refreshGameData: (id: string, userId?: string) => Promise<void>;
@@ -64,6 +69,9 @@ interface GameStore {
     getImpostorProgress: () => number;
     getImpostorQuestData: () => { quests: Array<Quest & { completed: boolean; location?: string }>; completed: number; total: number; percentage: number; };
     generateImpostorQuestAssignments: (batchQuests: Quest[], distribution: { short: number; medium: number; long: number }) => Array<Quest & { completed: boolean; location?: string }>;
+    
+    // Story 10.2: Self-Elimination Flow actions
+    eliminatePlayerAction: (gameId: string, userId: string) => Promise<boolean>;
 }
 
 // Real-time polling hook for lobby updates
@@ -71,27 +79,32 @@ export function useRealTimeGamePolling(gameId: string, userId?: string, enabled 
     const { refreshGameData } = useGameStore();
     const previousPlayerIds = React.useRef<Set<string>>(new Set());
     
+    // Reactively get elimination status to stop polling at the SWR key level
+    const gameStateFromStore = useGameStore(state => state.gameState);
+    const currentPlayer = gameStateFromStore?.players.find(p => p.id === userId);
+    const isEliminated = currentPlayer ? !currentPlayer.isAlive : false;
+    
     const fetcher = async () => {
         if (!gameId) return null;
         
         await refreshGameData(gameId, userId);
-        const currentState = useGameStore.getState().gameState;
+        const updatedState = useGameStore.getState().gameState;
         
-        if (!currentState) return null;
+        if (!updatedState) return null;
         
         // Detect new players by comparing with previous state
-        const currentPlayerIds = new Set(currentState.players.map(p => p.id));
+        const currentPlayerIds = new Set(updatedState.players.map(p => p.id));
         const newPlayerIds = Array.from(currentPlayerIds).filter(id => !previousPlayerIds.current.has(id));
-        const newPlayers = currentState.players.filter(p => newPlayerIds.includes(p.id));
+        const newPlayers = updatedState.players.filter(p => newPlayerIds.includes(p.id));
         
         // Update previous player IDs for next comparison
         previousPlayerIds.current = currentPlayerIds;
         
         return {
-            ...currentState,
+            ...updatedState,
             newPlayers,
-            playerCount: currentState.players.length,
-            isGameInProgress: currentState.status === 'IN_PROGRESS'
+            playerCount: updatedState.players.length,
+            isGameInProgress: updatedState.status === 'IN_PROGRESS'
         };
     };
 
@@ -101,7 +114,7 @@ export function useRealTimeGamePolling(gameId: string, userId?: string, enabled 
         isLoading,
         mutate
     } = useSWR(
-        enabled && gameId ? `game:${gameId}:poll` : null,
+        enabled && gameId && !isEliminated ? `game:${gameId}:poll` : null,
         fetcher,
         {
             refreshInterval: 2000, // 2-second polling
@@ -158,6 +171,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // Story 9.2: Impostor Credible Tracker state
     impostorQuests: [],
     impostorQuestsInitialized: false,
+
+    // Story 10.2: Self-Elimination Flow state
+    isEliminating: false,
+    eliminationError: null,
+    eliminationErrorCode: null,
 
     fetchGame: async (id: string, userId?: string) => {
         set({ isLoading: true, error: null, errorCode: null });
@@ -317,6 +335,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         isLaunching: false, 
         isSelectingRole: false,
         isCompletingQuest: false,
+        isRefreshing: false,
         error: null, 
         errorCode: null, 
         launchError: null,
@@ -333,6 +352,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
         isFailedQuestsLoading: false,
         impostorQuests: [],
         impostorQuestsInitialized: false,
+        isEliminating: false,
+        eliminationError: null,
+        eliminationErrorCode: null,
     }),
 
     // Story 8.2: Dynamic Content Mapper actions
@@ -479,5 +501,48 @@ export const useGameStore = create<GameStore>((set, get) => ({
         });
 
         return assignments;
+    },
+
+    // Story 10.2: Self-Elimination Flow actions
+    eliminatePlayerAction: async (gameId: string, userId: string) => {
+        set({ isEliminating: true, eliminationError: null, eliminationErrorCode: null });
+        const response = await eliminatePlayer(gameId, userId);
+
+        if (response.success && response.data) {
+            // Refresh game state to get updated player data
+            const gameResponse = await getGame(gameId);
+            
+            if (gameResponse.success && gameResponse.data) {
+                set({
+                    isEliminating: false,
+                    eliminationError: null,
+                    eliminationErrorCode: null,
+                    gameState: gameResponse.data,
+                });
+            } else {
+                // Fallback: update locally if fetch fails
+                set((state) => {
+                    const updatedPlayers = state.gameState?.players.map((p) =>
+                        p.id === userId ? { ...p, isAlive: response.data!.isAlive } : p
+                    );
+                    return {
+                        isEliminating: false,
+                        eliminationError: null,
+                        eliminationErrorCode: null,
+                        gameState: state.gameState
+                            ? { ...state.gameState, players: updatedPlayers ?? state.gameState.players }
+                            : null,
+                    };
+                });
+            }
+            return true;
+        } else {
+            set({
+                eliminationError: response.error || "Unknown error",
+                eliminationErrorCode: response.code || null,
+                isEliminating: false,
+            });
+            return false;
+        }
     },
 }));

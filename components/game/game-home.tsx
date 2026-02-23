@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useEffect } from "react";
@@ -9,6 +10,7 @@ import { RoleBadge } from "@/components/game/role-badge";
 import { QuestProgress } from "@/components/game/quest-progress";
 import { ScanButton } from "@/components/game/scan-button";
 import { CameraScanner } from "@/components/game/camera-scanner";
+import { EliminationButton } from "@/components/game/elimination-button";
 import { useCameraScanner } from "@/hooks/use-camera-scanner";
 import { getBatch } from "@/lib/redis/batch-actions";
 
@@ -27,7 +29,10 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         initializeImpostorQuests,
         generateImpostorQuestAssignments,
         completeImpostorQuest,
-        setImpostorQuestLocation
+        setImpostorQuestLocation,
+        isEliminating,
+        eliminationError,
+        eliminatePlayerAction
     } = useGameStore();
     
     // Camera scanner state management
@@ -78,6 +83,14 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
 
         initializeImpostorQuestsIfNeeded();
     }, [currentPlayer.role, impostorQuestsInitialized, gameState.batchId, gameState.questsPerPlayer, initializeImpostorQuests, generateImpostorQuestAssignments]);
+    
+    // Elimination handler
+    const handleElimination = async () => {
+        const success = await eliminatePlayerAction(gameState.id, userId);
+        if (!success) {
+            console.error("Elimination failed");
+        }
+    };
     
     // Defensive validation: ensure role exists
     if (!currentPlayer.role) {
@@ -173,6 +186,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         isOpen={isOpen}
                         onClose={closeScanner}
                         onScan={handleScan}
+                        isPlayerEliminated={!currentPlayer.isAlive}
                     />
 
                     {/* No Dead End — Return link */}
@@ -190,10 +204,22 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     <div className="text-[8px] text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
                         Role: {currentPlayer.role}
                     </div>
+                    <EliminationButton
+                        onEliminate={handleElimination}
+                        disabled={isEliminating}
+                        isEliminating={isEliminating}
+                    />
                     <div className="text-[8px] text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
-                        Status: READY
+                        Status: {currentPlayer.isAlive ? "READY" : "ELIMINATED"}
                     </div>
                 </div>
+                
+                {/* Elimination error display */}
+                {eliminationError && (
+                    <div className="mt-2 p-2 border border-destructive/20 bg-destructive/10 text-destructive text-xs text-center">
+                        {eliminationError}
+                    </div>
+                )}
             </div>
         </main>
     );

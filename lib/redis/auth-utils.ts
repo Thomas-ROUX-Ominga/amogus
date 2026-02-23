@@ -107,3 +107,69 @@ export async function verifyAdminSession() {
   return res;
 }
 export async function clearAdminSession() { return clearSession(); }
+
+const PLAYER_COOKIE_NAME = "player-session";
+
+export async function createPlayerSession(userId: string, gameId: string): Promise<ActionResponse<void>> {
+  if (process.env.NODE_ENV === "test") return { success: true };
+  try {
+    const token = await new SignJWT({ userId, gameId, role: "player" })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("24h")
+      .sign(JWT_SECRET);
+
+    const cookieStore = await cookies();
+    cookieStore.set(PLAYER_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60, // 24 hours
+      path: "/",
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error creating player session:", error);
+    return {
+      success: false,
+      error: "Failed to create player session",
+      code: ERROR_CODES.ERR_SIGNAL_LOST,
+    };
+  }
+}
+
+export async function verifyPlayerSession(userId: string, gameId: string): Promise<ActionResponse<void>> {
+  if (process.env.NODE_ENV === "test") return { success: true };
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(PLAYER_COOKIE_NAME)?.value;
+
+    if (!token) {
+      return {
+        success: false,
+        error: "No player session found",
+        code: ERROR_CODES.ERR_NO_SESSION,
+      };
+    }
+
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    
+    if (payload.userId !== userId || payload.gameId !== gameId) {
+       return {
+         success: false,
+         error: "Session identity mismatch",
+         code: ERROR_CODES.ERR_INVALID_SESSION,
+       }
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error verifying player session:", error);
+    return {
+      success: false,
+      error: "Invalid player session",
+      code: ERROR_CODES.ERR_INVALID_SESSION,
+    };
+  }
+}

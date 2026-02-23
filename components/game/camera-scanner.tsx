@@ -4,14 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Camera, AlertCircle } from "lucide-react";
 import QrScanner from "qr-scanner";
+import { EliminatedScreen } from "@/components/game/eliminated-screen";
 
 export interface CameraScannerProps {
     isOpen: boolean;
     onClose: () => void;
     onScan: (questId: string) => void;
+    isPlayerEliminated?: boolean;
 }
 
-export function CameraScanner({ isOpen, onClose, onScan }: CameraScannerProps) {
+export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = false }: CameraScannerProps) {
     const videoRef = useRef(null);
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -166,7 +168,12 @@ export function CameraScanner({ isOpen, onClose, onScan }: CameraScannerProps) {
 
                         {/* Scanner Area */}
                         <div className="flex-1 relative flex items-center justify-center p-4">
-                            {isLoading && (
+                            {/* Eliminated Player Overlay */}
+                            {isPlayerEliminated && (
+                                <EliminatedScreen onDismiss={onClose} />
+                            )}
+
+                            {isLoading && !isPlayerEliminated && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                                     <div className="text-center space-y-4">
                                         <motion.div
@@ -181,7 +188,7 @@ export function CameraScanner({ isOpen, onClose, onScan }: CameraScannerProps) {
                                 </div>
                             )}
 
-                            {error && (
+                            {error && !isPlayerEliminated && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 p-4">
                                     <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 max-w-sm w-full text-center space-y-4">
                                         <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
@@ -203,7 +210,7 @@ export function CameraScanner({ isOpen, onClose, onScan }: CameraScannerProps) {
                                 </div>
                             )}
 
-                            {!isLoading && !error && (
+                            {!isLoading && !error && !isPlayerEliminated && (
                                 <div className="relative w-full max-w-md aspect-square">
                                     <video
                                         ref={videoRef}
