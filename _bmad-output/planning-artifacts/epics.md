@@ -137,3 +137,44 @@ Stories 5.1 à 5.2 : Dashboard simple et stats de base.
 - **AC 1**: "SIGNAL ELIMINATION" button in the dashboard footer.
 - **AC 2**: Once activated, player status in Redis becomes `ELIMINATED`.
 - **AC 3**: Any further scan attempts return an "ACCESS DENIED - SYSTEM OFFLINE" message.
+### Epic 11: MVP Polish & Bug Fixes
+
+#### Story 11.1: Fix PDF Export QR Location Labels
+
+**As an** admin, **I want to** see the location label under every QR code in the exported PDF **so that** I know exactly where to place each printed code.
+
+- **AC 1**: The PDF generation logic iterates through each QR code correctly, displaying its unique Location label beneath it instead of only showing the first two locations.
+- **AC 2**: The PDF layout remains clean and readable, keeping maximum quests per page without overlapping.
+
+#### Story 11.2: General Application Flow Fixes
+
+**As a** user, **I want to** experience a logical starting flow and clearly separated roles **so that** the game is intuitive from the moment I open it.
+
+- **AC 1**: The Home page displays only two options: "Join a game with code" and "Login" (which also offers registration). The useless "Scan" option is removed from the Home page.
+- **AC 2**: An authenticated User (Admin) creating and launching a game cannot choose a player pseudo or role. They are automatically assigned the "Admin" role for that game and redirected to the Admin Dashboard.
+- **AC 3**: Non-admin players who join the lobby cannot launch the game. Only the Admin can start the game for everyone.
+
+#### Story 11.3: Game Settings from Batch
+
+**As an** admin, **I want to** set the default number of Short/Medium/Long quests per player when launching a game from a Batch **so that** the game automatically assigns the correct quests to joiners.
+
+- **AC 1**: The Batch launch page includes input fields to explicitly set the default number of Short, Medium, and Long quests per user (e.g., 4 Short, 2 Medium, 1 Long).
+- **AC 2**: The game creation logic saves these settings to the game state.
+- **AC 3**: New players joining the game are automatically assigned quests matching this exact distribution from the selected Batch.
+
+#### Story 11.4: Refactor In-App QR Scanner
+
+**As a** player, **I want to** reliably scan QR codes using my device's camera **so that** I can complete quests efficiently.
+
+- **AC 1**: The current camera scanner implementation is replaced or heavily refactored using a robust library like `html5-qrcode`.
+- **AC 2**: The scanner works reliably on both Desktop browsers (with webcams) and Mobile devices (with rear cameras).
+- **AC 3**: The scanning experience remains fast and seamlessly redirects upon successful QR detection.
+
+#### Story 11.5: Fix Player Elimination UI/UX
+
+**As a** player, **I want to** clearly see when I am eliminated and have the elimination state visually prominent **so that** there is no confusion about my game status.
+
+- **AC 1**: The player elimination screen is redesigned to be opaque, prominent, and clearly indicates the "Dead" or "Eliminated" state without visual bugs or transparency issues.
+- **AC 2**: The Admin Dashboard includes a feature allowing the Admin to manually eliminate any player from the game remotely.
+- **AC 3**: An Admin-triggered elimination immediately updates the targeted player's screen to the Eliminated state via real-time sync.
+- **AC 4**: An eliminated Crewmate enters "Ghost Mode" and can still scan QR codes and complete their remaining assigned quests, though their status remains eliminated.
