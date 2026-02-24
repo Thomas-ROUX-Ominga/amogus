@@ -13,7 +13,14 @@ vi.mock('@/lib/redis/client', () => ({
 }));
 
 vi.mock('@/lib/redis/auth-utils', () => ({
-  verifySession: vi.fn().mockResolvedValue({ success: true }),
+  verifySession: vi.fn().mockResolvedValue({ 
+    success: true, 
+    data: { 
+      userId: 'test-admin-user', 
+      username: 'test-admin',
+      role: 'organizer'
+    } 
+  }),
 }));
 
 vi.mock('@/lib/redis/batch-actions', () => ({

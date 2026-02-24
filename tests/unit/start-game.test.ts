@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { redis } from "@/lib/redis/client";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
+import { verifySession } from "@/lib/redis/auth-utils";
 
 // Mock redis client
 vi.mock("@/lib/redis/client", () => ({
@@ -11,6 +12,11 @@ vi.mock("@/lib/redis/client", () => ({
         del: vi.fn(),
         atomicUpdate: vi.fn(),
     },
+}));
+
+// Mock admin session
+vi.mock("@/lib/redis/auth-utils", () => ({
+    verifySession: vi.fn(),
 }));
 
 // Mock next/navigation
@@ -34,6 +40,11 @@ function mockAtomicUpdate(state: unknown) {
 describe("startGame", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        // Default admin session mock for all tests
+        vi.mocked(verifySession).mockResolvedValue({
+            success: true,
+            data: { userId: "player-1", username: "Alice", role: "organizer" }
+        });
     });
 
     it("should transition game from LOBBY to IN_PROGRESS", async () => {
@@ -42,6 +53,7 @@ describe("startGame", () => {
             status: "LOBBY",
             players: [{ id: "player-1", name: "Alice", isAlive: true }],
             createdAt: Date.now(),
+            creatorId: "player-1",
         };
         mockAtomicUpdate(mockState);
 
@@ -76,6 +88,7 @@ describe("startGame", () => {
             status: "IN_PROGRESS",
             players: [{ id: "player-1", name: "Alice", isAlive: true }],
             createdAt: Date.now(),
+            creatorId: "player-1",
         };
         mockAtomicUpdate(mockState);
 
@@ -95,6 +108,7 @@ describe("startGame", () => {
             status: "FINISHED",
             players: [{ id: "player-1", name: "Alice", isAlive: true }],
             createdAt: Date.now(),
+            creatorId: "player-1",
         };
         mockAtomicUpdate(mockState);
 
@@ -110,6 +124,7 @@ describe("startGame", () => {
             status: "LOBBY",
             players: [],
             createdAt: Date.now(),
+            creatorId: "player-1",
         };
         mockAtomicUpdate(mockState);
 

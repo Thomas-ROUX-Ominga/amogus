@@ -80,11 +80,15 @@ export default function LobbyPage() {
 
     // Check if the current user is already in the player list
     const isJoined = currentGameState?.players.some((p) => p.id === userId);
-    const canLaunch = currentGameState && currentPlayerCount >= 1 && currentGameState.status === "LOBBY";
-    
-    // Get current player's role
     const currentPlayer = currentGameState?.players.find((p) => p.id === userId);
     const hasRole = currentPlayer?.role !== undefined;
+    
+    // Only the game creator (admin) can launch the game
+    const canLaunch = currentGameState && 
+                     currentPlayerCount >= 1 && 
+                     currentGameState.status === "LOBBY" &&
+                     currentGameState.creatorId === userId &&
+                     currentPlayer?.role === "ADMIN";
 
     const handleRoleSelected = useCallback(() => {
         setShowTransition(true);

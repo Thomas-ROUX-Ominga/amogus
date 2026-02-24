@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ScanButton } from "@/components/game/scan-button";
 import { Terminal, Shield, ChevronRight, Hash } from "lucide-react";
 import { motion } from "framer-motion";
 import { isValidShortCode, normalizeShortCode } from "@/lib/utils/short-code";
@@ -66,20 +65,6 @@ export default function Home() {
           </header>
 
           <div className="space-y-8">
-            <div className="space-y-4">
-              <label className="text-[10px] uppercase tracking-widest text-primary/60 font-bold">Primary_Join_Method</label>
-              <ScanButton disabled={false} href="/scanner" />
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-primary/10" />
-              </div>
-              <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
-                <span className="bg-black px-4 text-primary/40">OR_Use_Code</span>
-              </div>
-            </div>
-
             <form onSubmit={handleJoinByCode} className="space-y-4">
               <div className="relative group">
                 <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/30 group-focus-within:text-primary transition-colors" />

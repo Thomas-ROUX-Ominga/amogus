@@ -80,11 +80,29 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
             questsTotal = batchResponse.data.quests.length;
         }
 
+        // Get admin session info to add admin as first player
+        const adminSession = await verifySession();
+        if (!adminSession.success || !adminSession.data) {
+            return {
+                success: false,
+                error: "Unauthorized access: Organizer credentials required.",
+                code: ERROR_CODES.ERR_UNAUTHORIZED,
+            };
+        }
+
         const initialState: GameState = {
             id: shortCode,
             status: "LOBBY",
-            players: [],
+            players: [
+                {
+                    id: adminSession.data.userId,
+                    name: adminSession.data.username,
+                    role: "ADMIN",
+                    isAlive: true,
+                }
+            ],
             createdAt: Date.now(),
+            creatorId: adminSession.data.userId,
             batchId,
             questsTotal,
             questsPerPlayer,
@@ -136,6 +154,16 @@ export async function startGame(
     gameId: string
 ): Promise<ActionResponse<GameState>> {
     try {
+        // Verify admin session and permissions
+        const session = await verifySession();
+        if (!session.success || !session.data) {
+            return {
+                success: false,
+                error: "Unauthorized: Only the game creator can start the game.",
+                code: ERROR_CODES.ERR_UNAUTHORIZED,
+            };
+        }
+
         const stateKey = `game:${gameId}:state`;
 
         // Use a validation result holder to communicate errors from the updater
@@ -151,10 +179,20 @@ export async function startGame(
                 return null; // Abort transaction
             }
 
+            // Check if the session user is the game creator
+            if (state.creatorId !== session.data!.userId) {
+                validationError = {
+                    success: false,
+                    error: "Unauthorized: Only the game creator can start the game.",
+                    code: ERROR_CODES.ERR_UNAUTHORIZED,
+                };
+                return null; // Abort transaction
+            }
+
             // Idempotent: already IN_PROGRESS is fine
             if (state.status === "IN_PROGRESS") {
                 validationError = null; // Not an error, handled below
-                return null; // No update needed
+                return state; // Return current state to maintain success response
             }
 
             // Only LOBBY → IN_PROGRESS is allowed
@@ -185,10 +223,19 @@ export async function startGame(
             return validationError;
         }
 
+        // If result is null (shouldn't happen with current logic), get current state
+        if (!result) {
+            const currentState = await redis.get<GameState>(stateKey);
+            return {
+                success: true,
+                data: currentState!,
+            };
+        }
+
         // result is the updated state (or original if no update was needed)
         return {
             success: true,
-            data: result!,
+            data: result,
         };
     } catch (error) {
         console.error("Failed to start game:", error);

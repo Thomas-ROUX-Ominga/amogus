@@ -61,9 +61,9 @@ export default function CreateGamePage() {
       
       if (response.success && response.data) {
         setSuccess(`Game created successfully! Short code: ${response.data}`);
-        // Redirect after a short delay
+        // Redirect to the specific game admin dashboard after a short delay
         setTimeout(() => {
-          router.push("/admin/tracker");
+          router.push(`/admin/tracker/${response.data}`);
         }, 2000);
       } else {
         setError(response.error || "Failed to create game");

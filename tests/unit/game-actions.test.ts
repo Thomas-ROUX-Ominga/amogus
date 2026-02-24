@@ -2,6 +2,7 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 import { createGame, getGame, completeQuest } from "@/lib/redis/actions";
 import { redis } from "@/lib/redis/client";
 import { GameState } from "@/types/game";
+import { verifySession } from "@/lib/redis/auth-utils";
 
 // Mock kv client
 vi.mock("@/lib/redis/client", () => ({
@@ -12,6 +13,11 @@ vi.mock("@/lib/redis/client", () => ({
         atomicUpdate: vi.fn(),
         exists: vi.fn(() => Promise.resolve(0)), // Mock exists to return 0 (no collision)
     },
+}));
+
+// Mock admin session
+vi.mock("@/lib/redis/auth-utils", () => ({
+    verifySession: vi.fn(),
 }));
 
 // Mock quest-pool functions
@@ -56,7 +62,15 @@ describe("createGame", () => {
             expect.objectContaining({
                 id: "234567",
                 status: "LOBBY",
-                players: [],
+                creatorId: "test-user",
+                players: expect.arrayContaining([
+                    expect.objectContaining({
+                        id: "test-user",
+                        name: "test-org",
+                        role: "ADMIN",
+                        isAlive: true,
+                    })
+                ]),
             }),
             86400
         );
