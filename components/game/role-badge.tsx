@@ -1,6 +1,6 @@
 "use client";
 
-import { Shield, Users } from "lucide-react";
+import { Shield, Users, Crown } from "lucide-react";
 import { PlayerRole } from "@/types/game";
 
 interface RoleBadgeProps {
@@ -18,6 +18,11 @@ const ROLE_CONFIG = {
         color: "#DA3633",
         label: "IMPOSTOR",
         Icon: Shield,
+    },
+    ADMIN: {
+        color: "#6366F1",
+        label: "ADMIN",
+        Icon: Crown,
     },
 } as const;
 
