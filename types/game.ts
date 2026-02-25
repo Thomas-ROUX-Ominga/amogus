@@ -9,6 +9,7 @@ export interface Player {
     isAlive: boolean;
     completedQuests?: string[];
     lastQuestCompleted?: number; // Timestamp of last completed quest
+    assignedQuests?: string[]; // Story 11.3: Quests assigned to this player from batch
 }
 
 export interface GameState {

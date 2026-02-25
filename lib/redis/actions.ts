@@ -7,6 +7,7 @@ import { getBatch } from "./batch-actions";
 import { getTotalQuestGamesCount } from "@/lib/constants/quest-pool";
 import { generateShortCode } from "@/lib/utils/short-code.server";
 import { Quest, QuestGame } from "@/types/quest";
+import { assignQuestsFromBatch } from "@/lib/quests/quest-assignment";
 
 import { verifySession, createPlayerSession, verifyPlayerSession } from "./auth-utils";
 
@@ -39,12 +40,12 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
         const defaultQuestsPerPlayer = { short: 1, medium: 1, long: 1 }; // 3 quests minimum
         const questsPerPlayer = input?.questsPerPlayer || defaultQuestsPerPlayer;
         
-        // Validate minimum quests per player (must be at least 3 total)
+        // Validate minimum quests per player (must be at least 1 total)
         const totalRequested = questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long;
-        if (totalRequested < 3) {
+        if (totalRequested < 1) {
             return {
                 success: false,
-                error: "Minimum 3 quests per player required (1 short + 1 medium + 1 long)",
+                error: "At least 1 quest per player required",
                 code: ERROR_CODES.ERR_INVALID_INPUT,
             };
         }
@@ -289,11 +290,30 @@ export async function joinGame(
             return { success: false, error: "Cockpit at maximum capacity.", code: ERROR_CODES.ERR_FULL_CAPACITY };
         }
 
-        // Add new player
+        // Story 11.3: Game Settings from Batch - Assign quests from batch
+        let assignedQuestIds: string[] | undefined = undefined;
+        
+        if (state.batchId) {
+            const assignedQuests = await assignQuestsFromBatch(state);
+            
+            // If we have a batch but failed to assign quests, treat as an error
+            // (Unless the intended distribution was 0 total, which we validated above as 1 min)
+            if (assignedQuests.length === 0) {
+                return {
+                    success: false,
+                    error: "Failed to assign quests from mission batch.",
+                    code: ERROR_CODES.ERR_SIGNAL_LOST
+                };
+            }
+            assignedQuestIds = assignedQuests.map(a => a.questId);
+        }
+
+        // Add new player with assigned quests
         const newPlayer = {
             id: userId,
             name: sanitizedName,
             isAlive: true,
+            assignedQuests: assignedQuestIds,
         };
 
         const updatedState: GameState = {
@@ -382,6 +402,18 @@ export async function completeQuest(
                     code: ERROR_CODES.ERR_INVALID_STATE,
                 };
                 return null;
+            }
+
+            // Story 11.3: Game Settings from Batch - Validate quest is in player's assigned quests
+            if (player.assignedQuests && player.assignedQuests.length > 0) {
+                if (!player.assignedQuests.includes(questId)) {
+                    validationError = {
+                        success: false,
+                        error: "Cannot complete quest: this quest is not assigned to you.",
+                        code: ERROR_CODES.ERR_INVALID_INPUT,
+                    };
+                    return null;
+                }
             }
 
             const completed = player.completedQuests ?? [];

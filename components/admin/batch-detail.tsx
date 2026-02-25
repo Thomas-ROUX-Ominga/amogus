@@ -27,11 +27,27 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // Story 11.3: Game Settings from Batch - Quest distribution state
+  const [questDistribution, setQuestDistribution] = useState({
+    short: 4,
+    medium: 2,
+    long: 1
+  });
 
   const handleLocationChange = (questId: string, value: string) => {
     setLocations((prev) => ({
       ...prev,
       [questId]: value,
+    }));
+  };
+
+  // Story 11.3: Game Settings from Batch - Quest distribution handlers
+  const handleQuestDistributionChange = (duration: 'short' | 'medium' | 'long', value: string) => {
+    const numValue = parseInt(value) || 0;
+    setQuestDistribution(prev => ({
+      ...prev,
+      [duration]: Math.max(0, numValue)
     }));
   };
 
@@ -76,8 +92,26 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
     setIsLaunching(true);
     setError("");
 
+    // Story 11.3: Game Settings from Batch - Validate quest distribution
+    const totalQuests = questDistribution.short + questDistribution.medium + questDistribution.long;
+    if (totalQuests < 1) {
+      setError("At least 1 quest total must be selected");
+      setIsLaunching(false);
+      return;
+    }
+
+    if (totalQuests > batch.questCount) {
+      setError(`Cannot assign ${totalQuests} quests per player. Only ${batch.questCount} quests available in batch.`);
+      setIsLaunching(false);
+      return;
+    }
+
     try {
-      const result = await createGame({ batchId: batch.id });
+      // Story 11.3: Game Settings from Batch - Pass quest distribution to createGame
+      const result = await createGame({ 
+        batchId: batch.id,
+        questsPerPlayer: questDistribution
+      });
 
       if (!result.success) {
         setError(result.error || "Failed to launch game");
@@ -155,6 +189,57 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
               <FileDown size={14} />
               {isGenerating ? "GENERATING..." : "GENERATE PDF"}
             </button>
+          </div>
+        </div>
+
+        {/* Story 11.3: Game Settings from Batch - Quest Distribution Settings */}
+        <div className="border border-primary/20 bg-black/30 p-4">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-3">
+            QUEST DISTRIBUTION SETTINGS
+          </h3>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-[8px] text-muted-foreground uppercase tracking-widest mb-1">
+                SHORT QUESTS
+              </label>
+              <input
+                type="number"
+                min="0"
+                max={batch.questCount}
+                value={questDistribution.short}
+                onChange={(e) => handleQuestDistributionChange('short', e.target.value)}
+                className="w-full bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50"
+              />
+            </div>
+            <div>
+              <label className="block text-[8px] text-muted-foreground uppercase tracking-widest mb-1">
+                MEDIUM QUESTS
+              </label>
+              <input
+                type="number"
+                min="0"
+                max={batch.questCount}
+                value={questDistribution.medium}
+                onChange={(e) => handleQuestDistributionChange('medium', e.target.value)}
+                className="w-full bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50"
+              />
+            </div>
+            <div>
+              <label className="block text-[8px] text-muted-foreground uppercase tracking-widest mb-1">
+                LONG QUESTS
+              </label>
+              <input
+                type="number"
+                min="0"
+                max={batch.questCount}
+                value={questDistribution.long}
+                onChange={(e) => handleQuestDistributionChange('long', e.target.value)}
+                className="w-full bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50"
+              />
+            </div>
+          </div>
+          <div className="mt-2 text-[8px] text-muted-foreground uppercase tracking-widest">
+            TOTAL: {questDistribution.short + questDistribution.medium + questDistribution.long} QUESTS PER PLAYER
           </div>
         </div>
 
