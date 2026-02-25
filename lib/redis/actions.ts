@@ -393,10 +393,12 @@ export async function completeQuest(
 
             const player = state.players[playerIndex];
             
-            if (!player.isAlive) {
+            // Story 11.5: Allow eliminated Crewmates to complete quests (Ghost Mode)
+            // Only block if player is eliminated AND is an Impostor
+            if (!player.isAlive && player.role === "IMPOSTOR") {
                 validationError = {
                     success: false,
-                    error: "Cannot complete quest: player is eliminated.",
+                    error: "Cannot complete quest: eliminated Impostors cannot complete quests.",
                     code: ERROR_CODES.ERR_INVALID_STATE,
                 };
                 return null;

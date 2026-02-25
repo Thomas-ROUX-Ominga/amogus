@@ -2,9 +2,9 @@
 
 import useSWR from "swr";
 import { useState } from "react";
-import { ArrowLeft, RefreshCw, Users, Target, TrendingUp, Clock } from "lucide-react";
+import { ArrowLeft, RefreshCw, Users, Target, TrendingUp, Clock, Skull } from "lucide-react";
 import { GameState } from "@/types/game";
-import { getDashboardData, DashboardData } from "@/app/admin/dashboard/actions";
+import { getDashboardData, DashboardData, eliminatePlayer } from "@/app/admin/dashboard/actions";
 import { SimpleProgressBar } from "./simple-progress-bar";
 
 interface LiveDashboardProps {
@@ -23,6 +23,8 @@ const fetcher = async (gameId: string): Promise<DashboardData> => {
 };
 
 export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
+  const [eliminatingPlayer, setEliminatingPlayer] = useState<string | null>(null);
+  
   const {
     data: dashboardData,
     error,
@@ -33,6 +35,24 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
     revalidateOnFocus: false,
     errorRetryCount: 3,
   });
+
+  const handleEliminatePlayer = async (playerId: string) => {
+    setEliminatingPlayer(playerId);
+    try {
+      const result = await eliminatePlayer(gameId, playerId);
+      if (result.success) {
+        // Refresh data to show the updated player status
+        mutate();
+      } else {
+        console.error("Failed to eliminate player:", result.error);
+        // TODO: Show error notification to user
+      }
+    } catch (error) {
+      console.error("Error eliminating player:", error);
+    } finally {
+      setEliminatingPlayer(null);
+    }
+  };
 
   if (error) {
     return (
@@ -276,13 +296,29 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
                     </span>
                   )}
                 </div>
-                <div className="text-right">
-                  <div className="text-lg font-bold text-primary">
-                    {player.completed} / {player.assigned}
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-primary">
+                      {player.completed} / {player.assigned}
+                    </div>
+                    <div className="text-[8px] text-primary/50 tracking-widest uppercase">
+                      {player.percentage.toFixed(1)}%
+                    </div>
                   </div>
-                  <div className="text-[8px] text-primary/50 tracking-widest uppercase">
-                    {player.percentage.toFixed(1)}%
-                  </div>
+                  {player.isAlive && (
+                    <button
+                      onClick={() => handleEliminatePlayer(player.id)}
+                      disabled={eliminatingPlayer === player.id}
+                      className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Eliminate Player"
+                    >
+                      {eliminatingPlayer === player.id ? (
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Skull className="w-4 h-4" />
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
               <SimpleProgressBar 

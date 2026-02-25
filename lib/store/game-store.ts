@@ -108,13 +108,18 @@ export function useRealTimeGamePolling(gameId: string, userId?: string, enabled 
         };
     };
 
+    // Story 11.5: Only stop polling for eliminated Impostors or when game is finished.
+    // Crewmates in Ghost Mode still need real-time updates.
+    const shouldStopPolling = isEliminated && currentPlayer?.role === "IMPOSTOR";
+    const isGameFinished = gameStateFromStore?.status === "FINISHED";
+    
     const {
         data,
         error,
         isLoading,
         mutate
     } = useSWR(
-        enabled && gameId && !isEliminated ? `game:${gameId}:poll` : null,
+        enabled && gameId && !shouldStopPolling && !isGameFinished ? `game:${gameId}:poll` : null,
         fetcher,
         {
             refreshInterval: 2000, // 2-second polling

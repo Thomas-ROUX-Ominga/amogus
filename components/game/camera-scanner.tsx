@@ -11,9 +11,10 @@ export interface CameraScannerProps {
     onClose: () => void;
     onScan: (questId: string) => void;
     isPlayerEliminated?: boolean;
+    playerRole?: string;
 }
 
-export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = false }: CameraScannerProps) {
+export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = false, playerRole }: CameraScannerProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
@@ -203,12 +204,26 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
 
                         {/* Scanner Area */}
                         <div className="flex-1 relative flex items-center justify-center p-4">
-                            {/* Eliminated Player Overlay */}
-                            {isPlayerEliminated && (
+                            {/* Eliminated Player Overlay - Only block Impostors, allow Crewmates in Ghost Mode */}
+                            {isPlayerEliminated && playerRole === "IMPOSTOR" && (
                                 <EliminatedScreen onDismiss={onClose} />
                             )}
 
-                            {isLoading && !isPlayerEliminated && (
+                            {/* Ghost Mode Overlay for Eliminated Crewmates */}
+                            {isPlayerEliminated && playerRole === "CREWMATE" && (
+                                <div className="absolute inset-0 bg-blue-500/10 backdrop-blur-sm border border-blue-500/30 rounded-lg p-4 m-4">
+                                    <div className="text-center space-y-2">
+                                        <h3 className="text-sm font-bold text-blue-400 font-orbitron uppercase tracking-wider">
+                                            Ghost Mode Active
+                                        </h3>
+                                        <p className="text-xs text-blue-300 font-rajdhani">
+                                            You can continue scanning QR codes to complete your remaining quests.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {isLoading && !(isPlayerEliminated && playerRole === "IMPOSTOR") && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                                     <div className="text-center space-y-4">
                                         <motion.div
@@ -223,7 +238,7 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                                 </div>
                             )}
 
-                            {error && !isPlayerEliminated && (
+                            {error && !(isPlayerEliminated && playerRole === "IMPOSTOR") && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 p-4">
                                     <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 max-w-sm w-full text-center space-y-4">
                                         <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
@@ -245,7 +260,7 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                                 </div>
                             )}
 
-                            {!isLoading && !error && !isPlayerEliminated && (
+                            {!isLoading && !error && !(isPlayerEliminated && playerRole === "IMPOSTOR") && (
                                 <div className="relative w-full max-w-md aspect-square">
                                     <div
                                         id={scannerRegionId}

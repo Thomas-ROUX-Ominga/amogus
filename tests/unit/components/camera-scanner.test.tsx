@@ -153,18 +153,34 @@ describe('CameraScanner', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 
-  it('shows eliminated screen when player is eliminated', () => {
+  it('shows eliminated screen when eliminated Impostor tries to scan', () => {
     render(
       <CameraScanner
         isOpen={true}
         onClose={mockOnClose}
         onScan={mockOnScan}
         isPlayerEliminated={true}
+        playerRole="IMPOSTOR"
       />
     );
 
-    expect(screen.getByText('SYSTEM OFFLINE')).toBeInTheDocument();
-    expect(screen.getByText('ACCESS DENIED')).toBeInTheDocument();
+    expect(screen.getByText('ELIMINATED')).toBeInTheDocument();
+    expect(screen.getByText('YOU HAVE BEEN ELIMINATED')).toBeInTheDocument();
+  });
+
+  it('shows Ghost Mode overlay when eliminated Crewmate tries to scan', () => {
+    render(
+      <CameraScanner
+        isOpen={true}
+        onClose={mockOnClose}
+        onScan={mockOnScan}
+        isPlayerEliminated={true}
+        playerRole="CREWMATE"
+      />
+    );
+
+    expect(screen.getByText('Ghost Mode Active')).toBeInTheDocument();
+    expect(screen.getByText('You can continue scanning QR codes to complete your remaining quests.')).toBeInTheDocument();
   });
 
   it('handles camera initialization errors', async () => {

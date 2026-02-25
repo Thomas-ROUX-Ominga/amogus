@@ -11,6 +11,7 @@ import { QuestProgress } from "@/components/game/quest-progress";
 import { ScanButton } from "@/components/game/scan-button";
 import { CameraScanner } from "@/components/game/camera-scanner";
 import { EliminationButton } from "@/components/game/elimination-button";
+import { EliminatedScreen } from "@/components/game/eliminated-screen";
 import { useCameraScanner } from "@/hooks/use-camera-scanner";
 import { getBatch } from "@/lib/redis/batch-actions";
 
@@ -21,6 +22,7 @@ interface GameHomeProps {
 }
 
 export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
+    const [showEliminatedOverlay, setShowEliminatedOverlay] = React.useState(!currentPlayer.isAlive);
     const { 
         questsCompleted, 
         questsTotal, 
@@ -35,6 +37,13 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         eliminatePlayerAction
     } = useGameStore();
     
+    // Sync local overlay state with player alive status
+    useEffect(() => {
+        if (!currentPlayer.isAlive) {
+            setShowEliminatedOverlay(true);
+        }
+    }, [currentPlayer.isAlive]);
+
     // Camera scanner state management
     const { isOpen, openScanner, closeScanner, handleScan: originalHandleScan } = useCameraScanner({
         gameId: gameState.id,
@@ -187,7 +196,17 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         onClose={closeScanner}
                         onScan={handleScan}
                         isPlayerEliminated={!currentPlayer.isAlive}
+                        playerRole={currentPlayer.role}
                     />
+
+                    {/* Prominent Elimination Overlay */}
+                    {showEliminatedOverlay && (
+                        <EliminatedScreen 
+                            playerName={currentPlayer.name}
+                            playerRole={currentPlayer.role}
+                            onDismiss={currentPlayer.role === "CREWMATE" ? () => setShowEliminatedOverlay(false) : undefined}
+                        />
+                    )}
 
                     {/* No Dead End — Return link */}
                     <Link

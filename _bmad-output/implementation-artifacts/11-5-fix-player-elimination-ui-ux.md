@@ -1,6 +1,12 @@
 # Story 11.5: Fix Player Elimination UI/UX
 
-Status: ready-for-dev
+Status: done
+
+## Review Follow-ups (AI)
+
+- [x] [AI-Review][CRITICAL] Fix polling bug in Ghost Mode (polling was stopping for Crewmates)
+- [x] [AI-Review][HIGH] Add prominent elimination overlay to GameHome
+- [x] [AI-Review][MEDIUM] Update EliminatedScreen for role-specific messaging (Crewmate vs Impostor)
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -19,16 +25,16 @@ so that there is no confusion about my game status.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Fix Eliminated UI (AC: 1)
-  - [ ] Subtask 1.1: Update `components/game/eliminated-screen.tsx` to fix transparency and z-index issues
-  - [ ] Subtask 1.2: Ensure the visually prominent "Ghost Mode" state is obvious
-- [ ] Task 2: Allow Admin Remote Elimination (AC: 2, 3)
-  - [ ] Subtask 2.1: Add "Eliminate" button next to each player on the Admin Dashboard
-  - [ ] Subtask 2.2: Create server action to update player status to `ELIMINATED` in Redis
-  - [ ] Subtask 2.3: Ensure SWR automatically picks up the state change on the player's device
-- [ ] Task 3: Implement Ghost Mode Quests (AC: 4)
-  - [ ] Subtask 3.1: Remove the blocking "ACCESS DENIED - SYSTEM OFFLINE" message for eliminated Crewmates
-  - [ ] Subtask 3.2: Allow the `completedQuest` logic to process quests for players whose state is `ELIMINATED`
+- [x] Task 1: Fix Eliminated UI (AC: 1)
+  - [x] Subtask 1.1: Update `components/game/eliminated-screen.tsx` to fix transparency and z-index issues
+  - [x] Subtask 1.2: Ensure the visually prominent "Ghost Mode" state is obvious
+- [x] Task 2: Allow Admin Remote Elimination (AC: 2, 3)
+  - [x] Subtask 2.1: Add "Eliminate" button next to each player on the Admin Dashboard
+  - [x] Subtask 2.2: Create server action to update player status to `ELIMINATED` in Redis
+  - [x] Subtask 2.3: Ensure SWR automatically picks up the state change on the player's device
+- [x] Task 3: Implement Ghost Mode Quests (AC: 4)
+  - [x] Subtask 3.1: Remove the blocking "ACCESS DENIED - SYSTEM OFFLINE" message for eliminated Crewmates
+  - [x] Subtask 3.2: Allow the `completedQuest` logic to process quests for players whose state is `ELIMINATED`
 
 ## Dev Notes
 
@@ -55,10 +61,28 @@ so that there is no confusion about my game status.
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Cascade (Penguin Alpha)
 
 ### Debug Log References
 
+No major debugging issues encountered during implementation.
+
 ### Completion Notes List
 
+- **Task 1 - Eliminated UI Enhancement**: Successfully redesigned the eliminated screen with opaque background (`bg-black` instead of `bg-black/90`), prominent "ELIMINATED" header, and clear Ghost Mode messaging. Updated styling to use red accents for elimination state and blue accents for Ghost Mode capabilities.
+
+- **Task 2 - Admin Remote Elimination**: Implemented admin elimination functionality with proper authorization checks. Added skull icon buttons to LiveDashboard for each alive player, created `eliminatePlayer` server action with admin validation, and ensured real-time updates via SWR revalidation.
+
+- **Task 3 - Ghost Mode Implementation**: Successfully differentiated behavior between eliminated Crewmates and Impostors. Eliminated Crewmates can now scan QR codes and complete quests in Ghost Mode, while eliminated Impostors remain blocked. Updated camera scanner logic to show appropriate overlays based on player role.
+
 ### File List
+
+- `components/game/eliminated-screen.tsx` - Updated UI for better visibility and Ghost Mode messaging
+- `components/admin/LiveDashboard.tsx` - Added eliminate buttons with loading states
+- `app/admin/dashboard/actions.ts` - Added admin elimination action with authorization
+- `components/game/camera-scanner.tsx` - Updated to support Ghost Mode for eliminated Crewmates
+- `components/game/game-home.tsx` - Pass playerRole to CameraScanner
+- `lib/redis/actions.ts` - Modified completeQuest to allow eliminated Crewmates
+- `tests/unit/components/eliminated-screen.test.tsx` - New test suite for eliminated screen
+- `tests/unit/admin/elimination-action.test.ts` - New test suite for admin elimination
+- `tests/unit/components/camera-scanner.test.tsx` - Updated tests for Ghost Mode behavior
