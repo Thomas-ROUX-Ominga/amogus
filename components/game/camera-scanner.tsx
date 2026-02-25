@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Camera, AlertCircle } from "lucide-react";
-import QrScanner from "qr-scanner";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { EliminatedScreen } from "@/components/game/eliminated-screen";
 
 export interface CameraScannerProps {
@@ -14,11 +14,10 @@ export interface CameraScannerProps {
 }
 
 export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = false }: CameraScannerProps) {
-    const videoRef = useRef(null);
-    const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const qrScannerRef = useRef<QrScanner | null>(null);
+    const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+    const scannerRegionId = 'qr-scanner-region';
 
     useEffect(() => {
         if (!isOpen) {
@@ -26,117 +25,153 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
             return;
         }
 
-        initializeScanner();
-        return cleanupScanner;
-    }, [isOpen]);
+        // Initialize scanner if container is ready and no active scanner/error
+        if (document.getElementById(scannerRegionId) && !html5QrCodeRef.current && !error && !isLoading) {
+            initializeScanner();
+        }
+
+        return () => {
+            if (!isOpen) {
+                cleanupScanner();
+            }
+        };
+    }, [isOpen, error, isLoading]);
 
     const initializeScanner = async () => {
+        if (!document.getElementById(scannerRegionId)) return;
+        
         setIsLoading(true);
         setError(null);
 
         try {
-            // Check camera permission first
-            const permission = await navigator.permissions.query({ name: 'camera' });
-            setHasPermission(permission.state === 'granted' || permission.state === 'prompt');
+            // Create a new instance of Html5Qrcode
+            const html5QrCode = new Html5Qrcode(scannerRegionId, {
+                formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+                verbose: false
+            });
+            html5QrCodeRef.current = html5QrCode;
 
-            // Initialize QR Scanner
-            if (!videoRef.current) return;
+            // Configure scanner for mobile-first environment usage
+            const config = {
+                fps: 15, // Higher FPS for responsive feel
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0,
+            };
 
-            const qrScanner = new QrScanner(
-                videoRef.current,
-                (result) => {
-                    // Vibrate on successful scan
-                    try {
-                        if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-                            navigator.vibrate([50, 30, 50]);
-                        }
-                    } catch {
-                        // Ignore haptic failures silently
-                    }
-
+            // Start scanning immediately with environment camera
+            await html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText) => {
                     // Extract quest ID from QR code data
-                    const questId = extractQuestId(result.data);
+                    const questId = extractQuestId(decodedText);
+                    
                     if (questId) {
+                        // Immediately stop/clear scanner to prevent multiple triggers
+                        cleanupScanner();
+                        
+                        // Vibrate on successful scan
+                        try {
+                            if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+                                navigator.vibrate([50, 30, 50]);
+                            }
+                        } catch {
+                            // Ignore haptic failures
+                        }
+
+                        // Trigger callback immediately
                         onScan(questId);
                         onClose();
                     }
                 },
-                {
-                    highlightScanRegion: true,
-                    highlightCodeOutline: true,
-                }
+                undefined // Ignore constant scan errors while searching
             );
 
-            qrScannerRef.current = qrScanner;
-            await qrScanner.start();
-            setHasPermission(true);
         } catch (err) {
             console.error('Camera initialization error:', err);
-            setError(handleCameraError(err as Error | { name: string }));
-            setHasPermission(false);
+            setError(handleCameraError(err as Error));
+            cleanupScanner();
         } finally {
             setIsLoading(false);
         }
     };
 
     const cleanupScanner = () => {
-        if (qrScannerRef.current) {
-            try {
-                qrScannerRef.current.stop();
-                qrScannerRef.current.destroy();
-            } catch (error) {
-                console.warn('Error during scanner cleanup:', error);
-            } finally {
-                qrScannerRef.current = null;
+        if (html5QrCodeRef.current) {
+            if (html5QrCodeRef.current.isScanning) {
+                html5QrCodeRef.current.stop().then(() => {
+                    html5QrCodeRef.current?.clear();
+                    html5QrCodeRef.current = null;
+                }).catch(err => {
+                    console.warn('Error stopping scanner:', err);
+                });
+            } else {
+                try {
+                    html5QrCodeRef.current.clear();
+                } catch (e) {
+                    // Ignore clear errors if not rendered
+                }
+                html5QrCodeRef.current = null;
             }
         }
     };
 
     const extractQuestId = (qrData: string): string | null => {
+        // 1. Try to parse as URL and extract from path or params
         try {
-            // Try to parse as URL first
-            const url = new URL(qrData);
-            const pathname = url.pathname;
-            
-            // Extract quest ID from patterns like /game/123/quest or /quest/123
-            const questMatch = pathname.match(/\/(?:game\/\d+\/)?quest\/?(\d+)?/);
-            if (questMatch && questMatch[1]) {
-                return questMatch[1];
+            if (qrData.startsWith('http')) {
+                const url = new URL(qrData);
+                const pathname = url.pathname;
+                
+                // Extract from path like /quest/ABC-123
+                const pathMatch = pathname.match(/\/quest\/?([a-zA-Z0-9_-]+)/i);
+                if (pathMatch && pathMatch[1]) return pathMatch[1];
+                
+                // Check for quest ID in search params
+                const questParam = url.searchParams.get('questId') || url.searchParams.get('quest') || url.searchParams.get('id');
+                if (questParam) return questParam;
             }
-            
-            // Check for quest ID in search params
-            const questParam = url.searchParams.get('questId') || url.searchParams.get('quest');
-            if (questParam) {
-                return questParam;
-            }
-            
-            return null;
-        } catch {
-            // If not a URL, try to extract quest ID directly from string
-            const questMatch = qrData.match(/quest[_-]?(\d+)/i);
-            return questMatch ? questMatch[1] : null;
+        } catch (e) {
+            // Not a valid URL, ignore and fall through
         }
+
+        // 2. Direct extraction from string (formats like "quest:ABC-123", "id=456", or just "ABC-123")
+        const questMatch = qrData.match(/(?:quest|id)[\s:_-]?([a-zA-Z0-9_-]+)/i) || qrData.match(/^([a-zA-Z0-9_-]+)$/i);
+        if (questMatch && questMatch[1]) {
+            return questMatch[1];
+        }
+
+        // 3. Last resort: just trim and use the whole string if it looks like a code
+        const trimmed = qrData.trim();
+        if (trimmed && trimmed.length > 0 && trimmed.length < 64) {
+            return trimmed;
+        }
+
+        return null;
     };
 
-    const handleCameraError = (err: Error | { name: string }): string => {
-        if (err.name === 'NotAllowedError') {
+    const handleCameraError = (err: Error | { name: string; message?: string }): string => {
+        const name = err.name || '';
+        const message = (err as { message?: string }).message || '';
+
+        if (name === 'NotAllowedError' || message.includes('Permission denied')) {
             return "Camera access denied. Please enable camera permissions in your browser settings.";
         }
-        if (err.name === 'NotFoundError') {
-            return "No camera found. Please ensure your device has a working camera.";
+        if (name === 'NotFoundError' || message.includes('No camera')) {
+            return "No camera found. Please ensure your device has a working rear camera.";
         }
-        if (err.name === 'NotSupportedError') {
-            return "Camera not supported on this device or browser.";
+        if (name === 'NotSupportedError' || message.includes('not supported')) {
+            return "Secure context (HTTPS) required for camera access, or browser not supported.";
         }
-        if (err.name === 'NotReadableError') {
-            return "Camera is already in use by another application.";
+        if (name === 'NotReadableError' || message.includes('already in use')) {
+            return "Camera is locked by another app. Please close other camera apps and retry.";
         }
-        return "Failed to access camera. Please try again.";
+        return "Failed to access camera. Please check your settings and try again.";
     };
 
     const handleRetry = () => {
         setError(null);
-        initializeScanner();
+        // Reactive useEffect will trigger initializeScanner once error is null and container renders
     };
 
     return (
@@ -212,11 +247,9 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
 
                             {!isLoading && !error && !isPlayerEliminated && (
                                 <div className="relative w-full max-w-md aspect-square">
-                                    <video
-                                        ref={videoRef}
-                                        className="w-full h-full object-cover rounded-lg"
-                                        playsInline
-                                        muted
+                                    <div
+                                        id={scannerRegionId}
+                                        className="w-full h-full rounded-lg overflow-hidden"
                                         aria-label="Camera view for QR code scanning"
                                         role="img"
                                     />

@@ -35,16 +35,23 @@ export async function assignQuestsFromBatch(gameState: GameState): Promise<Quest
     const mediumQuests = batch.quests.filter(q => q.duration === 'medium');
     const longQuests = batch.quests.filter(q => q.duration === 'long');
 
-    // Helper to select random quests
-    const selectRandomQuests = (quests: Quest[], count: number): Quest[] => {
-      const shuffled = [...quests].sort(() => Math.random() - 0.5);
-      return shuffled.slice(0, Math.min(count, quests.length));
+    // Helper to select random quests using Fisher-Yates shuffle
+    const selectRandomQuests = (quests: Quest[], count: number, durationName: string): Quest[] => {
+      if (count > quests.length) {
+        throw new Error(`Insufficient ${durationName} quests available. Requested ${count}, but only ${quests.length} found in batch.`);
+      }
+      const shuffled = [...quests];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled.slice(0, count);
     };
 
     // Select quests according to distribution
-    const selectedShort = selectRandomQuests(shortQuests, distribution.short);
-    const selectedMedium = selectRandomQuests(mediumQuests, distribution.medium);
-    const selectedLong = selectRandomQuests(longQuests, distribution.long);
+    const selectedShort = selectRandomQuests(shortQuests, distribution.short, 'short');
+    const selectedMedium = selectRandomQuests(mediumQuests, distribution.medium, 'medium');
+    const selectedLong = selectRandomQuests(longQuests, distribution.long, 'long');
 
     // Convert to quest assignments
     const assignments: QuestAssignment[] = [

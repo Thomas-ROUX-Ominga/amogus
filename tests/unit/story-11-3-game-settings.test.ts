@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { joinGame, createGame } from "@/lib/redis/actions";
+import { joinGame, createGame, completeQuest } from "@/lib/redis/actions";
 import { redis } from "@/lib/redis/client";
 import { getBatch } from "@/lib/redis/batch-actions";
 import { Quest, QuestType, QuestDuration } from "@/types/quest";
@@ -11,14 +11,21 @@ vi.mock("@/lib/redis/client", () => ({
         get: vi.fn(),
         atomicUpdate: vi.fn(),
     },
+    GAME_TTL_SECONDS: 86400,
 }));
 
 vi.mock("@/lib/redis/batch-actions", () => ({
     getBatch: vi.fn(),
 }));
 
+vi.mock("@/lib/redis/auth-utils", () => ({
+    verifySession: vi.fn().mockResolvedValue({ success: true, data: { userId: "admin", username: "admin" } }),
+    createPlayerSession: vi.fn().mockResolvedValue({ success: true }),
+    verifyPlayerSession: vi.fn().mockResolvedValue({ success: true }),
+}));
+
 // Valid UUID v4 for testing
-const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
+const VALID_UUID = "user-12345";
 
 describe("Story 11.3: Game Settings from Batch", () => {
     beforeEach(() => {
@@ -118,36 +125,86 @@ describe("Story 11.3: Game Settings from Batch", () => {
             expect(result.success).toBe(false);
             expect(result.error).toContain("Failed to assign quests");
         });
+
+        it("should throw error if batch has insufficient quests for duration", async () => {
+            const mockGameState = {
+                id: "test-game",
+                status: "LOBBY",
+                players: [],
+                createdAt: Date.now(),
+                batchId: "test-batch",
+                questsPerPlayer: { short: 10, medium: 0, long: 0 }, // 10 short requested, only 2 exist
+            };
+
+            const mockBatch = {
+                id: "test-batch",
+                questCount: 2,
+                createdAt: new Date().toISOString(),
+                quests: [
+                    { id: "q1", type: "true-false" as QuestType, duration: "short" as QuestDuration },
+                    { id: "q2", type: "true-false" as QuestType, duration: "short" as QuestDuration },
+                ],
+            };
+
+            vi.mocked(redis.get).mockResolvedValueOnce(mockGameState);
+            vi.mocked(getBatch).mockResolvedValueOnce({ success: true, data: mockBatch as typeof mockBatch });
+
+            const result = await joinGame("test-game", "Test", VALID_UUID);
+            expect(result.success).toBe(false);
+            expect(result.error).toContain("Failed to assign quests");
+        });
     });
 
     describe("Quest Assignment Validation", () => {
-        it("should validate quest completion against assigned quests", async () => {
-            // This would be tested in the completeQuest function
-            // For now, we'll test the joinGame assignment logic
+        it("should block quest completion if not assigned to player when game has batch", async () => {
             const mockGameState = {
                 id: "test-game",
                 status: "IN_PROGRESS",
+                batchId: "test-batch",
                 players: [{
                     id: VALID_UUID,
                     name: "TestPlayer",
                     isAlive: true,
-                    assignedQuests: ["quest-1", "quest-2"],
-                    completedQuests: [],
+                    assignedQuests: ["quest-1"],
                 }],
-                createdAt: Date.now(),
-                batchId: "test-batch",
-                questsPerPlayer: { short: 2, medium: 0, long: 0 },
             };
 
             vi.mocked(redis.get).mockResolvedValueOnce(mockGameState);
+            vi.mocked(redis.atomicUpdate).mockImplementationOnce(async (key, updater) => {
+                console.log("Updater input:", JSON.stringify(mockGameState));
+                const updated = updater(mockGameState as typeof mockGameState);
+                console.log("Updater output:", JSON.stringify(updated));
+                return updated;
+            });
 
-            const result = await joinGame("test-game", "TestPlayer", VALID_UUID);
+            const result = await completeQuest("test-game", VALID_UUID, "quest-2");
+            expect(result.success).toBe(false);
+            expect(result.error).toContain("not assigned to you");
+        });
 
-            expect(result.success).toBe(true); // Player already exists, should return success
-            const player = result.data?.players[0];
-            if (player) {
-                expect(player.assignedQuests).toEqual(["quest-1", "quest-2"]);
-            }
+        it("should allow quest completion if assigned to player", async () => {
+            const mockGameState = {
+                id: "test-game",
+                status: "IN_PROGRESS",
+                batchId: "test-batch",
+                players: [{
+                    id: VALID_UUID,
+                    name: "TestPlayer",
+                    isAlive: true,
+                    assignedQuests: ["quest-1"],
+                    completedQuests: [],
+                }],
+            };
+
+            vi.mocked(redis.get).mockResolvedValueOnce(mockGameState);
+            vi.mocked(redis.atomicUpdate).mockImplementationOnce(async (key, updater) => {
+                const updated = updater(mockGameState as typeof mockGameState);
+                return updated;
+            });
+
+            const result = await completeQuest("test-game", VALID_UUID, "quest-1");
+            expect(result.success).toBe(true);
+            expect(result.data?.questsCompleted).toBe(1);
         });
     });
 });

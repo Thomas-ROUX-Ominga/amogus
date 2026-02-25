@@ -101,6 +101,6 @@ development_status:
   11-1-fix-pdf-export-qr-location-labels: done
   11-2-general-application-flow-fixes: done
   11-3-game-settings-from-batch: done
-  11-4-refactor-in-app-qr-scanner: ready-for-dev
+  11-4-refactor-in-app-qr-scanner: review
   11-5-fix-player-elimination-ui-ux: ready-for-dev
   epic-11-retrospective: backlog

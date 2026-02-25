@@ -319,8 +319,6 @@ export async function joinGame(
         const updatedState: GameState = {
             ...state,
             players: [...state.players, newPlayer],
-            // Set creatorId if this is the first player joining
-            creatorId: state.players.length === 0 ? userId : state.creatorId,
         };
 
         await redis.set(stateKey, updatedState);
@@ -405,8 +403,9 @@ export async function completeQuest(
             }
 
             // Story 11.3: Game Settings from Batch - Validate quest is in player's assigned quests
-            if (player.assignedQuests && player.assignedQuests.length > 0) {
-                if (!player.assignedQuests.includes(questId)) {
+            // CRITICAL: If game is from a batch, player MUST have assignedQuests
+            if (state.batchId) {
+                if (!player.assignedQuests || !player.assignedQuests.includes(questId)) {
                     validationError = {
                         success: false,
                         error: "Cannot complete quest: this quest is not assigned to you.",

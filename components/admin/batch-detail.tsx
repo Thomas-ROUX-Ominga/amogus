@@ -238,8 +238,12 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
               />
             </div>
           </div>
-          <div className="mt-2 text-[8px] text-muted-foreground uppercase tracking-widest">
-            TOTAL: {questDistribution.short + questDistribution.medium + questDistribution.long} QUESTS PER PLAYER
+          <div className={`mt-2 text-[8px] uppercase tracking-widest ${
+            questDistribution.short + questDistribution.medium + questDistribution.long > batch.questCount 
+              ? "text-destructive font-bold animate-pulse" 
+              : "text-muted-foreground"
+          }`}>
+            TOTAL: {questDistribution.short + questDistribution.medium + questDistribution.long} / {batch.questCount} QUESTS PER PLAYER
           </div>
         </div>
 
