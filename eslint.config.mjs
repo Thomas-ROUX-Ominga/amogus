@@ -39,6 +39,8 @@ const eslintConfig = defineConfig([
         structuredClone: "readonly",
         Storage: "readonly",
         ServiceWorkerGlobalScope: "readonly",
+        fetch: "readonly",
+        Response: "readonly",
         // Node.js globals
         process: "readonly",
         Buffer: "readonly",

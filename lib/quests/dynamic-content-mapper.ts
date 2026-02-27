@@ -134,10 +134,15 @@ export class DynamicContentMapper {
     private static getCryptoRandomIndex(max: number): number {
         if (max <= 0) return 0;
         
-        // Use crypto.getRandomValues for better randomness
-        const randomValues = new Uint32Array(1);
-        crypto.getRandomValues(randomValues);
-        return randomValues[0] % max;
+        // Use crypto.getRandomValues for better randomness if available
+        if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+            const randomValues = new Uint32Array(1);
+            crypto.getRandomValues(randomValues);
+            return randomValues[0] % max;
+        }
+        
+        // Fallback to Math.random() for environments without crypto.getRandomValues
+        return Math.floor(Math.random() * max);
     }
 
     /**

@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileDown, Save, Edit2, Check, Play } from "lucide-react";
+import { FileDown, Save, Edit2, Check, Play, Lock, AlertTriangle } from "lucide-react";
 import { Batch, Quest } from "@/types/quest";
 import { updateQuestsLocations } from "@/lib/redis/batch-actions";
 import { createGame } from "@/lib/redis/actions";
 import { generateQuestPDF, downloadPDF } from "@/lib/utils/pdf-utils";
+import { useAuth, useAuthGuard } from "@/hooks/use-auth";
 
 interface BatchDetailProps {
   batch: Batch;
@@ -15,6 +16,9 @@ interface BatchDetailProps {
 
 export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
   const router = useRouter();
+  const { authState } = useAuth();
+  const authGuard = useAuthGuard(true); // Require admin access
+  
   const [locations, setLocations] = useState<Record<string, string>>(
     batch.quests.reduce((acc, quest) => {
       acc[quest.id] = quest.location || "";
@@ -52,6 +56,11 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
   };
 
   const handleSaveLocations = async () => {
+    if (!authGuard.canProceed) {
+      setError(authGuard.reason || "Authentication required");
+      return;
+    }
+
     setIsSaving(true);
     setError("");
     setSuccessMessage("");
@@ -89,6 +98,11 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
   };
 
   const handleLaunchGame = async () => {
+    if (!authGuard.canProceed) {
+      setError(authGuard.reason || "Admin authentication required to launch games");
+      return;
+    }
+
     setIsLaunching(true);
     setError("");
 
@@ -163,9 +177,19 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
           </div>
 
           <div className="flex gap-3">
+            {/* Authentication Status */}
+            {!authGuard.canProceed && (
+              <div className="flex items-center gap-2 px-4 py-3 border border-destructive/30 bg-destructive/10 text-destructive">
+                <Lock size={14} />
+                <span className="text-xs font-black tracking-widest uppercase">
+                  {authGuard.reason || "Authentication Required"}
+                </span>
+              </div>
+            )}
+
             <button
               onClick={handleLaunchGame}
-              disabled={isLaunching}
+              disabled={isLaunching || !authGuard.canProceed}
               className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3 px-6 rounded-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs tracking-widest animate-pulse hover:animate-none"
             >
               <Play size={14} />
@@ -174,7 +198,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
 
             <button
               onClick={handleSaveLocations}
-              disabled={isSaving}
+              disabled={isSaving || !authGuard.canProceed}
               className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-black font-black py-3 px-6 rounded-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs tracking-widest"
             >
               <Save size={14} />

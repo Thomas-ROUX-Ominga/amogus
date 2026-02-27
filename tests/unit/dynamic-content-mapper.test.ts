@@ -301,7 +301,18 @@ describe("DynamicContentMapper", () => {
 
         it("should use cryptographically secure random selection", async () => {
             // Arrange
-            const cryptoSpy = vi.spyOn(globalThis.crypto, 'getRandomValues');
+            const mockGetRandomValues = vi.fn().mockReturnValue(new Uint32Array([42]));
+            
+            // Mock crypto using Object.defineProperty to avoid read-only issues
+            const originalCrypto = globalThis.crypto;
+            const mockCrypto = { getRandomValues: mockGetRandomValues };
+            
+            Object.defineProperty(globalThis, 'crypto', {
+                value: mockCrypto,
+                writable: true,
+                configurable: true
+            });
+            
             mockGetQuestMetadata.mockResolvedValue({
                 success: true,
                 data: mockQuestMetadata
@@ -319,8 +330,14 @@ describe("DynamicContentMapper", () => {
             );
 
             // Assert
-            expect(cryptoSpy).toHaveBeenCalled();
-            cryptoSpy.mockRestore();
+            expect(mockGetRandomValues).toHaveBeenCalled();
+            
+            // Restore original crypto
+            Object.defineProperty(globalThis, 'crypto', {
+                value: originalCrypto,
+                writable: true,
+                configurable: true
+            });
         });
     });
 });

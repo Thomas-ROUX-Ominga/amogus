@@ -103,4 +103,5 @@ development_status:
   11-3-game-settings-from-batch: done
   11-4-refactor-in-app-qr-scanner: done
   11-5-fix-player-elimination-ui-ux: done
+  11-6-session-persistence-role-management: done
   epic-11-retrospective: backlog

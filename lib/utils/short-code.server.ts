@@ -16,7 +16,16 @@ export async function generateShortCode(): Promise<string> {
     // Generate random short code using cryptographically secure randomness
     let shortCode = "";
     const randomBytes = new Uint32Array(SHORT_CODE_LENGTH);
-    crypto.getRandomValues(randomBytes);
+    
+    // Use crypto.getRandomValues if available, otherwise fallback to Math.random()
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      crypto.getRandomValues(randomBytes);
+    } else {
+      // Fallback for environments without crypto.getRandomValues
+      for (let i = 0; i < SHORT_CODE_LENGTH; i++) {
+        randomBytes[i] = Math.floor(Math.random() * 0xFFFFFFFF);
+      }
+    }
     
     for (let i = 0; i < SHORT_CODE_LENGTH; i++) {
       shortCode += SHORT_CODE_ALPHABET[randomBytes[i] % SHORT_CODE_ALPHABET.length];

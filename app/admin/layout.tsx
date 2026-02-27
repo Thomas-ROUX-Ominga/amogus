@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { LogOut, Shield } from "lucide-react";
+import { LogOut, Shield, Lock, CheckCircle, AlertTriangle } from "lucide-react";
 import { clearSession } from "@/lib/redis/auth-actions";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function AdminLayout({
   children,
@@ -10,6 +11,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const { authState } = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -37,13 +39,38 @@ export default function AdminLayout({
               </h1>
             </div>
 
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 text-[10px] uppercase tracking-widest text-primary/70 hover:text-primary border border-primary/30 hover:border-primary/50 transition-all rounded-none"
-            >
-              <LogOut size={14} />
-              Term_Session
-            </button>
+            <div className="flex items-center gap-4">
+              {/* Authentication Status */}
+              <div className="flex items-center gap-2 px-3 py-1.5 border text-[10px] uppercase tracking-widest transition-all rounded-none">
+                {authState.isLoading ? (
+                  <>
+                    <AlertTriangle className="w-3 h-3 animate-pulse" />
+                    <span className="text-muted-foreground">Checking...</span>
+                  </>
+                ) : authState.isAdmin ? (
+                  <>
+                    <CheckCircle className="w-3 h-3 text-green-500" />
+                    <span className="text-green-500">
+                      {authState.session?.username || "Admin"}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-3 h-3 text-destructive" />
+                    <span className="text-destructive">Unauthorized</span>
+                  </>
+                )}
+              </div>
+
+              <button
+                onClick={handleLogout}
+                disabled={!authState.isAdmin}
+                className="flex items-center gap-2 px-4 py-2 text-[10px] uppercase tracking-widest text-primary/70 hover:text-primary border border-primary/30 hover:border-primary/50 transition-all rounded-none disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <LogOut size={14} />
+                Term_Session
+              </button>
+            </div>
           </div>
         </div>
       </header>
