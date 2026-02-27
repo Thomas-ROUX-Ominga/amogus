@@ -5,6 +5,7 @@ import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { useParams } from "next/navigation";
 import { useGameStore, useRealTimeGamePolling } from "@/lib/store/game-store";
 import { useLocalUser } from "@/hooks/use-local-user";
+import { useAuth } from "@/hooks/use-auth";
 import { JoinForm } from "@/components/game/join-form";
 import { ErrorView } from "@/components/game/error-view";
 import { RoleSelection } from "@/components/game/role-selection";
@@ -15,7 +16,13 @@ import { Rocket, Loader2, Wifi, WifiOff } from "lucide-react";
 export default function LobbyPage() {
     const { id } = useParams();
     const { gameState, isLoading, isLaunching, error, errorCode, launchError, selectedRole, fetchGame, launch } = useGameStore();
-    const { userId } = useLocalUser();
+    const { userId: localUserId } = useLocalUser();
+    const { authState } = useAuth();
+    // Admin sessions use JWT userId; anonymous players use the localStorage UUID.
+    // This ensures isJoined correctly detects when an admin is already in the player list.
+    const userId = (authState.isAdmin && authState.session)
+        ? authState.session.userId
+        : localUserId;
     const [showTransition, setShowTransition] = useState(false);
     const [showGameHome, setShowGameHome] = useState(false);
 

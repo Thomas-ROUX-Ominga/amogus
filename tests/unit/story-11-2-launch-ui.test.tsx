@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import LobbyPage from '@/app/game/[id]/page';
 import { useGameStore, useRealTimeGamePolling } from '@/lib/store/game-store';
 import { useLocalUser } from '@/hooks/use-local-user';
+import { useAuth } from '@/hooks/use-auth';
 
 // Mock dependencies
 vi.mock('next/navigation', () => ({
@@ -17,6 +18,10 @@ vi.mock('@/lib/store/game-store', () => ({
 
 vi.mock('@/hooks/use-local-user', () => ({
   useLocalUser: vi.fn(),
+}));
+
+vi.mock('@/hooks/use-auth', () => ({
+  useAuth: vi.fn(),
 }));
 
 describe('Task 3: Restrict Game Launch to Admin - UI', () => {
@@ -52,6 +57,17 @@ describe('Task 3: Restrict Game Launch to Admin - UI', () => {
 
       vi.mocked(useGameStore).mockReturnValue(mockGameStore);
       vi.mocked(useLocalUser).mockReturnValue({ userId: 'admin-user-id' });
+      vi.mocked(useAuth).mockReturnValue({
+        authState: {
+          session: null,
+          isLoading: false,
+          isAdmin: false,
+          isAuthenticated: false,
+        },
+        refreshAuth: vi.fn(),
+        setAnonymousSession: vi.fn(),
+        clearAnonymousSession: vi.fn(),
+      });
       vi.mocked(useRealTimeGamePolling).mockReturnValue({
         gameState: mockGameStore.gameState,
         isConnected: true,
@@ -94,6 +110,17 @@ describe('Task 3: Restrict Game Launch to Admin - UI', () => {
 
       vi.mocked(useGameStore).mockReturnValue(mockGameStore);
       vi.mocked(useLocalUser).mockReturnValue({ userId: 'player-user-id' });
+      vi.mocked(useAuth).mockReturnValue({
+        authState: {
+          session: null,
+          isLoading: false,
+          isAdmin: false,
+          isAuthenticated: false,
+        },
+        refreshAuth: vi.fn(),
+        setAnonymousSession: vi.fn(),
+        clearAnonymousSession: vi.fn(),
+      });
       vi.mocked(useRealTimeGamePolling).mockReturnValue({
         gameState: mockGameStore.gameState,
         isConnected: true,
@@ -138,6 +165,17 @@ describe('Task 3: Restrict Game Launch to Admin - UI', () => {
 
       vi.mocked(useGameStore).mockReturnValue(mockGameStore);
       vi.mocked(useLocalUser).mockReturnValue({ userId: 'player-user-id' });
+      vi.mocked(useAuth).mockReturnValue({
+        authState: {
+          session: null,
+          isLoading: false,
+          isAdmin: false,
+          isAuthenticated: false,
+        },
+        refreshAuth: vi.fn(),
+        setAnonymousSession: vi.fn(),
+        clearAnonymousSession: vi.fn(),
+      });
       vi.mocked(useRealTimeGamePolling).mockReturnValue({
         gameState: mockGameStore.gameState,
         isConnected: true,
