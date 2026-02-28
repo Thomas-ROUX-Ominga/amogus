@@ -2,10 +2,19 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { RoleSelection } from "@/components/game/role-selection";
 import { useGameStore } from "@/lib/store/game-store";
-import { useLocalUser } from "@/hooks/use-local-user";
+import { useAuth, AuthProvider } from "@/hooks/use-auth";
+import { ReactNode } from "react";
 
 vi.mock("@/lib/store/game-store");
-vi.mock("@/hooks/use-local-user");
+vi.mock("@/hooks/use-auth", () => ({
+  useAuth: vi.fn(),
+  AuthProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+
+// Test wrapper component
+function CreateWrapper({ children }: { children: ReactNode }) {
+  return <AuthProvider>{children}</AuthProvider>;
+}
 
 describe("RoleSelection Component", () => {
     const mockChooseRole = vi.fn();
@@ -33,8 +42,21 @@ describe("RoleSelection Component", () => {
             reset: vi.fn(),
         });
 
-        vi.mocked(useLocalUser).mockReturnValue({
-            userId: "test-user-123",
+        vi.mocked(useAuth).mockReturnValue({
+          authState: {
+            session: {
+              userId: "test-user-123",
+              username: "test-user",
+              isAuthenticated: false,
+              sessionType: "anonymous",
+            },
+            isLoading: false,
+            isAuthenticated: false,
+            isAnonymous: true,
+          },
+          refreshAuth: vi.fn(),
+          setAnonymousSession: vi.fn(),
+          clearAnonymousSession: vi.fn(),
         });
 
         Object.defineProperty(navigator, 'vibrate', {
@@ -45,12 +67,20 @@ describe("RoleSelection Component", () => {
     });
 
     it("should render role selection title", () => {
-        render(<RoleSelection gameId="game-123" />);
+        render(
+          <CreateWrapper>
+            <RoleSelection gameId="game-123" />
+          </CreateWrapper>
+        );
         expect(screen.getByText(/Choisissez votre rôle/i)).toBeTruthy();
     });
 
     it("should render both Crewmate and Impostor buttons", () => {
-        render(<RoleSelection gameId="game-123" />);
+        render(
+          <CreateWrapper>
+            <RoleSelection gameId="game-123" />
+          </CreateWrapper>
+        );
         expect(screen.getByText(/Crew/i)).toBeTruthy();
         expect(screen.getByText(/Imp/i)).toBeTruthy();
     });
@@ -58,7 +88,11 @@ describe("RoleSelection Component", () => {
     it("should call chooseRole with CREWMATE when Crewmate button is clicked", async () => {
         mockChooseRole.mockResolvedValue(true);
         
-        render(<RoleSelection gameId="game-123" onRoleSelected={mockOnRoleSelected} />);
+        render(
+          <CreateWrapper>
+            <RoleSelection gameId="game-123" onRoleSelected={mockOnRoleSelected} />
+          </CreateWrapper>
+        );
         
         const crewmateButton = screen.getByText(/Crew/i).closest("button");
         fireEvent.click(crewmateButton!);
@@ -71,7 +105,11 @@ describe("RoleSelection Component", () => {
     it("should call chooseRole with IMPOSTOR when Impostor button is clicked", async () => {
         mockChooseRole.mockResolvedValue(true);
         
-        render(<RoleSelection gameId="game-123" onRoleSelected={mockOnRoleSelected} />);
+        render(
+          <CreateWrapper>
+            <RoleSelection gameId="game-123" onRoleSelected={mockOnRoleSelected} />
+          </CreateWrapper>
+        );
         
         const impostorButton = screen.getByText(/Imp/i).closest("button");
         fireEvent.click(impostorButton!);

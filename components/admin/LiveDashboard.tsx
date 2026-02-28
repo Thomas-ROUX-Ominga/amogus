@@ -4,7 +4,7 @@ import useSWR from "swr";
 import { useState } from "react";
 import { ArrowLeft, RefreshCw, Users, Target, TrendingUp, Clock, Skull } from "lucide-react";
 import { GameState } from "@/types/game";
-import { getDashboardData, DashboardData, eliminatePlayer } from "@/app/admin/dashboard/actions";
+import { getDashboardData, DashboardData, eliminatePlayer } from "@/app/(organizer)/dashboard/actions";
 import { SimpleProgressBar } from "./simple-progress-bar";
 
 interface LiveDashboardProps {
@@ -137,8 +137,8 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
         {/* Overall Progress */}
         <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-primary">
-              Overall Progress
+            <h3 className="text-sm font-bold uppercase tracking-widest text-primary font-orbitron">
+              Progression Globale
             </h3>
             <Target className="text-primary/50 w-4 h-4" />
           </div>
@@ -272,22 +272,24 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
           {stats.playerProgress.map((player) => (
             <div
               key={player.id}
-              className={`p-4 border ${
-                player.isAlive ? "border-primary/20" : "border-red-500/20"
-              } bg-black/30`}
+              className={`p-4 border transition-all duration-300 ${
+                player.isAlive 
+                  ? "border-primary/20 bg-black/30" 
+                  : "border-red-500/40 bg-red-900/20 shadow-[inset_0_0_20px_rgba(239,68,68,0.1)]"
+              }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
                   <div className={`w-2 h-2 rounded-full ${
-                    player.isAlive ? "bg-green-400" : "bg-red-400"
+                    player.isAlive ? "bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)] animate-pulse" : "bg-red-500"
                   }`} />
-                  <span className={`font-mono text-sm ${
-                    player.isAlive ? "text-primary" : "text-red-400"
+                  <span className={`font-mono text-sm uppercase tracking-wider ${
+                    player.isAlive ? "text-primary" : "text-red-400 font-bold"
                   }`}>
                     {player.name}
                   </span>
                   {player.role && (
-                    <span className={`text-[8px] px-2 py-1 rounded ${
+                    <span className={`text-[8px] px-2 py-1 rounded font-bold tracking-tighter ${
                       player.role === "IMPOSTOR" 
                         ? "bg-red-500/20 text-red-400 border border-red-500/30"
                         : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
@@ -295,10 +297,16 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
                       {player.role}
                     </span>
                   )}
+                  {!player.isAlive && (
+                    <span className="flex items-center gap-1 text-[8px] px-2 py-1 bg-red-500 text-white font-bold rounded animate-in fade-in slide-in-from-left-1">
+                      <Skull size={8} />
+                      ÉLIMINÉ
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <div className="text-lg font-bold text-primary">
+                    <div className={`text-lg font-bold ${player.isAlive ? "text-primary" : "text-red-400"}`}>
                       {player.completed} / {player.assigned}
                     </div>
                     <div className="text-[8px] text-primary/50 tracking-widest uppercase">
@@ -309,13 +317,13 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
                     <button
                       onClick={() => handleEliminatePlayer(player.id)}
                       disabled={eliminatingPlayer === player.id}
-                      className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
                       title="Eliminate Player"
                     >
                       {eliminatingPlayer === player.id ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />
                       ) : (
-                        <Skull className="w-4 h-4" />
+                        <Skull className="w-4 h-4 group-hover:scale-110 transition-transform" />
                       )}
                     </button>
                   )}

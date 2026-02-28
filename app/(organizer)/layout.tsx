@@ -5,7 +5,7 @@ import { LogOut, Shield, Lock, CheckCircle, AlertTriangle } from "lucide-react";
 import { clearSession } from "@/lib/redis/auth-actions";
 import { useAuth } from "@/hooks/use-auth";
 
-export default function AdminLayout({
+export default function OrganizerLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -47,7 +47,7 @@ export default function AdminLayout({
                     <AlertTriangle className="w-3 h-3 animate-pulse" />
                     <span className="text-muted-foreground">Checking...</span>
                   </>
-                ) : authState.isAdmin ? (
+                ) : authState.isAuthenticated ? (
                   <>
                     <CheckCircle className="w-3 h-3 text-green-500" />
                     <span className="text-green-500">
@@ -64,7 +64,7 @@ export default function AdminLayout({
 
               <button
                 onClick={handleLogout}
-                disabled={!authState.isAdmin}
+                disabled={!authState.isAuthenticated}
                 className="flex items-center gap-2 px-4 py-2 text-[10px] uppercase tracking-widest text-primary/70 hover:text-primary border border-primary/30 hover:border-primary/50 transition-all rounded-none disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <LogOut size={14} />

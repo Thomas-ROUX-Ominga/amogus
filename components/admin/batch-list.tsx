@@ -156,7 +156,7 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
             
             <div className="flex items-center gap-2">
               <Link
-                href={`/admin/batches/${batch.id}`}
+                href={`/batches/${batch.id}`}
                 className="p-2 text-primary hover:text-primary/80 hover:bg-primary/10 border border-primary/30 hover:border-primary/50 transition-all"
                 title="Manage batch"
               >

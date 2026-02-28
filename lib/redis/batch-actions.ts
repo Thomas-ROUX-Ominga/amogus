@@ -182,18 +182,8 @@ export async function deleteBatch(batchId: string): Promise<ActionResponse<void>
   }
 }
 
-export async function getBatch(batchId: string): Promise<ActionResponse<Batch>> {
+export async function getBatchData(batchId: string): Promise<ActionResponse<Batch>> {
   try {
-    // Verify admin session
-    const session = await verifyAdminSession();
-    if (!session.success) {
-      return {
-        success: false,
-        error: "Unauthorized",
-        code: ERROR_CODES.ERR_UNAUTHORIZED,
-      };
-    }
-
     if (!batchId?.trim()) {
       return {
         success: false,
@@ -218,7 +208,30 @@ export async function getBatch(batchId: string): Promise<ActionResponse<Batch>> 
       data: batch,
     };
   } catch (error) {
-    console.error("Error getting batch:", error);
+    console.error("Error getting batch data:", error);
+    return {
+      success: false,
+      error: "Failed to get batch data",
+      code: ERROR_CODES.ERR_SIGNAL_LOST,
+    };
+  }
+}
+
+export async function getBatch(batchId: string): Promise<ActionResponse<Batch>> {
+  try {
+    // Verify admin session for public action
+    const session = await verifyAdminSession();
+    if (!session.success) {
+      return {
+        success: false,
+        error: "Unauthorized",
+        code: ERROR_CODES.ERR_UNAUTHORIZED,
+      };
+    }
+
+    return getBatchData(batchId);
+  } catch (error) {
+    console.error("Error in getBatch action:", error);
     return {
       success: false,
       error: "Failed to get batch",

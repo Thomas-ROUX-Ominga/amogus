@@ -4,12 +4,9 @@ import { GameState, PlayerRole } from "@/types/game";
 import { Quest, QuestContentResult } from "@/types/quest";
 import { getGame, joinGame, startGame, selectRole, completeQuest, refreshGame, addFailedQuest, getPlayerFailedQuests, eliminatePlayer } from "@/lib/redis/actions";
 import { getQuestGamesByDuration } from "@/lib/constants/quest-pool";
+import { getTotalQuests } from "@/lib/utils/quest-calculations";
 import { DynamicContentMapper } from "@/lib/quests/dynamic-content-mapper";
 import useSWR from "swr";
-
-function getTotalQuests(): number {
-    return getQuestGamesByDuration("short").length + getQuestGamesByDuration("medium").length + getQuestGamesByDuration("long").length;
-}
 
 interface GameStore {
     gameState: GameState | null;
@@ -192,7 +189,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
             if (userId) {
                 const player = response.data.players.find((p) => p.id === userId);
                 updates.questsCompleted = player?.completedQuests?.length ?? 0;
-                updates.questsTotal = response.data.questsTotal ?? getTotalQuests();
+                
+                // Priority for total quests: 
+                // 1. Player's assigned quests length
+                // 2. Game's configured distribution
+                // 3. Global pool (fallback)
+                updates.questsTotal = player?.assignedQuests?.length ?? 
+                                    getTotalQuests(response.data);
             }
 
             set(updates);
@@ -220,7 +223,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
                 const updatedPlayer = response.data.players.find((p) => p.id === userId);
                 if (updatedPlayer) {
                     updates.questsCompleted = updatedPlayer.completedQuests?.length ?? 0;
-                    updates.questsTotal = response.data.questsTotal ?? getTotalQuests();
+                    
+                    // Priority for total quests: 
+                    // 1. Player's assigned quests length
+                    // 2. Game's configured distribution
+                    // 3. Global pool (fallback)
+                    updates.questsTotal = updatedPlayer?.assignedQuests?.length ?? 
+                                        getTotalQuests(response.data);
                 }
             }
 

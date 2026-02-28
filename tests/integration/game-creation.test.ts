@@ -25,6 +25,7 @@ vi.mock('@/lib/redis/auth-utils', () => ({
 
 vi.mock('@/lib/redis/batch-actions', () => ({
   getBatch: vi.fn(),
+  getBatchData: vi.fn(),
   getAllBatches: vi.fn(),
 }));
 
@@ -43,8 +44,8 @@ describe('Game Creation Integration', () => {
 
   describe('createGame with batch selection', () => {
     it('should create game with selected batch and default quest distribution', async () => {
-      const { getBatch } = await import('@/lib/redis/batch-actions');
-      vi.mocked(getBatch).mockResolvedValue({
+      const { getBatchData } = await import('@/lib/redis/batch-actions');
+      vi.mocked(getBatchData).mockResolvedValue({
         success: true,
         data: {
           id: 'batch-123',
@@ -84,8 +85,8 @@ describe('Game Creation Integration', () => {
     });
 
     it('should create game with custom quest distribution', async () => {
-      const { getBatch } = await import('@/lib/redis/batch-actions');
-      vi.mocked(getBatch).mockResolvedValue({
+      const { getBatchData } = await import('@/lib/redis/batch-actions');
+      vi.mocked(getBatchData).mockResolvedValue({
         success: true,
         data: {
           id: 'batch-456',
@@ -124,8 +125,8 @@ describe('Game Creation Integration', () => {
     });
 
     it('should reject game creation when requested quests exceed available', async () => {
-      const { getBatch } = await import('@/lib/redis/batch-actions');
-      vi.mocked(getBatch).mockResolvedValue({
+      const { getBatchData } = await import('@/lib/redis/batch-actions');
+      vi.mocked(getBatchData).mockResolvedValue({
         success: true,
         data: {
           id: 'batch-small',
@@ -152,7 +153,7 @@ describe('Game Creation Integration', () => {
       const result = await createGame(input);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Requested 9 quests per player, but only 5 available');
+      expect(result.error).toContain('Requested 9 quests per player, but only 5 available in batch');
     });
 
     it('should create game without batch (using default pool)', async () => {
@@ -181,8 +182,8 @@ describe('Game Creation Integration', () => {
     });
 
     it('should fail game creation when batch is not found', async () => {
-      const { getBatch } = await import('@/lib/redis/batch-actions');
-      vi.mocked(getBatch).mockResolvedValue({
+      const { getBatchData } = await import('@/lib/redis/batch-actions');
+      vi.mocked(getBatchData).mockResolvedValue({
         success: false,
         error: 'Batch not found',
       });
@@ -194,7 +195,7 @@ describe('Game Creation Integration', () => {
       const result = await createGame(input);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Failed to load batch');
+      expect(result.error).toContain('Failed to load batch [non-existent-batch]');
     });
   });
 

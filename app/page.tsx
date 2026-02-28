@@ -2,14 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Terminal, Shield, ChevronRight, Hash } from "lucide-react";
+import { Terminal, Shield, ChevronRight, Hash, LogOut, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { isValidShortCode, normalizeShortCode } from "@/lib/utils/short-code";
+import { useAuth } from "@/hooks/use-auth";
+import { clearSession } from "@/lib/redis/auth-actions";
 
 export default function Home() {
   const [gameId, setGameId] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
+  const { authState, refreshAuth } = useAuth();
+  const { isAuthenticated, session } = authState;
 
   const handleJoinByCode = (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,8 +26,6 @@ export default function Home() {
       return;
     }
     
-    // Validate as short code (6 chars) or allow longer codes for backward compatibility
-    // Validate format strictly
     if (!isValidShortCode(normalizedCode)) {
       setError("Invalid session code format (requires 6-char alphanumeric)");
       return;
@@ -35,14 +37,19 @@ export default function Home() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toUpperCase();
     setGameId(value);
-    setError(""); // Clear error on input
+    setError("");
+  };
+
+  const handleLogout = async () => {
+    await clearSession();
+    await refreshAuth();
+    router.refresh();
   };
 
   return (
     <main className="min-h-screen bg-black text-foreground font-mono overflow-hidden flex flex-col md:flex-row">
       {/* LEFT PANEL: GUEST ACCESS (PRIMARY) */}
       <section className="flex-1 flex flex-col items-center justify-center p-8 relative border-b md:border-b-0 md:border-r border-primary/10">
-        {/* Scanlines Effect */}
         <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
         
         <div className="max-w-md w-full space-y-12 relative z-10">
@@ -107,24 +114,60 @@ export default function Home() {
           <Shield className="w-64 h-64 text-primary" />
         </div>
 
-        <div className="space-y-8 relative z-10 text-center">
-          <div className="space-y-2">
-            <Shield className="w-12 h-12 text-primary/40 mx-auto" />
-            <h2 className="text-sm font-black uppercase tracking-[0.3em] font-orbitron">
-              Organizer
-            </h2>
-          </div>
+        <div className="space-y-8 relative z-10 text-center w-full">
+          {isAuthenticated && session ? (
+            <>
+              <div className="space-y-4">
+                <div className="w-16 h-16 rounded-full border-2 border-primary/30 flex items-center justify-center bg-primary/10 mx-auto">
+                  <User className="text-primary w-8 h-8" />
+                </div>
+                <div className="space-y-1">
+                  <h2 className="text-xs font-black uppercase tracking-[0.3em] text-primary">
+                    {session.username}
+                  </h2>
+                  <p className="text-[8px] text-muted-foreground uppercase tracking-widest">
+                    Authorized Organizer
+                  </p>
+                </div>
+              </div>
 
-          <p className="text-[9px] text-muted-foreground uppercase leading-relaxed tracking-widest max-w-[180px] mx-auto">
-            Authorized personnel only. Create batches and manage sessions.
-          </p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => router.push("/batches")}
+                  className="w-full border border-primary/30 py-3 px-4 text-[10px] uppercase tracking-[0.2em] bg-primary/10 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all font-bold"
+                >
+                  Manage Batches
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full border border-primary/10 py-3 px-4 text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-all flex items-center justify-center gap-2"
+                >
+                  <LogOut size={12} />
+                  Terminate
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Shield className="w-12 h-12 text-primary/40 mx-auto" />
+                <h2 className="text-sm font-black uppercase tracking-[0.3em] font-orbitron">
+                  Organizer
+                </h2>
+              </div>
 
-          <button
-            onClick={() => router.push("/login")}
-            className="w-full max-w-[200px] border border-primary/30 py-3 px-4 text-[10px] uppercase tracking-[0.2em] hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all font-bold"
-          >
-            Access Portal
-          </button>
+              <p className="text-[9px] text-muted-foreground uppercase leading-relaxed tracking-widest max-w-[180px] mx-auto">
+                Authorized personnel only. Create batches and manage sessions.
+              </p>
+
+              <button
+                onClick={() => router.push("/login")}
+                className="w-full max-w-[200px] border border-primary/30 py-3 px-4 text-[10px] uppercase tracking-[0.2em] hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all font-bold"
+              >
+                Login Portal
+              </button>
+            </>
+          )}
         </div>
 
         <div className="absolute bottom-4 text-[8px] text-primary/20 uppercase tracking-widest">

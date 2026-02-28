@@ -104,4 +104,5 @@ development_status:
   11-4-refactor-in-app-qr-scanner: done
   11-5-fix-player-elimination-ui-ux: done
   11-6-session-persistence-role-management: done
+  11-7-admin-interface-improvements: done
   epic-11-retrospective: backlog

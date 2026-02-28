@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { useParams } from "next/navigation";
 import { useGameStore } from "@/lib/store/game-store";
-import { useLocalUser } from "@/hooks/use-local-user";
+import { useAuth } from "@/hooks/use-auth";
 import { ErrorView } from "@/components/game/error-view";
 import { PlayerList } from "@/components/admin/player-list";
 import { ProgressBar } from "@/components/admin/progress-bar";
@@ -17,7 +17,8 @@ import Link from "next/link";
 export default function AdminTrackerPage() {
     const { id } = useParams();
     const { gameState, isLoading, error, errorCode, fetchGame } = useGameStore();
-    const { userId } = useLocalUser();
+    const { authState } = useAuth();
+    const userId = authState.session?.userId;
     const [lastSyncTime] = useState<number | null>(null);
 
     useEffect(() => {

@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { LiveDashboard } from "@/components/admin/LiveDashboard";
 import { GameState } from "@/types/game";
-import { DashboardData } from "@/app/admin/dashboard/actions";
+import { DashboardData } from "@/app/(organizer)/dashboard/actions";
 import useSWR from "swr";
 
 // Mock SWR
@@ -11,7 +11,7 @@ vi.mock("swr", () => ({
 }));
 
 // Mock getDashboardData function
-vi.mock("@/app/admin/dashboard/actions", () => ({
+vi.mock("@/app/(organizer)/dashboard/actions", () => ({
   getDashboardData: vi.fn(),
 }));
 

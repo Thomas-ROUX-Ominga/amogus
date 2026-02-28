@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { motion } from "framer-motion";
 import { Shield, Users } from "lucide-react";
 import { useGameStore } from "@/lib/store/game-store";
-import { useLocalUser } from "@/hooks/use-local-user";
+import { useAuth } from "@/hooks/use-auth";
 import { PlayerRole } from "@/types/game";
 
 interface RoleSelectionProps {
@@ -14,7 +14,8 @@ interface RoleSelectionProps {
 
 export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
     const { chooseRole, isSelectingRole, roleError } = useGameStore();
-    const { userId } = useLocalUser();
+    const { authState } = useAuth();
+    const userId = authState.session?.userId;
     const lastAttemptedRole = useRef<PlayerRole | null>(null);
 
     const handleRoleSelect = async (role: PlayerRole) => {

@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, render, screen } from "@testing-library/react";
+import { ReactNode } from "react";
 import QuestPage from "@/app/game/[id]/quest/page";
 import { useGameStore } from "@/lib/store/game-store";
+import { AuthProvider } from "@/hooks/use-auth";
 
 const mockFetchGame = vi.fn();
 const mockSetCurrentQuest = vi.fn();
@@ -17,6 +19,26 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/hooks/use-local-user", () => ({
     useLocalUser: () => ({ userId: "user-1" }),
+}));
+
+vi.mock("@/hooks/use-auth", () => ({
+    useAuth: () => ({
+        authState: {
+            session: {
+                userId: "user-1",
+                username: "Alice",
+                isAuthenticated: false,
+                sessionType: "anonymous",
+            },
+            isLoading: false,
+            isAuthenticated: false,
+            isAnonymous: true,
+        },
+        refreshAuth: vi.fn(),
+        setAnonymousSession: vi.fn(),
+        clearAnonymousSession: vi.fn(),
+    }),
+    AuthProvider: ({ children }: { children: ReactNode }) => children,
 }));
 
 const baseStoreState = {
@@ -71,7 +93,11 @@ describe("QuestPage", () => {
             ...baseStoreState,
             isLoading: true,
         });
-        render(<QuestPage />);
+        render(
+            <AuthProvider>
+                <QuestPage />
+            </AuthProvider>
+        );
         expect(screen.getByText(/Chargement de la quête/)).toBeTruthy();
     });
 
@@ -81,21 +107,33 @@ describe("QuestPage", () => {
             error: "Game not found",
             errorCode: "GAME_NOT_FOUND",
         });
-        render(<QuestPage />);
+        render(
+            <AuthProvider>
+                <QuestPage />
+            </AuthProvider>
+        );
         expect(screen.getByText("SESSION INTROUVABLE")).toBeTruthy();
     });
 
     it("should show error for invalid duration param", () => {
         mockSearchParams = new URLSearchParams("duration=invalid");
         vi.mocked(useGameStore).mockReturnValue(baseStoreState);
-        render(<QuestPage />);
+        render(
+            <AuthProvider>
+                <QuestPage />
+            </AuthProvider>
+        );
         expect(screen.getByText("DURÉE INVALIDE")).toBeTruthy();
     });
 
     it("should show error for missing duration param", () => {
         mockSearchParams = new URLSearchParams("");
         vi.mocked(useGameStore).mockReturnValue(baseStoreState);
-        render(<QuestPage />);
+        render(
+            <AuthProvider>
+                <QuestPage />
+            </AuthProvider>
+        );
         expect(screen.getByText("DURÉE INVALIDE")).toBeTruthy();
     });
 
@@ -109,7 +147,11 @@ describe("QuestPage", () => {
                 createdAt: Date.now(),
             },
         });
-        render(<QuestPage />);
+        render(
+            <AuthProvider>
+                <QuestPage />
+            </AuthProvider>
+        );
         expect(screen.getByText("MISSION INACTIVE")).toBeTruthy();
     });
 
@@ -123,7 +165,11 @@ describe("QuestPage", () => {
                 createdAt: Date.now(),
             },
         });
-        render(<QuestPage />);
+        render(
+            <AuthProvider>
+                <QuestPage />
+            </AuthProvider>
+        );
         expect(screen.getByText("ACCÈS REFUSÉ")).toBeTruthy();
     });
 
@@ -137,7 +183,11 @@ describe("QuestPage", () => {
                 createdAt: Date.now(),
             },
         });
-        render(<QuestPage />);
+        render(
+            <AuthProvider>
+                <QuestPage />
+            </AuthProvider>
+        );
         expect(screen.getByText("RÔLE NON ASSIGNÉ")).toBeTruthy();
     });
 
@@ -157,7 +207,11 @@ describe("QuestPage", () => {
                 location: "Module de survie",
             },
         });
-        render(<QuestPage />);
+        render(
+            <AuthProvider>
+                <QuestPage />
+            </AuthProvider>
+        );
         
         // Wait for the quest content to load (async operation)
         await act(async () => {
@@ -173,7 +227,11 @@ describe("QuestPage", () => {
 
     it("should call fetchGame on mount", () => {
         vi.mocked(useGameStore).mockReturnValue(baseStoreState);
-        render(<QuestPage />);
+        render(
+            <AuthProvider>
+                <QuestPage />
+            </AuthProvider>
+        );
         expect(mockFetchGame).toHaveBeenCalledWith("game-123", "user-1");
     });
 
@@ -194,7 +252,11 @@ describe("QuestPage", () => {
                 instruction: "Test instruction",
             },
         });
-        render(<QuestPage />);
+        render(
+            <AuthProvider>
+                <QuestPage />
+            </AuthProvider>
+        );
         expect(screen.getByText("QUÊTE DÉJÀ ACCOMPLIE")).toBeTruthy();
         expect(screen.getByText("RETOUR AU COCKPIT")).toBeTruthy();
     });
@@ -209,7 +271,11 @@ describe("QuestPage", () => {
                 createdAt: Date.now(),
             },
         });
-        render(<QuestPage />);
+        render(
+            <AuthProvider>
+                <QuestPage />
+            </AuthProvider>
+        );
         
         // It should call setCurrentQuest with a simulated quest object
         expect(mockSetCurrentQuest).toHaveBeenCalledWith(expect.objectContaining({

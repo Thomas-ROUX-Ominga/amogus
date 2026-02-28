@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useGameStore } from "@/lib/store/game-store";
 import { UserPlus, Terminal } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 interface JoinFormProps {
     gameId: string;
@@ -12,11 +13,15 @@ interface JoinFormProps {
 export function JoinForm({ gameId, userId }: JoinFormProps) {
     const [pseudo, setPseudo] = useState("");
     const { join, isLoading, error } = useGameStore();
+    const { setAnonymousSession } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!pseudo.trim() || isLoading) return;
         await join(gameId, pseudo.trim(), userId);
+        
+        // Sync the anonymous session with the pseudo and gameId
+        setAnonymousSession(pseudo.trim(), gameId);
     };
 
     return (

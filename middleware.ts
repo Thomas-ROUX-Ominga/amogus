@@ -24,8 +24,12 @@ export async function middleware(request: NextRequest) {
     const { verifySession } = await import("@/lib/redis/auth-utils");
     const { adminExists } = await import("@/lib/redis/admin-utils");
     
-    // For admin routes, first check if user has a valid session
-    if (pathname.startsWith("/admin")) {
+    // List of organizer routes (previously under /admin)
+    const organizerRoutes = ["/batches", "/dashboard", "/games", "/tracker"];
+    const isOrganizerRoute = organizerRoutes.some(route => pathname === route || pathname.startsWith(route + "/"));
+    
+    // For organizer routes, first check if user has a valid session
+    if (isOrganizerRoute) {
       const sessionResult = await verifySession();
       
       if (sessionResult.success) {
@@ -45,9 +49,9 @@ export async function middleware(request: NextRequest) {
       }
       return NextResponse.next();
     }
-
-    // Users exist but no valid session for admin routes, redirect to login
-    if (pathname.startsWith("/admin")) {
+    
+    // Users exist but no valid session for organizer routes, redirect to login
+    if (isOrganizerRoute) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);

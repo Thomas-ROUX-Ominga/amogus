@@ -1,7 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { joinGame, createGame, completeQuest } from "@/lib/redis/actions";
 import { redis } from "@/lib/redis/client";
-import { getBatch } from "@/lib/redis/batch-actions";
+import { getBatch, getBatchData } from "@/lib/redis/batch-actions";
 import { Quest, QuestType, QuestDuration } from "@/types/quest";
 
 // Mock dependencies
@@ -15,7 +15,7 @@ vi.mock("@/lib/redis/client", () => ({
 }));
 
 vi.mock("@/lib/redis/batch-actions", () => ({
-    getBatch: vi.fn(),
+    getBatchData: vi.fn(),
 }));
 
 vi.mock("@/lib/redis/auth-utils", () => ({
@@ -58,7 +58,7 @@ describe("Story 11.3: Game Settings from Batch", () => {
             };
 
             vi.mocked(redis.get).mockResolvedValueOnce(mockGameState);
-            vi.mocked(getBatch).mockResolvedValueOnce({
+            vi.mocked(getBatchData).mockResolvedValueOnce({
                 success: true,
                 data: mockBatch,
             });
@@ -115,7 +115,7 @@ describe("Story 11.3: Game Settings from Batch", () => {
             };
 
             vi.mocked(redis.get).mockResolvedValueOnce(mockGameState);
-            vi.mocked(getBatch).mockResolvedValueOnce({
+            vi.mocked(getBatchData).mockResolvedValueOnce({
                 success: false,
                 error: "Batch not found",
             });
@@ -147,7 +147,7 @@ describe("Story 11.3: Game Settings from Batch", () => {
             };
 
             vi.mocked(redis.get).mockResolvedValueOnce(mockGameState);
-            vi.mocked(getBatch).mockResolvedValueOnce({ success: true, data: mockBatch as typeof mockBatch });
+            vi.mocked(getBatchData).mockResolvedValueOnce({ success: true, data: mockBatch as typeof mockBatch });
 
             const result = await joinGame("test-game", "Test", VALID_UUID);
             expect(result.success).toBe(false);

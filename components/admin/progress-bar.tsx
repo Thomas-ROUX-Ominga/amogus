@@ -8,8 +8,8 @@ interface ProgressBarProps {
 }
 
 export function ProgressBar({ gameState }: ProgressBarProps) {
-    const progress = calculateGlobalProgress(gameState.players);
-    const totalQuests = getTotalQuests();
+    const progress = calculateGlobalProgress(gameState.players, gameState);
+    const totalQuests = getTotalQuests(gameState);
     let totalCompleted = 0;
     
     gameState.players.forEach(player => {
@@ -70,7 +70,7 @@ export function ProgressBar({ gameState }: ProgressBarProps) {
                         Individual Progress
                     </div>
                     {gameState.players.map(player => {
-                        const playerProgress = calculatePlayerProgress(player.completedQuests);
+                        const playerProgress = calculatePlayerProgress(player.completedQuests, gameState);
                         
                         return (
                             <div key={player.id} className="flex items-center gap-3 text-xs">

@@ -24,8 +24,8 @@ export type AuthSession = AdminSession | AnonymousSession | null;
 export interface AuthState {
   session: AuthSession;
   isLoading: boolean;
-  isAdmin: boolean;
-  isAuthenticated: boolean;
+  isAuthenticated: boolean; // Has a verified account (Organizer)
+  isAnonymous: boolean;    // Temporary guest session
 }
 
 // Context for global auth state
@@ -37,7 +37,6 @@ const AuthContext = createContext<{
 } | null>(null);
 
 // Storage keys
-const ADMIN_SESSION_KEY = "organizer-session";
 const ANONYMOUS_SESSION_KEY = "anonymous-session";
 
 /**
@@ -62,8 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>({
     session: null,
     isLoading: true,
-    isAdmin: false,
     isAuthenticated: false,
+    isAnonymous: false,
   });
 
   // Verify admin session via API call
@@ -104,6 +103,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           sessionType: "anonymous",
         };
       }
+
+      // Migration from legacy useLocalUser (amogus_user_id)
+      const legacyId = localStorage.getItem("amogus_user_id");
+      if (legacyId) {
+        const newSession: AnonymousSession = {
+          userId: legacyId,
+          isAuthenticated: false,
+          sessionType: "anonymous",
+        };
+        localStorage.setItem(ANONYMOUS_SESSION_KEY, JSON.stringify(newSession));
+        return newSession;
+      }
     } catch (error) {
       console.error("Failed to load anonymous session:", error);
       localStorage.removeItem(ANONYMOUS_SESSION_KEY);
@@ -121,63 +132,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthState({
         session: adminSession,
         isLoading: false,
-        isAdmin: true,
         isAuthenticated: true,
+        isAnonymous: false,
       });
       return;
     }
 
     // Fall back to anonymous session
-    const anonymousSession = loadAnonymousSession();
-    if (anonymousSession) {
-      setAuthState({
-        session: anonymousSession,
-        isLoading: false,
-        isAdmin: false,
+    let anonymousSession = loadAnonymousSession();
+    
+    // Ensure we always have at least an anonymous session (parity with useLocalUser)
+    if (!anonymousSession) {
+      const newUserId = globalThis.crypto.randomUUID();
+      anonymousSession = {
+        userId: newUserId,
         isAuthenticated: false,
-      });
-      return;
+        sessionType: "anonymous",
+      };
+      localStorage.setItem(ANONYMOUS_SESSION_KEY, JSON.stringify(anonymousSession));
     }
 
-    // No session found
     setAuthState({
-      session: null,
+      session: anonymousSession,
       isLoading: false,
-      isAdmin: false,
       isAuthenticated: false,
+      isAnonymous: true,
     });
   };
 
   // Set anonymous session — preserves existing userId to support reconnection (AC2)
   const setAnonymousSession = (username?: string, gameId?: string) => {
     try {
-      // Reuse the existing anonymous userId if one already exists, to preserve reconnection identity
       const existingRaw = localStorage.getItem(ANONYMOUS_SESSION_KEY);
-      const existingUserId = existingRaw
-        ? (() => { try { return JSON.parse(existingRaw).userId as string; } catch { return null; } })()
-        : null;
-
+      const userId = existingRaw ? JSON.parse(existingRaw).userId : globalThis.crypto.randomUUID();
       const session: AnonymousSession = {
-        userId: existingUserId ?? globalThis.crypto.randomUUID(),
+        userId,
         username,
         gameId,
         isAuthenticated: false,
         sessionType: "anonymous",
       };
-
       localStorage.setItem(ANONYMOUS_SESSION_KEY, JSON.stringify(session));
       
-      // Only update state if not admin (admin takes priority)
-      if (!authState.isAdmin) {
+      if (!authState.isAuthenticated) {
         setAuthState({
           session,
           isLoading: false,
-          isAdmin: false,
           isAuthenticated: false,
+          isAnonymous: true,
         });
       }
-    } catch (error) {
-      console.error("Failed to set anonymous session:", error);
+    } catch (e) {
+      console.error("Failed to set anonymous session:", e);
     }
   };
 
@@ -191,8 +197,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthState({
           session: null,
           isLoading: false,
-          isAdmin: false,
           isAuthenticated: false,
+          isAnonymous: false,
         });
       }
     } catch (error) {
@@ -205,13 +211,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshAuth();
   }, []);
 
-  // Periodic refresh for admin sessions (every 30 seconds)
+  // Periodic refresh for authenticated sessions (every 30 seconds)
   useEffect(() => {
-    if (authState.isAdmin) {
+    if (authState.isAuthenticated) {
       const interval = setInterval(refreshAuth, 30000);
       return () => clearInterval(interval);
     }
-  }, [authState.isAdmin]);
+  }, [authState.isAuthenticated]);
 
   const contextValue = {
     authState,
@@ -230,25 +236,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 /**
  * Utility hook for authentication guards
  */
-export function useAuthGuard(requireAdmin: boolean = false) {
+export function useAuthGuard(requireAccount: boolean = false) {
   const { authState } = useAuth();
   
-  if (requireAdmin && !authState.isAdmin) {
+  if (authState.isLoading) {
+    return { canProceed: true, isLoading: true, reason: null };
+  }
+  
+  if (requireAccount && !authState.isAuthenticated) {
     return {
       canProceed: false,
-      reason: "Admin authentication required",
+      isLoading: false,
+      reason: "Organizer authentication required",
     };
   }
   
   if (!authState.session) {
     return {
       canProceed: false,
+      isLoading: false,
       reason: "Authentication required",
     };
   }
   
   return {
     canProceed: true,
+    isLoading: false,
     reason: null,
   };
 }

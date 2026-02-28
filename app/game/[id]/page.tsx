@@ -4,7 +4,6 @@ import { useEffect, useCallback, useState } from "react";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { useParams } from "next/navigation";
 import { useGameStore, useRealTimeGamePolling } from "@/lib/store/game-store";
-import { useLocalUser } from "@/hooks/use-local-user";
 import { useAuth } from "@/hooks/use-auth";
 import { JoinForm } from "@/components/game/join-form";
 import { ErrorView } from "@/components/game/error-view";
@@ -16,13 +15,11 @@ import { Rocket, Loader2, Wifi, WifiOff } from "lucide-react";
 export default function LobbyPage() {
     const { id } = useParams();
     const { gameState, isLoading, isLaunching, error, errorCode, launchError, selectedRole, fetchGame, launch } = useGameStore();
-    const { userId: localUserId } = useLocalUser();
     const { authState } = useAuth();
-    // Admin sessions use JWT userId; anonymous players use the localStorage UUID.
-    // This ensures isJoined correctly detects when an admin is already in the player list.
-    const userId = (authState.isAdmin && authState.session)
-        ? authState.session.userId
-        : localUserId;
+    
+    // Auth session is now the single source of truth for both admin and anonymous players.
+    // AuthProvider ensures at least an anonymous session is always present.
+    const userId = authState.session?.userId;
     const [showTransition, setShowTransition] = useState(false);
     const [showGameHome, setShowGameHome] = useState(false);
 
@@ -90,12 +87,11 @@ export default function LobbyPage() {
     const currentPlayer = currentGameState?.players.find((p) => p.id === userId);
     const hasRole = currentPlayer?.role !== undefined;
     
-    // Only the game creator (admin) can launch the game
+    // Only the game creator can launch the game
     const canLaunch = currentGameState && 
                      currentPlayerCount >= 1 && 
                      currentGameState.status === "LOBBY" &&
-                     currentGameState.creatorId === userId &&
-                     currentPlayer?.role === "ADMIN";
+                     currentGameState.creatorId === userId;
 
     const handleRoleSelected = useCallback(() => {
         setShowTransition(true);
@@ -240,6 +236,11 @@ export default function LobbyPage() {
                                                             NEW
                                                         </span>
                                                     )}
+                                                    {player.id === currentGameState?.creatorId && player.id !== userId && (
+                                                        <span className="text-[8px] bg-primary/20 text-primary px-2 py-0.5 rounded border border-primary/30 font-bold">
+                                                            HOST
+                                                        </span>
+                                                    )}
                                                 </span>
                                                 {player.id === userId && (
                                                     <span className="text-[8px] opacity-50 px-2 py-0.5 border border-primary/50">YOU</span>
@@ -250,26 +251,28 @@ export default function LobbyPage() {
                                 </div>
                             </div>
 
-                            <button
-                                onClick={handleLaunch}
-                                disabled={!canLaunch || isLaunching}
-                                className="w-full min-h-[44px] bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed text-primary-foreground font-black py-4 rounded-sm transition-all flex items-center justify-center gap-3 group relative overflow-hidden touch-manipulation font-orbitron"
-                            >
-                                <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 group-disabled:translate-y-full transition-transform duration-300" />
-                                <span className="relative flex items-center gap-3 tracking-[0.3em] uppercase text-sm">
-                                    {isLaunching ? (
-                                        <>
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                            Lancement...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Rocket className="w-5 h-5" />
-                                            Lancer la partie
-                                        </>
-                                    )}
-                                </span>
-                            </button>
+                            {currentGameState?.creatorId === userId && (
+                                <button
+                                    onClick={handleLaunch}
+                                    disabled={!canLaunch || isLaunching}
+                                    className="w-full min-h-[44px] bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed text-primary-foreground font-black py-4 rounded-sm transition-all flex items-center justify-center gap-3 group relative overflow-hidden touch-manipulation font-orbitron"
+                                >
+                                    <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 group-disabled:translate-y-full transition-transform duration-300" />
+                                    <span className="relative flex items-center gap-3 tracking-[0.3em] uppercase text-sm">
+                                        {isLaunching ? (
+                                            <>
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                Lancement...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Rocket className="w-5 h-5" />
+                                                Lancer la partie
+                                            </>
+                                        )}
+                                    </span>
+                                </button>
+                            )}
 
                             {launchError && (
                                 <div className="p-4 border-l-4 border-destructive/50 bg-destructive/5 text-xs text-destructive/80 tracking-wide space-y-2">

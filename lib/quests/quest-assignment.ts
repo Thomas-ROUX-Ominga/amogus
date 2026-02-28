@@ -1,5 +1,5 @@
 import { Quest } from "@/types/quest";
-import { getBatch } from "@/lib/redis/batch-actions";
+import { getBatchData } from "@/lib/redis/batch-actions";
 import { GameState } from "@/types/game";
 
 export interface QuestAssignment {
@@ -20,8 +20,8 @@ export async function assignQuestsFromBatch(gameState: GameState): Promise<Quest
   }
 
   try {
-    // Get batch data
-    const batchResponse = await getBatch(gameState.batchId);
+    // Get batch data using internal helper (no session check required)
+    const batchResponse = await getBatchData(gameState.batchId);
     if (!batchResponse.success || !batchResponse.data) {
       console.error(`Failed to load batch ${gameState.batchId}:`, batchResponse.error);
       return [];

@@ -7,12 +7,13 @@ import { Clock, CheckCircle } from "lucide-react";
 interface PlayerQuestProgressProps {
     player: Player;
     isCurrentUser?: boolean;
+    totalCount?: number;
 }
 
-export function PlayerQuestProgress({ player, isCurrentUser = false }: PlayerQuestProgressProps) {
+export function PlayerQuestProgress({ player, isCurrentUser = false, totalCount: providedTotalCount }: PlayerQuestProgressProps) {
     const completedCount = player.completedQuests?.length || 0;
-    const totalCount = getTotalQuests();
-    const completionPercentage = (completedCount / totalCount) * 100;
+    const totalCount = providedTotalCount || getTotalQuests();
+    const completionPercentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
     return (
         <div className="space-y-3" data-testid="player-quest-progress">

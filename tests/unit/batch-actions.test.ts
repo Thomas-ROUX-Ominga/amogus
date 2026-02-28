@@ -16,7 +16,7 @@ vi.mock('@/lib/redis/auth-utils', () => ({
   verifyAdminSession: vi.fn(),
 }));
 
-import { createBatch, getAllBatches, deleteBatch, updateQuestsLocations } from '@/lib/redis/batch-actions';
+import { createBatch, getAllBatches, deleteBatch, updateQuestsLocations, getBatch, getBatchData } from '@/lib/redis/batch-actions';
 import { BatchCreateInput } from '@/types/quest';
 import { redis } from '@/lib/redis/client';
 import { verifyAdminSession } from '@/lib/redis/auth-utils';
@@ -263,6 +263,61 @@ describe('Batch Actions', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('Failed to update quest locations');
       expect(result.code).toBe('ERR_SIGNAL_LOST');
+    });
+  });
+
+  describe('getBatchData', () => {
+    it('should retrieve batch data successfully without session check', async () => {
+      const mockBatch = { id: 'batch-123', questCount: 30 };
+      (redis.get as any).mockResolvedValue(mockBatch);
+
+      const result = await getBatchData('batch-123');
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockBatch);
+      expect(redis.get).toHaveBeenCalledWith('batch:batch-123');
+      // Should NOT have called verifyAdminSession
+      expect(verifyAdminSession).not.toHaveBeenCalled();
+    });
+
+    it('should fail with invalid batch ID', async () => {
+      const result = await getBatchData('');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Batch ID is required');
+    });
+
+    it('should handle non-existent batch', async () => {
+      (redis.get as any).mockResolvedValue(null);
+
+      const result = await getBatchData('non-existent');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Batch not found');
+    });
+  });
+
+  describe('getBatch', () => {
+    it('should retrieve batch successfully after session verification', async () => {
+      const mockBatch = { id: 'batch-123', questCount: 30 };
+      (redis.get as any).mockResolvedValue(mockBatch);
+      (verifyAdminSession as any).mockResolvedValue({ success: true, data: { role: 'admin' } });
+
+      const result = await getBatch('batch-123');
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockBatch);
+      expect(verifyAdminSession).toHaveBeenCalled();
+    });
+
+    it('should fail if session verification fails', async () => {
+      (verifyAdminSession as any).mockResolvedValue({ success: false, error: 'Unauthorized' });
+
+      const result = await getBatch('batch-123');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Unauthorized');
+      expect(redis.get).not.toHaveBeenCalled();
     });
   });
 });

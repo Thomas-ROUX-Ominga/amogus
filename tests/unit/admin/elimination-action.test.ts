@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { eliminatePlayer } from '@/app/admin/dashboard/actions';
+import { getDashboardData, eliminatePlayer } from "@/app/(organizer)/dashboard/actions";
 import { verifySession } from '@/lib/redis/auth-utils';
 import { getGame, eliminatePlayer as eliminatePlayerAction } from '@/lib/redis/actions';
 

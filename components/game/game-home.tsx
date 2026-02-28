@@ -173,31 +173,42 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                                         }`}
                                     >
                                         <span>{player.name}</span>
-                                        {player.id === userId && (
-                                            <span className="text-[8px] opacity-50 px-2 py-0.5 border border-primary/50">
-                                                YOU
-                                            </span>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {player.id === gameState.creatorId && player.id !== userId && (
+                                                <span className="text-[8px] bg-primary/20 text-primary px-2 py-0.5 rounded border border-primary/30 font-bold">
+                                                    HOST
+                                                </span>
+                                            )}
+                                            {player.id === userId && (
+                                                <span className="text-[8px] opacity-50 px-2 py-0.5 border border-primary/50">
+                                                    YOU
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
                         </div>
                     </div>
 
                     {/* SCAN Button (thumb zone — bottom) */}
-                    <ScanButton 
-                        disabled={false} 
-                        onClick={openScanner}
-                        gameId={gameState.id}
-                    />
+                    {gameState.creatorId !== userId && (
+                        <ScanButton 
+                            disabled={false} 
+                            onClick={openScanner}
+                            gameId={gameState.id}
+                        />
+                    )}
 
                     {/* Camera Scanner Overlay */}
-                    <CameraScanner
-                        isOpen={isOpen}
-                        onClose={closeScanner}
-                        onScan={handleScan}
-                        isPlayerEliminated={!currentPlayer.isAlive}
-                        playerRole={currentPlayer.role}
-                    />
+                    {gameState.creatorId !== userId && (
+                        <CameraScanner
+                            isOpen={isOpen}
+                            onClose={closeScanner}
+                            onScan={handleScan}
+                            isPlayerEliminated={!currentPlayer.isAlive}
+                            playerRole={currentPlayer.role}
+                        />
+                    )}
 
                     {/* Prominent Elimination Overlay */}
                     {showEliminatedOverlay && (
@@ -223,11 +234,13 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     <div className="text-[8px] text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
                         Role: {currentPlayer.role}
                     </div>
-                    <EliminationButton
-                        onEliminate={handleElimination}
-                        disabled={isEliminating}
-                        isEliminating={isEliminating}
-                    />
+                    {gameState.creatorId !== userId && (
+                        <EliminationButton
+                            onEliminate={handleElimination}
+                            disabled={isEliminating}
+                            isEliminating={isEliminating}
+                        />
+                    )}
                     <div className="text-[8px] text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
                         Status: {currentPlayer.isAlive ? "READY" : "ELIMINATED"}
                     </div>

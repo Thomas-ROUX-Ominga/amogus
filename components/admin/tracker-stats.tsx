@@ -8,7 +8,7 @@ interface TrackerStatsProps {
 }
 
 export function TrackerStats({ gameState }: TrackerStatsProps) {
-    const totalQuests = getTotalQuests();
+    const totalQuests = getTotalQuests(gameState);
     let totalCompleted = 0;
     let activePlayers = 0;
     let eliminatedPlayers = 0;

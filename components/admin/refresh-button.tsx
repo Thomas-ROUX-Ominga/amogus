@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useGameStore } from "@/lib/store/game-store";
-import { useLocalUser } from "@/hooks/use-local-user";
+import { useAuth } from "@/hooks/use-auth";
 import { RefreshCw } from "lucide-react";
 
 interface RefreshButtonProps {
@@ -11,14 +11,15 @@ interface RefreshButtonProps {
 
 // Simple haptic feedback implementation
 const triggerHaptic = () => {
-  if ('vibrate' in navigator) {
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
     navigator.vibrate(50); // Short vibration for feedback
   }
 };
 
 export function RefreshButton({ gameId }: RefreshButtonProps) {
   const { refreshGameData, isRefreshing } = useGameStore();
-  const { userId } = useLocalUser();
+  const { authState } = useAuth();
+  const userId = authState.session?.userId;
   const [isLocalRefreshing, setIsLocalRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
 

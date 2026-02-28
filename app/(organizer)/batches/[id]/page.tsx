@@ -63,7 +63,7 @@ export default function BatchDetailPage() {
       <div className="min-h-screen bg-black text-primary p-6">
         <div className="max-w-6xl mx-auto">
           <button
-            onClick={() => router.push("/admin/batches")}
+            onClick={() => router.push("/batches")}
             className="flex items-center gap-2 text-[10px] text-primary uppercase tracking-widest hover:text-primary/80 mb-6"
           >
             <ArrowLeft size={14} />
@@ -86,7 +86,7 @@ export default function BatchDetailPage() {
     <div className="min-h-screen bg-black text-primary p-6">
       <div className="max-w-6xl mx-auto">
         <button
-          onClick={() => router.push("/admin/batches")}
+          onClick={() => router.push("/batches")}
           className="flex items-center gap-2 text-[10px] text-primary uppercase tracking-widest hover:text-primary/80 mb-6"
         >
           <ArrowLeft size={14} />

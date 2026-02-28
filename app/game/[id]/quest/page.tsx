@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { useGameStore } from "@/lib/store/game-store";
-import { useLocalUser } from "@/hooks/use-local-user";
+import { useAuth } from "@/hooks/use-auth";
 import { ErrorView } from "@/components/game/error-view";
 import { QuestView } from "@/components/game/quest-view";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
@@ -36,7 +36,8 @@ function QuestPageContent() {
     const router = useRouter();
     const duration = searchParams.get("duration");
     const questId = searchParams.get("questId");
-    const { userId } = useLocalUser();
+    const { authState } = useAuth();
+    const userId = authState.session?.userId;
     const {
         gameState,
         isLoading,

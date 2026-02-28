@@ -1,18 +1,24 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RefreshButton } from '@/components/admin/refresh-button';
+import { useAuth, AuthProvider } from '@/hooks/use-auth';
+import { ReactNode } from 'react';
+import { useGameStore } from '@/lib/store/game-store';
 
 // Mock dependencies
 vi.mock('@/lib/store/game-store', () => ({
   useGameStore: vi.fn(),
 }));
 
-vi.mock('@/hooks/use-local-user', () => ({
-  useLocalUser: vi.fn(),
+vi.mock('@/hooks/use-auth', () => ({
+  useAuth: vi.fn(),
+  AuthProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
-import { useGameStore } from '@/lib/store/game-store';
-import { useLocalUser } from '@/hooks/use-local-user';
+// Test wrapper component
+function CreateWrapper({ children }: { children: ReactNode }) {
+  return <AuthProvider>{children}</AuthProvider>;
+}
 
 describe('RefreshButton', () => {
   const mockRefreshGameData = vi.fn();
@@ -21,25 +27,63 @@ describe('RefreshButton', () => {
     isRefreshing: false,
   };
 
-  const mockLocalUser = {
-    userId: 'test-user-id',
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useGameStore).mockReturnValue(mockGameStore);
-    vi.mocked(useLocalUser).mockReturnValue(mockLocalUser);
   });
 
-  it('should render the refresh button', () => {
-    render(<RefreshButton gameId="test-game-id" />);
+  it('should render a refresh button', () => {
+    const mockUseAuth = vi.mocked(useAuth);
+    mockUseAuth.mockReturnValue({
+      authState: {
+        session: {
+          userId: 'test-user-id',
+          username: 'test-user',
+          isAuthenticated: false,
+          sessionType: 'anonymous',
+        },
+        isLoading: false,
+        isAuthenticated: false,
+        isAnonymous: true,
+      },
+      refreshAuth: vi.fn(),
+      setAnonymousSession: vi.fn(),
+      clearAnonymousSession: vi.fn(),
+    });
+    
+    render(
+      <CreateWrapper>
+        <RefreshButton gameId="test-game-id" />
+      </CreateWrapper>
+    );
     
     const button = screen.getByRole('button', { name: /actualiser/i });
     expect(button).toBeDefined();
   });
 
   it('should call refreshGameData when clicked', async () => {
-    render(<RefreshButton gameId="test-game-id" />);
+    vi.mocked(useAuth).mockReturnValue({
+      authState: {
+        session: {
+          userId: 'test-user-id',
+          username: 'test-user',
+          isAuthenticated: false,
+          sessionType: 'anonymous',
+        },
+        isLoading: false,
+        isAuthenticated: false,
+        isAnonymous: true,
+      },
+      refreshAuth: vi.fn(),
+      setAnonymousSession: vi.fn(),
+      clearAnonymousSession: vi.fn(),
+    });
+    
+    render(
+      <CreateWrapper>
+        <RefreshButton gameId="test-game-id" />
+      </CreateWrapper>
+    );
     
     const button = screen.getByRole('button', { name: /actualiser/i });
     fireEvent.click(button);
@@ -50,12 +94,33 @@ describe('RefreshButton', () => {
   });
 
   it('should show loading state during fetch', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      authState: {
+        session: {
+          userId: 'test-user-id',
+          username: 'test-user',
+          isAuthenticated: false,
+          sessionType: 'anonymous',
+        },
+        isLoading: false,
+        isAuthenticated: false,
+        isAnonymous: true,
+      },
+      refreshAuth: vi.fn(),
+      setAnonymousSession: vi.fn(),
+      clearAnonymousSession: vi.fn(),
+    });
+    
     vi.mocked(useGameStore).mockReturnValue({
       ...mockGameStore,
       isRefreshing: true,
     });
 
-    render(<RefreshButton gameId="test-game-id" />);
+    render(
+      <CreateWrapper>
+        <RefreshButton gameId="test-game-id" />
+      </CreateWrapper>
+    );
     
     const button = screen.getByRole('button', { name: /actualisation/i }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
@@ -63,18 +128,51 @@ describe('RefreshButton', () => {
   });
 
   it('should be disabled when no userId is available', () => {
-    vi.mocked(useLocalUser).mockReturnValue({
-      userId: null,
+    vi.mocked(useAuth).mockReturnValue({
+      authState: {
+        session: null,
+        isLoading: false,
+        isAuthenticated: false,
+        isAnonymous: false,
+      },
+      refreshAuth: vi.fn(),
+      setAnonymousSession: vi.fn(),
+      clearAnonymousSession: vi.fn(),
     });
 
-    render(<RefreshButton gameId="test-game-id" />);
+    render(
+      <CreateWrapper>
+        <RefreshButton gameId="test-game-id" />
+      </CreateWrapper>
+    );
     
     const button = screen.getByRole('button', { name: /actualiser/i }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
   });
 
   it('should prevent multiple rapid clicks', async () => {
-    render(<RefreshButton gameId="test-game-id" />);
+    vi.mocked(useAuth).mockReturnValue({
+      authState: {
+        session: {
+          userId: 'test-user-id',
+          username: 'test-user',
+          isAuthenticated: false,
+          sessionType: 'anonymous',
+        },
+        isLoading: false,
+        isAuthenticated: false,
+        isAnonymous: true,
+      },
+      refreshAuth: vi.fn(),
+      setAnonymousSession: vi.fn(),
+      clearAnonymousSession: vi.fn(),
+    });
+    
+    render(
+      <CreateWrapper>
+        <RefreshButton gameId="test-game-id" />
+      </CreateWrapper>
+    );
     
     const button = screen.getByRole('button', { name: /actualiser/i });
     
@@ -90,7 +188,28 @@ describe('RefreshButton', () => {
   });
 
   it('should debounce clicks within 2 seconds', async () => {
-    render(<RefreshButton gameId="test-game-id" />);
+    vi.mocked(useAuth).mockReturnValue({
+      authState: {
+        session: {
+          userId: 'test-user-id',
+          username: 'test-user',
+          isAuthenticated: false,
+          sessionType: 'anonymous',
+        },
+        isLoading: false,
+        isAuthenticated: false,
+        isAnonymous: true,
+      },
+      refreshAuth: vi.fn(),
+      setAnonymousSession: vi.fn(),
+      clearAnonymousSession: vi.fn(),
+    });
+    
+    render(
+      <CreateWrapper>
+        <RefreshButton gameId="test-game-id" />
+      </CreateWrapper>
+    );
     
     const button = screen.getByRole('button', { name: /actualiser/i });
     

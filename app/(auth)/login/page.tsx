@@ -13,7 +13,7 @@ function LoginContent() {
   
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/admin/batches";
+  const redirect = searchParams.get("redirect") || "/batches";
   const registered = searchParams.get("registered") === "true";
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -62,8 +62,8 @@ describe("useAuth", () => {
         isAuthenticated: true,
         sessionType: "admin",
       });
-      expect(result.current.authState.isAdmin).toBe(true);
       expect(result.current.authState.isAuthenticated).toBe(true);
+      expect(result.current.authState.isAnonymous).toBe(false);
     });
 
     it("should handle admin session verification failure", async () => {
@@ -84,9 +84,11 @@ describe("useAuth", () => {
         expect(result.current.authState.isLoading).toBe(false);
       });
 
-      expect(result.current.authState.session).toBeNull();
-      expect(result.current.authState.isAdmin).toBe(false);
+      // Should fall back to anonymous session by default
+      expect(result.current.authState.session).not.toBeNull();
+      expect(result.current.authState.session?.sessionType).toBe("anonymous");
       expect(result.current.authState.isAuthenticated).toBe(false);
+      expect(result.current.authState.isAnonymous).toBe(true);
     });
 
     it("should refresh admin session periodically", async () => {
@@ -111,7 +113,7 @@ describe("useAuth", () => {
       });
 
       await waitFor(() => {
-        expect(result.current.authState.isAdmin).toBe(true);
+        expect(result.current.authState.isAuthenticated).toBe(true);
       });
 
       // Check that setInterval was called with 30 second interval
@@ -152,8 +154,8 @@ describe("useAuth", () => {
         isAuthenticated: false,
         sessionType: "anonymous",
       });
-      expect(result.current.authState.isAdmin).toBe(false);
       expect(result.current.authState.isAuthenticated).toBe(false);
+      expect(result.current.authState.isAnonymous).toBe(true);
     });
 
     it("should set anonymous session", async () => {
@@ -185,7 +187,7 @@ describe("useAuth", () => {
       );
 
       expect(result.current.authState.session).toEqual({
-        userId: "550e8400-e29b-41d4-a716-446655440001",
+        userId: expect.any(String),
         username: "new-user",
         gameId: "game-789",
         isAuthenticated: false,
@@ -245,14 +247,14 @@ describe("useAuth", () => {
       });
 
       await waitFor(() => {
-        expect(result.current.authState.isAdmin).toBe(true);
+        expect(result.current.authState.isAuthenticated).toBe(true);
       });
 
       // Try to set anonymous session while admin is active
       result.current.setAnonymousSession("new-user", "game-789");
 
       // Admin session should remain unchanged
-      expect(result.current.authState.isAdmin).toBe(true);
+      expect(result.current.authState.isAuthenticated).toBe(true);
       expect(result.current.authState.session?.sessionType).toBe("admin");
     });
   });
@@ -280,7 +282,9 @@ describe("useAuth", () => {
         expect(result.current.authState.isLoading).toBe(false);
       });
 
-      expect(result.current.authState.session).toBeNull();
+      // Should still generate a fresh anonymous session even if storage fails
+      expect(result.current.authState.session).not.toBeNull();
+      expect(result.current.authState.session?.sessionType).toBe("anonymous");
       expect(localStorageMock.removeItem).toHaveBeenCalledWith("anonymous-session");
     });
 
@@ -310,12 +314,12 @@ describe("useAuth", () => {
       });
 
       await waitFor(() => {
-        expect(result.current.authState.isAdmin).toBe(true);
+        expect(result.current.authState.isAuthenticated).toBe(true);
       });
 
       // Admin session should take priority
       expect(result.current.authState.session?.sessionType).toBe("admin");
-      expect(result.current.authState.isAdmin).toBe(true);
+      expect(result.current.authState.isAuthenticated).toBe(true);
     });
   });
 });
