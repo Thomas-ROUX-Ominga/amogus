@@ -263,6 +263,23 @@ function QuestPageContent() {
                     </main>
                 );
             }
+
+            // Quest assignment guard (Story 11.3)
+            if (gameState.batchId && currentQuest.id !== "impostor-sim") {
+                const assignedQuests = currentPlayer.assignedQuests ?? [];
+                if (!assignedQuests.includes(currentQuest.id)) {
+                    return (
+                        <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
+                            <ErrorView
+                                title="QUÊTE NON ASSIGNÉE"
+                                message="Cette mission n'est pas répertoriée dans votre registre personnel. Veuillez scanner une quête qui vous a été attribuée."
+                                code={ERROR_CODES.ERR_QUEST_NOT_ASSIGNED}
+                                onRetry={() => { router.push(`/game/${gameId}`); }}
+                            />
+                        </main>
+                    );
+                }
+            }
         }
     }
 
