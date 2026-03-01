@@ -36,12 +36,12 @@ export async function generateQuestPDF(quests: Quest[]): Promise<Blob> {
 
     try {
       // Generate QR code as data URL
-      const qrCodeUrl = `/quest/${quest.id}`;
+      const qrCodeUrl = `${quest.id}`;
       const qrDataUrl = await QRCode.toDataURL(qrCodeUrl, {
         width: 250,
         margin: 1,
         color: {
-          dark: '#000000',
+          dark: '#1e1e1e',
           light: '#FFFFFF',
         },
       });
