@@ -46,17 +46,16 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
 
         try {
             // Create a new instance of Html5Qrcode
-            const html5QrCode = new Html5Qrcode(scannerRegionId, {
-                formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-                verbose: false
-            });
+            // The second parameter should be a boolean (verbose) or false, not an object.
+            const html5QrCode = new Html5Qrcode(scannerRegionId, false);
             html5QrCodeRef.current = html5QrCode;
 
             // Configure scanner for mobile-first environment usage
             const config = {
                 fps: 15,
-                qrbox: { width: 200, height: 200 }, // Slightly smaller for better fit on some mobile screens
+                qrbox: { width: 250, height: 250 }, // Standard box size
                 aspectRatio: 1.0,
+                formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
             };
 
             // Start scanning immediately with environment camera
@@ -223,8 +222,30 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                                 </div>
                             )}
 
+                            {/* Scanner Area Container - Always rendered to keep #qr-scanner-region in DOM */}
+                            {!(isPlayerEliminated && playerRole === "IMPOSTOR") && (
+                                <div className={`relative w-full max-w-md aspect-square transition-opacity duration-300 ${isLoading || error ? 'opacity-0' : 'opacity-100'}`}>
+                                    <div
+                                        id={scannerRegionId}
+                                        className="w-full h-full rounded-lg overflow-hidden bg-black [&_video]:object-cover [&_video]:w-full [&_video]:h-full"
+                                        aria-label="Camera view for QR code scanning"
+                                        role="img"
+                                    />
+                                    {/* Scanning overlay frame */}
+                                    <div className="absolute inset-0 pointer-events-none">
+                                        <div className="absolute inset-4 border-2 border-primary/50 rounded-lg shadow-[0_0_15px_rgba(var(--primary),0.3)]">
+                                            <motion.div
+                                                className="absolute top-0 left-0 right-0 h-0.5 bg-primary shadow-[0_0_10px_rgba(var(--primary),0.8)]"
+                                                animate={{ y: ["0%", "100%"] }}
+                                                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {isLoading && !(isPlayerEliminated && playerRole === "IMPOSTOR") && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
                                     <div className="text-center space-y-4">
                                         <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
                                         <p className="text-primary font-rajdhani tracking-wider">
@@ -235,7 +256,7 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                             )}
 
                             {error && !(isPlayerEliminated && playerRole === "IMPOSTOR") && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 p-4">
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 p-4 z-10">
                                     <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 max-w-sm w-full text-center space-y-4">
                                         <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
                                         <div>
@@ -252,27 +273,6 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                                         >
                                             Retry
                                         </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {!isLoading && !error && !(isPlayerEliminated && playerRole === "IMPOSTOR") && (
-                                <div className="relative w-full max-w-md aspect-square">
-                                        <div
-                                            id={scannerRegionId}
-                                            className="w-full h-full rounded-lg overflow-hidden bg-black [&>video]:object-cover [&>video]:w-full [&>video]:h-full"
-                                            aria-label="Camera view for QR code scanning"
-                                            role="img"
-                                        />
-                                    {/* Scanning overlay */}
-                                    <div className="absolute inset-0 pointer-events-none">
-                                        <div className="absolute inset-4 border-2 border-primary/50 rounded-lg">
-                                            <motion.div
-                                                className="absolute top-0 left-0 right-0 h-0.5 bg-primary"
-                                                animate={{ y: ["0%", "100%"] }}
-                                                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                                            />
-                                        </div>
                                     </div>
                                 </div>
                             )}
