@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Camera, AlertCircle } from "lucide-react";
+import { X, Camera, AlertCircle, Loader2 } from "lucide-react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { EliminatedScreen } from "@/components/game/eliminated-screen";
 
@@ -54,8 +54,8 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
 
             // Configure scanner for mobile-first environment usage
             const config = {
-                fps: 15, // Higher FPS for responsive feel
-                qrbox: { width: 250, height: 250 },
+                fps: 15,
+                qrbox: { width: 200, height: 200 }, // Slightly smaller for better fit on some mobile screens
                 aspectRatio: 1.0,
             };
 
@@ -226,11 +226,7 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                             {isLoading && !(isPlayerEliminated && playerRole === "IMPOSTOR") && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                                     <div className="text-center space-y-4">
-                                        <motion.div
-                                            animate={{ rotate: 360 }}
-                                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                            className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto"
-                                        />
+                                        <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
                                         <p className="text-primary font-rajdhani tracking-wider">
                                             Initializing camera...
                                         </p>
@@ -262,12 +258,12 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
 
                             {!isLoading && !error && !(isPlayerEliminated && playerRole === "IMPOSTOR") && (
                                 <div className="relative w-full max-w-md aspect-square">
-                                    <div
-                                        id={scannerRegionId}
-                                        className="w-full h-full rounded-lg overflow-hidden"
-                                        aria-label="Camera view for QR code scanning"
-                                        role="img"
-                                    />
+                                        <div
+                                            id={scannerRegionId}
+                                            className="w-full h-full rounded-lg overflow-hidden bg-black [&>video]:object-cover [&>video]:w-full [&>video]:h-full"
+                                            aria-label="Camera view for QR code scanning"
+                                            role="img"
+                                        />
                                     {/* Scanning overlay */}
                                     <div className="absolute inset-0 pointer-events-none">
                                         <div className="absolute inset-4 border-2 border-primary/50 rounded-lg">

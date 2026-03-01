@@ -5,7 +5,7 @@ import { Quest } from '@/types/quest';
 // PDF Layout Constants
 const PAGE_MARGIN_TOP = 40;
 const QR_SIZE = 50;
-const ROW_SPACING = 55;
+const ROW_SPACING = 80;
 const TEXT_SPACING_TOP = 8;
 const MAX_TEXT_WIDTH = 80; // Maximum width in mm for location text (centered in column)
 const QUESTS_PER_PAGE = 6;

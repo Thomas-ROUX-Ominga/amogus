@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, ChevronRight } from "lucide-react";
 import { login } from "@/lib/redis/auth-actions";
+import { useAuth } from "@/hooks/use-auth";
 
 function LoginContent() {
   const [username, setUsername] = useState("");
@@ -16,6 +17,8 @@ function LoginContent() {
   const redirect = searchParams.get("redirect") || "/batches";
   const registered = searchParams.get("registered") === "true";
 
+  const { refreshAuth } = useAuth();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim() || isLoading) return;
@@ -27,6 +30,7 @@ function LoginContent() {
       const result = await login(username.trim(), password.trim());
       
       if (result.success) {
+        await refreshAuth();
         router.push(redirect);
         router.refresh();
       } else {

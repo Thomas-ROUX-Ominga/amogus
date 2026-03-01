@@ -17,14 +17,14 @@ so that I can manage the game more effectively and players can easily identify t
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Global Progress Bar & Live Elimination (AC: 1, 4)
-  - [ ] Update `LiveDashboard.tsx` to ensure `overallProgress` is correctly calculated across all players.
-  - [ ] Enhance player tiles in the individual progress list with "Eliminated" visual styles.
-- [ ] Task 2: Host Identification & Badge (AC: 2)
-  - [ ] Update `useAuth` or similar hook to expose `isHost` logic (comparing `userId` with `gameState.creatorId`).
-  - [ ] Update player list components to render the "Host" badge.
-- [ ] Task 3: UX Cleanup for Admin (AC: 3)
-  - [ ] Conditional rendering for "SCAN" and "SIGNAL ELIMINATION" buttons based on user role.
+- [x] Task 1: Global Progress Bar & Live Elimination (AC: 1, 4)
+  - [x] Update `LiveDashboard.tsx` to ensure `overallProgress` is correctly calculated across all players.
+  - [x] Enhance player tiles in the individual progress list with "Eliminated" visual styles.
+- [x] Task 2: Host Identification & Badge (AC: 2)
+  - [x] Update `useAuth` or similar hook to expose `isHost` logic (comparing `userId` with `gameState.creatorId`).
+  - [x] Update player list components to render the "Host" badge.
+- [x] Task 3: UX Cleanup for Admin (AC: 3)
+  - [x] Conditional rendering for "SCAN" and "SIGNAL ELIMINATION" buttons based on user role.
 
 ## Dev Notes
 
