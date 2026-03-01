@@ -155,7 +155,7 @@ describe("DynamicContentMapper", () => {
             expect(result!.content.duration).toBe("short");
             expect(result!.contentId).toBeDefined();
             expect(result!.isRotation).toBe(false);
-            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId);
+            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId);
             expect(mockGetPlayerFailedQuests).toHaveBeenCalledWith(mockGameId, mockUserId);
         });
 
@@ -185,7 +185,7 @@ describe("DynamicContentMapper", () => {
             expect(result!.content.duration).toBe("short");
             expect(result!.contentId).toBeDefined();
             expect(result!.isRotation).toBe(true);
-            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId);
+            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId);
             expect(mockGetPlayerFailedQuests).toHaveBeenCalledWith(mockGameId, mockUserId);
         });
 
@@ -206,7 +206,7 @@ describe("DynamicContentMapper", () => {
 
             // Assert
             expect(result).toBeNull();
-            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId);
+            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId);
         });
 
         it("should return fallback content when all content has been tried", async () => {
@@ -235,7 +235,7 @@ describe("DynamicContentMapper", () => {
             expect(result!.content.duration).toBe("short");
             expect(result!.contentId).toBeDefined();
             expect(result!.isRotation).toBe(false);
-            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId);
+            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId);
             expect(mockGetPlayerFailedQuests).toHaveBeenCalledWith(mockGameId, mockUserId);
         });
 
@@ -258,7 +258,7 @@ describe("DynamicContentMapper", () => {
 
             // Assert
             expect(result).toBeNull();
-            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId);
+            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId);
         });
 
         it("should return 0 when player has not failed quests", async () => {

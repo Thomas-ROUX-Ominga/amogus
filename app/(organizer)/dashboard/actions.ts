@@ -54,7 +54,7 @@ export async function getDashboardData(gameId: string): Promise<{ success: boole
   const questFormats: Record<string, "short" | "medium" | "long"> = {};
   await Promise.all(
     Array.from(allCompletedQuests).map(async (questId) => {
-      const meta = await getQuestMetadata(questId);
+      const meta = await getQuestMetadata(questId, gameId);
       if (meta.success && meta.data) {
         questFormats[questId] = meta.data.duration;
       }

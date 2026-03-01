@@ -12,12 +12,12 @@ import { assignQuestsFromBatch } from "@/lib/quests/quest-assignment";
 import { verifySession, createPlayerSession, verifyPlayerSession } from "./auth-utils";
 
 export interface CreateGameInput {
-  batchId?: string;
-  questsPerPlayer?: {
-    short: number;
-    medium: number;
-    long: number;
-  };
+    batchId?: string;
+    questsPerPlayer?: {
+        short: number;
+        medium: number;
+        long: number;
+    };
 }
 
 export async function createGame(input?: CreateGameInput): Promise<ActionResponse<string>> {
@@ -34,12 +34,12 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
 
         // Generate short code instead of UUID
         const shortCode = await generateShortCode();
-        
+
         // Extract batchId and validate quests per player
         const batchId = input?.batchId;
         const defaultQuestsPerPlayer = { short: 1, medium: 1, long: 1 }; // 3 quests minimum
         const questsPerPlayer = input?.questsPerPlayer || defaultQuestsPerPlayer;
-        
+
         // Validate minimum quests per player (must be at least 1 total)
         const totalRequested = questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long;
         if (totalRequested < 1) {
@@ -49,14 +49,14 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
                 code: ERROR_CODES.ERR_INVALID_INPUT,
             };
         }
-        
+
         // Validate quests per player if batch is provided
         if (batchId) {
             const batchResponse = await getBatchData(batchId);
             if (batchResponse.success && batchResponse.data) {
                 const totalRequested = questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long;
                 const availableQuests = batchResponse.data.quests.length;
-                
+
                 if (totalRequested > availableQuests) {
                     return {
                         success: false,
@@ -66,7 +66,7 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
                 }
             }
         }
-        
+
         let questsTotal = getTotalQuestGamesCount(); // Default total from pool
         if (batchId) {
             const batchResponse = await getBatchData(batchId);
@@ -291,10 +291,10 @@ export async function joinGame(
 
         // Story 11.3: Game Settings from Batch - Assign quests from batch
         let assignedQuestIds: string[] | undefined = undefined;
-        
+
         if (state.batchId) {
             const assignedQuests = await assignQuestsFromBatch(state);
-            
+
             // If we have a batch but failed to assign quests, treat as an error
             // (Unless the intended distribution was 0 total, which we validated above as 1 min)
             if (assignedQuests.length === 0) {
@@ -321,7 +321,7 @@ export async function joinGame(
         };
 
         await redis.set(stateKey, updatedState);
-        
+
         // Secure the player's identity moving forward
         const sessionResult = await createPlayerSession(userId, gameId);
         if (!sessionResult.success) {
@@ -391,7 +391,7 @@ export async function completeQuest(
             }
 
             const player = state.players[playerIndex];
-            
+
             // Story 11.5: Allow eliminated Crewmates to complete quests (Ghost Mode)
             // Only block if player is eliminated AND is an Impostor
             if (!player.isAlive && player.role === "IMPOSTOR") {
@@ -571,29 +571,27 @@ export async function selectRole(
 }
 
 // Quest metadata actions for Story 8.2
-export async function getQuestMetadata(questId: string): Promise<ActionResponse<Quest>> {
+export async function getQuestMetadata(questId: string, gameId: string): Promise<ActionResponse<Quest>> {
     try {
-        // First try to get from batch-specific metadata
-        const batchQuestKey = `batch:quest:${questId}`;
-        let questMetadata = await redis.get<Quest>(batchQuestKey);
-        
-        // If not found in batch, try default pool metadata
-        if (!questMetadata) {
-            const defaultQuestKey = `quest:default:${questId}`;
-            questMetadata = await redis.get<Quest>(defaultQuestKey);
+        // Get game state to find batchId
+        const gameResponse = await getGame(gameId);
+        if (gameResponse.success && gameResponse.data && gameResponse.data.batchId) {
+            const batchResponse = await getBatchData(gameResponse.data.batchId);
+            if (batchResponse.success && batchResponse.data) {
+                // Search for quest in batch's quests array
+                const quest = batchResponse.data.quests.find(q => q.id === questId);
+                if (quest) {
+                    return {
+                        success: true,
+                        data: quest,
+                    };
+                }
+            }
         }
-        
-        if (!questMetadata) {
-            return {
-                success: false,
-                error: `Quest metadata not found for questId: ${questId}`,
-                code: ERROR_CODES.ERR_NOT_FOUND,
-            };
-        }
-        
         return {
-            success: true,
-            data: questMetadata,
+            success: false,
+            error: `Quest metadata not found for questId: ${questId}`,
+            code: ERROR_CODES.ERR_NOT_FOUND,
         };
     } catch (error) {
         console.error("Failed to get quest metadata:", error);
@@ -609,7 +607,7 @@ export async function getPlayerFailedQuests(gameId: string, userId: string): Pro
     try {
         const failedQuestsKey = `game:${gameId}:player:${userId}:failed-quests`;
         const failedQuests = await redis.get<Record<string, string[]>>(failedQuestsKey);
-        
+
         return {
             success: true,
             data: failedQuests ?? {},
@@ -625,32 +623,32 @@ export async function getPlayerFailedQuests(gameId: string, userId: string): Pro
 }
 
 export async function addFailedQuest(
-    gameId: string, 
-    userId: string, 
-    questId: string, 
+    gameId: string,
+    userId: string,
+    questId: string,
     contentId: string
 ): Promise<ActionResponse<void>> {
     try {
         const failedQuestsKey = `game:${gameId}:player:${userId}:failed-quests`;
-        
+
         let validationError: ActionResponse<void> | null = null;
-        
+
         await redis.atomicUpdate<Record<string, string[]>>(failedQuestsKey, (failedQuests) => {
             const current = failedQuests ?? {};
             const questFailed = current[questId] ?? [];
-            
+
             // Avoid duplicates
             if (!questFailed.includes(contentId)) {
                 current[questId] = [...questFailed, contentId];
             }
-            
+
             return current;
         }, GAME_TTL_SECONDS);
-        
+
         if (validationError) {
             return validationError;
         }
-        
+
         return {
             success: true,
         };
@@ -712,7 +710,7 @@ export async function eliminatePlayer(
             }
 
             const player = state.players[playerIndex];
-            
+
             // Idempotent: already eliminated - return success without changing state
             if (!player.isAlive) {
                 validationError = {

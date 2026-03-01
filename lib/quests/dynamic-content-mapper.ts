@@ -39,7 +39,7 @@ export class DynamicContentMapper {
             }
 
             // Step 1: Get quest metadata (Format/Type) from Redis
-            const metadataResponse = await getQuestMetadata(questId);
+            const metadataResponse = await getQuestMetadata(questId, gameId);
             if (!metadataResponse.success || !metadataResponse.data) {
                 console.error(`Failed to get metadata for quest ${questId}:`, metadataResponse.error);
                 return null;
