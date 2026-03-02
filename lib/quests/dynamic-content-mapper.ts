@@ -59,6 +59,7 @@ export class DynamicContentMapper {
             const failedQuests = failedQuestsResponse.data ?? {};
             const failedContentIds = failedQuests[questId] ?? [];
 
+
             // Step 3: Select content with rotation logic
             const contentResult = this.selectContentWithRotation(
                 questMeta.type,
@@ -104,7 +105,6 @@ export class DynamicContentMapper {
         const filteredContent = allContent.filter(content => 
             content.type === type && !exclusionSet.has(content.id)
         );
-
         let availableGames = filteredContent;
         
         // If no content available after exclusion, fall back to allowing any content
@@ -119,7 +119,6 @@ export class DynamicContentMapper {
         // Use cryptographically secure random selection
         const randomIndex = this.getCryptoRandomIndex(availableGames.length);
         const selectedContent = availableGames[randomIndex];
-        
         return {
             content: selectedContent,
             contentId: selectedContent.id

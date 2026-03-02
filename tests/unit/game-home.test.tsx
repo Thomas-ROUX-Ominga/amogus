@@ -8,6 +8,17 @@ vi.mock("@/lib/store/game-store");
 vi.mock("next/navigation", () => ({
     useRouter: vi.fn(),
 }));
+vi.mock("@/lib/redis/batch-actions", () => ({
+    getBatch: vi.fn().mockResolvedValue({ success: true, data: { quests: [] } }),
+}));
+vi.mock("@/hooks/use-camera-scanner", () => ({
+    useCameraScanner: vi.fn().mockReturnValue({
+        isOpen: false,
+        openScanner: vi.fn(),
+        closeScanner: vi.fn(),
+        handleScan: vi.fn(),
+    }),
+}));
 
 const mockGameState: GameState = {
     id: "game-123",
@@ -17,6 +28,12 @@ const mockGameState: GameState = {
         { id: "user-2", name: "Bob", role: "IMPOSTOR", isAlive: true },
     ],
     createdAt: Date.now(),
+    creatorId: "user-999",
+};
+
+const hostGameState: GameState = {
+    ...mockGameState,
+    creatorId: "user-1",
 };
 
 const crewmatePlayer: Player = { id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true };
@@ -38,6 +55,15 @@ describe("GameHome", () => {
             launchError: null,
             roleError: null,
             selectedRole: null,
+            impostorQuestsInitialized: false,
+            isEliminating: false,
+            eliminationError: null,
+            getImpostorQuestData: vi.fn().mockReturnValue({ quests: [], completed: 0, total: 0, percentage: 0 }),
+            initializeImpostorQuests: vi.fn(),
+            generateImpostorQuestAssignments: vi.fn(),
+            completeImpostorQuest: vi.fn(),
+            setImpostorQuestLocation: vi.fn(),
+            eliminatePlayerAction: vi.fn(),
             chooseRole: vi.fn(),
             fetchGame: vi.fn(),
             join: vi.fn(),
@@ -45,7 +71,7 @@ describe("GameHome", () => {
             setCurrentQuest: vi.fn(),
             clearQuest: vi.fn(),
             reset: vi.fn(),
-        });
+        } as unknown as ReturnType<typeof useGameStore>);
     });
 
     it("should render Game Cockpit title", () => {
@@ -69,18 +95,18 @@ describe("GameHome", () => {
     });
 
     it("should render player list with all players", () => {
-        render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
+        render(<GameHome gameState={hostGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
         expect(screen.getByText("Alice")).toBeTruthy();
         expect(screen.getByText("Bob")).toBeTruthy();
     });
 
     it("should show player count in player list header", () => {
-        render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
+        render(<GameHome gameState={hostGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
         expect(screen.getByText(/Joueurs connectés \(2\)/)).toBeTruthy();
     });
 
     it("should highlight current player with YOU badge", () => {
-        render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
+        render(<GameHome gameState={hostGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
         expect(screen.getByText("YOU")).toBeTruthy();
     });
 

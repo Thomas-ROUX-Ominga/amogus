@@ -1,7 +1,8 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 interface EliminationButtonProps {
     onEliminate: () => Promise<void>;
@@ -15,6 +16,11 @@ export function EliminationButton({
     isEliminating = false 
 }: EliminationButtonProps) {
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const handleEliminate = async () => {
         setShowConfirmDialog(false);
@@ -72,9 +78,9 @@ export function EliminationButton({
                 </button>
             </div>
 
-            {showConfirmDialog && (
+            {showConfirmDialog && mounted && createPortal(
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="max-w-md w-full border border-destructive/20 bg-black/90 p-6 space-y-4">
+                    <div className="max-w-md w-full border border-destructive/20 bg-black p-6 space-y-4 shadow-xl">
                         <div className="flex items-center gap-2 text-destructive">
                             <AlertTriangle className="w-4 h-4" />
                             <h2 className="text-lg font-bold font-orbitron uppercase tracking-wider">
@@ -100,7 +106,8 @@ export function EliminationButton({
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </>
     );

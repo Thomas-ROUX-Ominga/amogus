@@ -10,6 +10,10 @@ vi.mock('@/lib/store/game-store', () => ({
     useGameStore: mockUseGameStore,
 }));
 
+vi.mock("@/lib/redis/batch-actions", () => ({
+    getBatch: vi.fn().mockResolvedValue({ success: true, data: { quests: [] } }),
+}));
+
 describe("QuestProgress", () => {
     beforeEach(() => {
       vi.clearAllMocks();
@@ -70,7 +74,7 @@ describe("QuestProgress", () => {
 
     it("should show placeholder text when total is 0", () => {
         render(<QuestProgress role="CREWMATE" completed={0} total={0} />);
-        expect(screen.getByText("En attente de missions...")).toBeTruthy();
+        expect(screen.getAllByText("En attente de missions...")[0]).toBeTruthy();
     });
 
     it("should show quest count when total > 0", () => {

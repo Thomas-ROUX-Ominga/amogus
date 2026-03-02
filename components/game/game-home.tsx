@@ -153,11 +153,15 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         completed={questsCompleted}
                         total={questsTotal}
                         isLoading={isLoading}
+                        assignedQuests={currentPlayer.assignedQuests}
+                        completedQuests={currentPlayer.completedQuests}
+                        batchId={gameState.batchId}
                     />
 
-                    {/* Player List */}
-                    <div className="p-6 border border-primary/20 bg-black/30">
-                        <div className="text-xs text-primary/60 uppercase tracking-widest mb-4 font-rajdhani">
+                    {/* Player List (Host Only) */}
+                    {gameState.creatorId === userId && (
+                        <div className="p-6 border border-primary/20 bg-black/30">
+                            <div className="text-xs text-primary/60 uppercase tracking-widest mb-4 font-rajdhani">
                             Joueurs connectés ({gameState.players.length})
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -188,7 +192,8 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                                     </div>
                                 ))}
                         </div>
-                    </div>
+                        </div>
+                    )}
 
                     {/* SCAN Button (thumb zone — bottom) */}
                     {gameState.creatorId !== userId && (
@@ -230,8 +235,8 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                 </div>
 
                 {/* Footer */}
-                <div className="pt-4 flex justify-between items-center opacity-40">
-                    <div className="text-[8px] text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
+                <div className="pt-4 flex justify-between items-center">
+                    <div className="text-[8px] opacity-40 text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
                         Role: {currentPlayer.role}
                     </div>
                     {gameState.creatorId !== userId && (
@@ -241,7 +246,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                             isEliminating={isEliminating}
                         />
                     )}
-                    <div className="text-[8px] text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
+                    <div className="text-[8px] opacity-40 text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
                         Status: {currentPlayer.isAlive ? "READY" : "ELIMINATED"}
                     </div>
                 </div>

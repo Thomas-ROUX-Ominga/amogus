@@ -173,8 +173,8 @@ describe('Impostor Credible Tracker Integration', () => {
     });
 
     // Should show normal crewmate progress (no quest list)
-    // When questsTotal is 0, crewmates see "En attente de missions..."
-    expect(screen.getByText('En attente de missions...')).toBeInTheDocument();
+    // For crewmates with no quests, both QuestProgress and QuestList show "En attente de missions..."
+    expect(screen.getAllByText('En attente de missions...')).toHaveLength(2);
     
     // Should NOT show quest list items for crewmates
     expect(screen.queryByText('Quête 1')).not.toBeInTheDocument();

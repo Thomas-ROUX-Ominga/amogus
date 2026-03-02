@@ -70,12 +70,17 @@ function QuestPageContent() {
     useEffect(() => {
         if (currentQuestContent && currentQuest && questId) {
             // Update quest with correct metadata from dynamic content
-            const updatedQuest: Quest = {
-                ...currentQuest,
-                type: currentQuestContent.content.type,
-                duration: currentQuestContent.content.duration,
-            };
-            setCurrentQuest(updatedQuest);
+            if (
+                currentQuest.type !== currentQuestContent.content.type ||
+                currentQuest.duration !== currentQuestContent.content.duration
+            ) {
+                const updatedQuest: Quest = {
+                    ...currentQuest,
+                    type: currentQuestContent.content.type,
+                    duration: currentQuestContent.content.duration,
+                };
+                setCurrentQuest(updatedQuest);
+            }
         }
     }, [currentQuestContent, currentQuest, questId, setCurrentQuest]);
 

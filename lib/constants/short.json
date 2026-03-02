@@ -27,7 +27,7 @@
   },
   {
     "id": "s3",
-    "type": "true-false",
+    "type": "single-input",
     "duration": "short",
     "title": "Alerte Oxygène",
     "instruction": "Le niveau d'oxygène du secteur B est critique. Vrai ou Faux ?",

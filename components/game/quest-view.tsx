@@ -55,13 +55,10 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
         }
 
         const loadQuestGame = () => {
-            // Removed impostor-sim fallback completely - Story 9.1 requirement
-            if (currentQuestContent && currentQuestContent.content.id === quest.id) {
-                // Story 8.2: Use dynamic content from store
+            if (currentQuestContent) {
                 setQuestGame(currentQuestContent.content);
                 setIsLoadingGame(false);
             } else {
-                // Regular quest - fetch QuestGame
                 const game = getRandomQuestGame(quest.type, quest.duration);
                 setQuestGame(game);
                 setIsLoadingGame(false);

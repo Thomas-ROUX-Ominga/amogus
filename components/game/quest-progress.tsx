@@ -1,17 +1,33 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { PlayerRole } from "@/types/game";
 import { QuestList } from "./quest-list";
 import { useGameStore } from "@/lib/store/game-store";
+import { getBatch } from "@/lib/redis/batch-actions";
+import { Quest } from "@/types/quest";
 
 interface QuestProgressProps {
     role: PlayerRole;
     completed: number;
     total: number;
     isLoading?: boolean;
+    assignedQuests?: string[];
+    completedQuests?: string[];
+    batchId?: string;
 }
 
-export function QuestProgress({ role, completed, total, isLoading = false }: QuestProgressProps) {
+const EMPTY_ARRAY: string[] = [];
+
+export function QuestProgress({ 
+    role, 
+    completed, 
+    total, 
+    isLoading = false,
+    assignedQuests = EMPTY_ARRAY,
+    completedQuests = EMPTY_ARRAY,
+    batchId
+}: QuestProgressProps) {
     const { getImpostorQuestData, impostorQuestsInitialized } = useGameStore();
 
     // For impostors, show quest list if initialized, otherwise show loading
@@ -71,18 +87,83 @@ export function QuestProgress({ role, completed, total, isLoading = false }: Que
         );
     }
 
-    // Crewmate behavior - show quest list if there are completed quests
+    // Crewmate behavior - load their full assumed quest list
+    const [crewQuests, setCrewQuests] = useState<Array<Quest & { completed: boolean; location?: string }>>([]);
+    const [isCrewQuestsLoading, setIsCrewQuestsLoading] = useState(false);
+
+    useEffect(() => {
+        if (role !== "CREWMATE") return;
+        
+        const fetchQuests = async () => {
+            setIsCrewQuestsLoading(true);
+            try {
+                let assignedList: Array<Quest & { completed: boolean; location?: string }> = [];
+
+                if (batchId) {
+                    const response = await getBatch(batchId);
+                    if (response.success && response.data) {
+                        const allQuests = response.data.quests;
+                        
+                        if (assignedQuests.length > 0) {
+                            assignedList = assignedQuests.map(id => {
+                                const questDef = allQuests.find(q => q.id === id);
+                                return {
+                                    id: id,
+                                    type: questDef?.type || 'qcm',
+                                    duration: questDef?.duration || 'short',
+                                    location: questDef?.location,
+                                    completed: completedQuests.includes(id)
+                                };
+                            });
+                        } else if (total > 0) {
+                            // Map completed quests
+                            const completedQ = completedQuests.map(id => {
+                                const questDef = allQuests.find(q => q.id === id);
+                                return {
+                                    id: id,
+                                    type: questDef?.type || 'qcm',
+                                    duration: questDef?.duration || 'short',
+                                    location: questDef?.location,
+                                    completed: true
+                                };
+                            });
+                            
+                            // Get remaining quests up to total
+                            const remainingCount = Math.max(0, total - completedQuests.length);
+                            const availableQuests = allQuests.filter(q => !completedQuests.includes(q.id));
+                            const remainingQ = availableQuests.slice(0, remainingCount).map(q => ({
+                                ...q,
+                                completed: false
+                            }));
+                            
+                            assignedList = [...completedQ, ...remainingQ];
+                        }
+                    }
+                }
+
+                // Fallback if no batch or batch fetch failed but we have a total to reach
+                if (assignedList.length === 0 && total > 0) {
+                    assignedList = Array.from({ length: total }, (_, index) => {
+                        const isCompleted = index < completed;
+                        return {
+                            id: isCompleted && completedQuests[index] ? completedQuests[index] : `crewmate-quest-${index}`,
+                            type: 'qcm' as const,
+                            duration: index % 3 === 0 ? 'short' as const : index % 3 === 1 ? 'medium' as const : 'long' as const,
+                            location: isCompleted ? `Location ${index + 1}` : undefined,
+                            completed: isCompleted
+                        };
+                    });
+                }
+
+                setCrewQuests(assignedList);
+            } finally {
+                setIsCrewQuestsLoading(false);
+            }
+        };
+        fetchQuests();
+    }, [role, batchId, assignedQuests, completedQuests, total, completed]);
+
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-    const showQuestList = completed > 0; // Show quest list when crewmate has completed quests
-    
-    // Create mock quest list for crewmates based on completed count
-    const crewmateQuests = Array.from({ length: Math.min(completed, total) }, (_, index) => ({
-        id: `crewmate-quest-${index}`,
-        type: 'qcm' as const,
-        duration: index % 3 === 0 ? 'short' as const : index % 3 === 1 ? 'medium' as const : 'long' as const,
-        location: `Location ${index + 1}`,
-        completed: true
-    }));
 
     return (
         <div className="p-4 border border-primary/20 bg-black/30 space-y-4">
@@ -112,9 +193,9 @@ export function QuestProgress({ role, completed, total, isLoading = false }: Que
                 )}
             </div>
             
-            {/* Quest List for crewmates - show when they have completed quests */}
-            {showQuestList && (
-                <QuestList quests={crewmateQuests} isLoading={isLoading} />
+            {/* Quest List for crewmates - show all assigned quests */}
+            {role === "CREWMATE" && (
+                <QuestList quests={crewQuests} isLoading={isLoading || isCrewQuestsLoading} />
             )}
         </div>
     );

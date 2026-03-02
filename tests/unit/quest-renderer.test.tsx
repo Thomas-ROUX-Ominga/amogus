@@ -62,13 +62,13 @@ describe("QuestRenderer", () => {
     });
 
     it("should show error for unsupported quest type", () => {
-        const unsupported: QuestGame = { ...baseTrueFalseQuest, type: "form" as QuestGame["type"] };
+        const unsupported: QuestGame = { ...baseTrueFalseQuest, type: "unsupported-type" as QuestGame["type"] };
         render(<QuestRenderer quest={unsupported} gameId="g1" onSuccess={onSuccess} onError={onError} />);
         expect(screen.getByText(/Type de quête non supporté/)).toBeTruthy();
     });
 
     it("should show 'Retour au Game Home' link for unsupported type", () => {
-        const unsupported: QuestGame = { ...baseTrueFalseQuest, type: "single-input" as QuestGame["type"] };
+        const unsupported: QuestGame = { ...baseTrueFalseQuest, type: "another-unsupported-type" as QuestGame["type"] };
         render(<QuestRenderer quest={unsupported} gameId="g1" onSuccess={onSuccess} onError={onError} />);
         const link = screen.getByText("Retour au Game Home");
         expect(link).toBeTruthy();

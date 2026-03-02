@@ -1,0 +1,32 @@
+{
+  "id": "FNWFDZ",
+  "status": "IN_PROGRESS",
+  "players": [
+    {
+      "id": "85ca9a79-678e-4fd8-9d7c-638583250a5b",
+      "name": "omi",
+      "role": "ADMIN",
+      "isAlive": true
+    },
+    {
+      "id": "d3711448-537a-4129-934a-515a7c66c905",
+      "name": "toto",
+      "role": "CREWMATE",
+      "isAlive": true,
+      "assignedQuests": [
+        "bf9d9ee6-d29a-4034-8dc4-994db852e7e2",
+        "52023e32-d7d3-4e90-bd62-d1ea3113f26c",
+        "e1195128-982e-466d-8689-455bb1f77d08"
+      ]
+    }
+  ],
+  "createdAt": 1772483546875,
+  "creatorId": "85ca9a79-678e-4fd8-9d7c-638583250a5b",
+  "batchId": "84b49f61-01f3-4f32-82ba-dcba15697984",
+  "questsTotal": 6,
+  "questsPerPlayer": {
+    "short": 1,
+    "medium": 1,
+    "long": 1
+  }
+}

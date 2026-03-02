@@ -3,6 +3,9 @@
 import { QuestGame } from "@/types/quest";
 import { QuestTrueFalse } from "@/components/game/quest-true-false";
 import { QuestQCM } from "@/components/game/quest-qcm";
+import { QuestSingleInput } from "@/components/game/quest-single-input";
+import { QuestNumberInput } from "@/components/game/quest-number-input";
+import { QuestForm } from "@/components/game/quest-form";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
@@ -15,7 +18,8 @@ interface QuestRendererProps {
 
 export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRendererProps) {
     // Validate quest has required fields
-    if (!quest.options || quest.options.length === 0 || !quest.answer) {
+    const needsOptions = quest.type === "true-false" || quest.type === "qcm";
+    if ((needsOptions && (!quest.options || quest.options.length === 0)) || !quest.answer) {
         return (
             <div className="p-6 border border-destructive/30 bg-destructive/5 backdrop-blur-sm text-center space-y-4">
                 <AlertTriangle className="w-8 h-8 text-destructive mx-auto" aria-hidden="true" />
@@ -37,6 +41,12 @@ export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRender
             return <QuestTrueFalse quest={quest} onSuccess={onSuccess} onError={onError} />;
         case "qcm":
             return <QuestQCM quest={quest} onSuccess={onSuccess} onError={onError} />;
+        case "single-input":
+            return <QuestSingleInput quest={quest} onSuccess={onSuccess} onError={onError} />;
+        case "number-input":
+            return <QuestNumberInput quest={quest} onSuccess={onSuccess} onError={onError} />;
+        case "form":
+            return <QuestForm quest={quest} onSuccess={onSuccess} onError={onError} />;
         default:
             return (
                 <div className="p-6 border border-destructive/30 bg-destructive/5 backdrop-blur-sm text-center space-y-4">
