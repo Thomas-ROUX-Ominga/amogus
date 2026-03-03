@@ -76,12 +76,20 @@ export function EliminatedScreen({ playerName, playerRole, onDismiss }: Eliminat
                 </div>
 
                 {/* Action */}
-                <div className="pt-2">
+                <div className="pt-2 space-y-3">
+                    {onDismiss && (
+                        <button
+                            onClick={onDismiss}
+                            className="block w-full text-center px-4 py-3 bg-red-600 hover:bg-red-700 text-white transition-colors font-orbitron font-bold uppercase tracking-[0.2em] text-sm shadow-lg shadow-red-900/20 active:scale-[0.98] touch-manipulation min-h-[48px]"
+                        >
+                            Continuer
+                        </button>
+                    )}
                     <a
                         href="/"
-                        className="block w-full text-center px-4 py-2 border border-primary/20 hover:bg-primary/10 transition-colors font-rajdhani uppercase tracking-widest text-sm touch-manipulation min-h-[44px]"
+                        className="block w-full text-center px-4 py-2 border border-white/10 hover:bg-white/5 transition-colors font-rajdhani uppercase tracking-widest text-xs text-muted-foreground touch-manipulation min-h-[40px]"
                     >
-                        Return to Lobby
+                        Retour à l'accueil
                     </a>
                 </div>
             </div>

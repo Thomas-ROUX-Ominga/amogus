@@ -23,7 +23,14 @@ interface GameHomeProps {
 }
 
 export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
-    const [showEliminatedOverlay, setShowEliminatedOverlay] = React.useState(!currentPlayer.isAlive);
+    const storageKey = `elimination-dismissed-${gameState.id}-${userId}`;
+    const [showEliminatedOverlay, setShowEliminatedOverlay] = React.useState(() => {
+        if (currentPlayer.isAlive) return false;
+        if (typeof window !== "undefined") {
+            return !sessionStorage.getItem(storageKey);
+        }
+        return true;
+    });
     const { 
         questsCompleted, 
         questsTotal, 
@@ -48,9 +55,12 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     // Sync local overlay state with player alive status
     useEffect(() => {
         if (!currentPlayer.isAlive) {
-            setShowEliminatedOverlay(true);
+            const isDismissed = sessionStorage.getItem(storageKey);
+            if (!isDismissed) {
+                setShowEliminatedOverlay(true);
+            }
         }
-    }, [currentPlayer.isAlive]);
+    }, [currentPlayer.isAlive, storageKey]);
 
     // Camera scanner state management
     const { isOpen, openScanner, closeScanner, handleScan: originalHandleScan } = useCameraScanner({
@@ -136,18 +146,22 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
 
     return (
         <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
-            <div className="max-w-2xl w-full border-2 border-primary/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgba(var(--primary),0.05)]">
+            <div className={`max-w-2xl w-full border-2 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm transition-all duration-500 ${
+                currentPlayer.isAlive 
+                    ? "border-primary/20 shadow-[0_0_50px_rgba(var(--primary),0.05)]" 
+                    : "border-red-500/40 shadow-[0_0_50px_rgba(239,68,68,0.2)]"
+            }`}>
                 {/* Header: Title + Status Indicator */}
                 <div className="flex items-center justify-between border-b border-primary/20 pb-4">
                     <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
                         Game Cockpit
                     </h1>
                     <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full animate-pulse bg-green-500" aria-hidden="true" />
-                        <span className="text-[10px] text-green-400/80 tracking-widest">
-                            ACTIVE
+                        <span className={`w-2 h-2 rounded-full animate-pulse ${currentPlayer.isAlive ? "bg-green-500" : "bg-red-500"}`} aria-hidden="true" />
+                        <span className={`text-[10px] tracking-widest ${currentPlayer.isAlive ? "text-green-400/80" : "text-red-400/80 font-bold"}`}>
+                            {currentPlayer.isAlive ? "ACTIVE" : "MORT"}
                         </span>
-                        <span className="sr-only">Game is active</span>
+                        <span className="sr-only">Game is {currentPlayer.isAlive ? "active" : "finished for you"}</span>
                     </div>
                 </div>
 
@@ -236,7 +250,10 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         <EliminatedScreen 
                             playerName={currentPlayer.name}
                             playerRole={currentPlayer.role}
-                            onDismiss={currentPlayer.role === "CREWMATE" ? () => setShowEliminatedOverlay(false) : undefined}
+                            onDismiss={() => {
+                                sessionStorage.setItem(storageKey, "true");
+                                setShowEliminatedOverlay(false);
+                            }}
                         />
                     )}
 
@@ -258,12 +275,12 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     {gameState.creatorId !== userId && (
                         <EliminationButton
                             onEliminate={handleElimination}
-                            disabled={isEliminating}
+                            disabled={isEliminating || !currentPlayer.isAlive}
                             isEliminating={isEliminating}
                         />
                     )}
-                    <div className="text-[8px] opacity-40 text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
-                        Status: {currentPlayer.isAlive ? "READY" : "ELIMINATED"}
+                    <div className={`text-[8px] uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)] ${currentPlayer.isAlive ? "opacity-40 text-muted-foreground" : "text-red-500 font-bold"}`}>
+                        Status: {currentPlayer.isAlive ? "READY" : "ELIMINÉ"}
                     </div>
                 </div>
                 

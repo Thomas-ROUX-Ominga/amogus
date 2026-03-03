@@ -60,7 +60,13 @@ export function EliminationButton({
                     onClick={handlePress}
                     onKeyDown={handleKeyDown}
                     disabled={disabled || isEliminating}
-                    aria-label={isEliminating ? "Signaling elimination..." : "Signal elimination"}
+                    aria-label={
+                        isEliminating 
+                            ? "Signaling elimination..." 
+                            : disabled && !isEliminating 
+                                ? "Already eliminated" 
+                                : "Signal elimination"
+                    }
                     className="
                         flex items-center gap-1 px-3 py-1.5
                         text-xs text-destructive/80 
@@ -74,7 +80,12 @@ export function EliminationButton({
                     "
                 >
                     <AlertTriangle className="w-3 h-3" />
-                    {isEliminating ? "SIGNALING..." : "SIGNAL ELIMINATION"}
+                    {isEliminating 
+                        ? "SIGNALING..." 
+                        : disabled && !isEliminating 
+                            ? "ELIMINATION SIGNALED" 
+                            : "SIGNAL ELIMINATION"
+                    }
                 </button>
             </div>
 

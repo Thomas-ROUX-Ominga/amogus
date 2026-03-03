@@ -181,4 +181,44 @@ describe("GameHome", () => {
         render(<GameHome gameState={mockGameState} currentPlayer={impostorPlayer} userId="user-2" />);
         expect(screen.queryByText("SCANNER")).toBeNull();
     });
+
+    it("should show 'MORT' status when player is dead", () => {
+        const deadPlayer: Player = { ...crewmatePlayer, isAlive: false };
+        render(<GameHome gameState={mockGameState} currentPlayer={deadPlayer} userId="user-1" />);
+        expect(screen.getByText("MORT")).toBeTruthy();
+    });
+
+    it("should disable elimination button when player is dead", () => {
+        const deadPlayer: Player = { ...crewmatePlayer, isAlive: false };
+        render(<GameHome gameState={mockGameState} currentPlayer={deadPlayer} userId="user-1" />);
+        const button = screen.getByRole("button", { name: /Already eliminated/i });
+        expect(button).toBeDisabled();
+    });
+
+    it("should show 'ELIMINÉ' status in footer when player is dead", () => {
+        const deadPlayer: Player = { ...crewmatePlayer, isAlive: false };
+        render(<GameHome gameState={mockGameState} currentPlayer={deadPlayer} userId="user-1" />);
+        expect(screen.getByText("Status: ELIMINÉ")).toBeTruthy();
+    });
+
+    it("should not show 'MORT' overlay if already dismissed in sessionStorage", () => {
+        const deadPlayer: Player = { ...crewmatePlayer, isAlive: false };
+        const storageKey = `elimination-dismissed-${mockGameState.id}-${deadPlayer.id}`;
+        
+        // Mock sessionStorage
+        const storageMock: Record<string, string> = {};
+        storageMock[storageKey] = "true";
+        vi.stubGlobal("sessionStorage", {
+            getItem: (key: string) => storageMock[key] || null,
+            setItem: (key: string, value: string) => { storageMock[key] = value; },
+        });
+
+        render(<GameHome gameState={mockGameState} currentPlayer={deadPlayer} userId="user-1" />);
+        
+        // Overlay should not be visible, but cockpit should be
+        expect(screen.getByText("Game Cockpit")).toBeTruthy();
+        expect(screen.queryByText("Continuer")).toBeNull();
+        
+        vi.unstubAllGlobals();
+    });
 });
