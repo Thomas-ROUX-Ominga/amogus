@@ -41,3 +41,27 @@ export function calculatePlayerProgress(completedQuests: string[] = [], gameStat
     const totalQuests = getTotalQuests(gameState);
     return totalQuests > 0 ? (completedQuests.length / totalQuests) * 100 : 0;
 }
+
+/**
+ * Calculate collective quest statistics across all players
+ */
+export function getGlobalQuestStats(players: Array<{ completedQuests?: string[]; assignedQuests?: string[]; role?: string }>, gameState?: GameState | null) {
+    let totalAssigned = 0;
+    let totalCompleted = 0;
+
+    const crewmates = players.filter(p => p.role === "CREWMATE");
+    
+    crewmates.forEach(player => {
+        const assigned = player.assignedQuests?.length || getTotalQuests(gameState);
+        const completed = player.completedQuests?.length || 0;
+        
+        totalAssigned += assigned;
+        totalCompleted += completed;
+    });
+
+    return {
+        completed: totalCompleted,
+        total: totalAssigned,
+        percentage: totalAssigned > 0 ? (totalCompleted / totalAssigned) * 100 : 0
+    };
+}

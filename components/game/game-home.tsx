@@ -14,6 +14,7 @@ import { EliminationButton } from "@/components/game/elimination-button";
 import { EliminatedScreen } from "@/components/game/eliminated-screen";
 import { useCameraScanner } from "@/hooks/use-camera-scanner";
 import { getBatch } from "@/lib/redis/batch-actions";
+import { getGlobalQuestStats } from "@/lib/utils/quest-calculations";
 
 interface GameHomeProps {
     gameState: GameState;
@@ -147,11 +148,19 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     {/* Role Badge */}
                     <RoleBadge role={role} />
 
-                    {/* Quest Progress (Crewmate only) */}
+                    {/* Quest Progress (Crewmate and Host only) */}
                     <QuestProgress
                         role={role}
-                        completed={questsCompleted}
-                        total={questsTotal}
+                        completed={
+                            gameState.creatorId === userId 
+                                ? getGlobalQuestStats(gameState.players, gameState).completed 
+                                : questsCompleted
+                        }
+                        total={
+                            gameState.creatorId === userId 
+                                ? getGlobalQuestStats(gameState.players, gameState).total 
+                                : questsTotal
+                        }
                         isLoading={isLoading}
                         assignedQuests={currentPlayer.assignedQuests}
                         completedQuests={currentPlayer.completedQuests}

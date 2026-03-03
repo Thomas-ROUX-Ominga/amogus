@@ -173,7 +173,7 @@ export function QuestProgress({
     return (
         <div className="p-4 border border-primary/20 bg-black/30 space-y-4">
             <div className="text-xs text-primary/60 uppercase tracking-widest font-rajdhani">
-                Progression des quêtes
+                {role === "ADMIN" ? "Progression de l'équipage" : "Progression des quêtes"}
             </div>
             <div className="w-full h-2 bg-white/10 overflow-hidden">
                 <div
@@ -192,7 +192,7 @@ export function QuestProgress({
                 {isLoading ? (
                     <span className="animate-pulse">Chargement...</span>
                 ) : total > 0 ? (
-                    `${completed}/${total} quêtes accomplies`
+                    `${completed}/${total} quêtes accomplies ${role === "ADMIN" ? "au total" : ""}`
                 ) : (
                     "En attente de missions..."
                 )}
