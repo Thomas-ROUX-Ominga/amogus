@@ -35,7 +35,7 @@ describe('EliminationButton', () => {
     it('is disabled when disabled prop is true', () => {
         render(<EliminationButton onEliminate={mockOnEliminate} disabled={true} />);
         
-        const button = screen.getByRole('button', { name: /signal elimination/i });
+        const button = screen.getByRole('button', { name: /already eliminated/i });
         expect(button).toBeDisabled();
     });
 
@@ -101,7 +101,7 @@ describe('EliminationButton', () => {
     it('provides error haptic feedback when disabled', () => {
         render(<EliminationButton onEliminate={mockOnEliminate} disabled={true} />);
         
-        const button = screen.getByRole('button', { name: /signal elimination/i });
+        const button = screen.getByRole('button', { name: /already eliminated/i });
         // Target the wrapper div which captures mouse events for disabled buttons
         fireEvent.mouseDown(button.parentElement!);
         

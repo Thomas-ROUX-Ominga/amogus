@@ -29,7 +29,7 @@ export type QuestGame =
     | (QuestGameBase & { type: "single-input"; data: { placeholder: string; validation: { trim: boolean; case: string }; answer: string } })
     | (QuestGameBase & { type: "number-input"; data: { placeholder: string; validation: { kind: string; min: number; max: number }; answer: number } })
     | (QuestGameBase & { type: "intrus"; data: { choices: Choice[]; answerIds: string[] } })
-    | (QuestGameBase & { type: "mini-game"; data: any });
+    | (QuestGameBase & { type: "mini-game"; data: Record<string, unknown> });
 
 export interface QuestPool {
     short: Quest[];

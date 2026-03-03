@@ -164,7 +164,7 @@ describe("GameHome", () => {
             questsCompleted: 5,
             questsTotal: 5,
             getImpostorQuestData: vi.fn().mockReturnValue({ quests: [], completed: 0, total: 0, percentage: 0 }),
-        } as any);
+        } as Partial<ReturnType<typeof useGameStore>>);
 
         render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
         expect(screen.queryByText("SCANNER")).toBeNull();
@@ -176,7 +176,7 @@ describe("GameHome", () => {
             questsTotal: 0,
             impostorQuestsInitialized: true,
             getImpostorQuestData: vi.fn().mockReturnValue({ quests: [], completed: 3, total: 3, percentage: 100 }),
-        } as any);
+        } as Partial<ReturnType<typeof useGameStore>>);
 
         render(<GameHome gameState={mockGameState} currentPlayer={impostorPlayer} userId="user-2" />);
         expect(screen.queryByText("SCANNER")).toBeNull();

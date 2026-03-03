@@ -3,11 +3,17 @@ import longGames from "./long.json";
 import mediumGames from "./medium.json";
 import shortGames from "./short.json";
 
-const getGamesArray = (imported: any): QuestGame[] => {
-    if (Array.isArray(imported)) return imported;
-    if (imported && Array.isArray(imported.quests)) return imported.quests;
-    if (imported && imported.default && Array.isArray(imported.default.quests)) return imported.default.quests;
-    if (imported && Array.isArray(imported.default)) return imported.default;
+const getGamesArray = (imported: unknown): QuestGame[] => {
+    if (Array.isArray(imported)) return imported as QuestGame[];
+    if (imported && typeof imported === 'object' && 'quests' in imported && Array.isArray(imported.quests)) {
+        return imported.quests as QuestGame[];
+    }
+    if (imported && typeof imported === 'object' && 'default' in imported && imported.default) {
+        if (Array.isArray(imported.default)) return imported.default as QuestGame[];
+        if (typeof imported.default === 'object' && 'quests' in imported.default && Array.isArray(imported.default.quests)) {
+            return imported.default.quests as QuestGame[];
+        }
+    }
     return [];
 };
 

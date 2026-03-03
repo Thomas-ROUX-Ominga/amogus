@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QuestRenderer } from "@/components/game/quest-renderer";
-import { QuestGame } from "@/types/quest";
+import { QuestGame, QuestType } from "@/types/quest";
 
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: vi.fn() }),
@@ -67,13 +67,13 @@ describe("QuestRenderer", () => {
     });
 
     it("should show error for unsupported quest type", () => {
-        const unsupported = { ...baseTrueFalseQuest, type: "unsupported-type" } as any;
+        const unsupported = { ...baseTrueFalseQuest, type: "unsupported-type" } as unknown as QuestGame;
         render(<QuestRenderer quest={unsupported} gameId="g1" onSuccess={onSuccess} onError={onError} />);
         expect(screen.getByText(/Type de quête non supporté/)).toBeTruthy();
     });
 
     it("should show 'Retour au Game Home' link for unsupported type", () => {
-        const unsupported = { ...baseTrueFalseQuest, type: "another-unsupported-type" } as any;
+        const unsupported = { ...baseTrueFalseQuest, type: "another-unsupported-type" } as unknown as QuestGame;
         render(<QuestRenderer quest={unsupported} gameId="g1" onSuccess={onSuccess} onError={onError} />);
         const link = screen.getByText("Retour au Game Home");
         expect(link).toBeTruthy();
@@ -81,13 +81,13 @@ describe("QuestRenderer", () => {
     });
 
     it("should show error when quest has no data field", () => {
-        const noData = { ...baseTrueFalseQuest, data: undefined } as any;
+        const noData = { ...baseTrueFalseQuest, data: undefined } as unknown as QuestGame;
         render(<QuestRenderer quest={noData} gameId="g1" onSuccess={onSuccess} onError={onError} />);
         expect(screen.getByText(/Données de quête invalides/)).toBeTruthy();
     });
 
     it("should show 'Retour au Game Home' link for malformed quest", () => {
-        const malformed = { ...baseTrueFalseQuest, data: undefined } as any;
+        const malformed = { ...baseTrueFalseQuest, data: undefined } as unknown as QuestGame;
         render(<QuestRenderer quest={malformed} gameId="g1" onSuccess={onSuccess} onError={onError} />);
         const link = screen.getByText("Retour au Game Home");
         expect(link.closest("a")?.getAttribute("href")).toBe("/game/g1");

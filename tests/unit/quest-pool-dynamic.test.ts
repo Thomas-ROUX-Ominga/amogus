@@ -93,7 +93,7 @@ describe("Quest Pool Dynamic Functions", () => {
 
             // Act
             const result = getRandomQuestGameWithExclusion(
-                "form" as any, // Unsupported type
+                "form" as QuestType, // Unsupported type
                 "short",
                 []
             );
@@ -168,7 +168,7 @@ describe("Quest Pool Dynamic Functions", () => {
 
             // Act
             const result = getSecureRandomQuestGameWithExclusion(
-                "form" as any, // Unsupported type
+                "form" as QuestType, // Unsupported type
                 "short",
                 []
             );

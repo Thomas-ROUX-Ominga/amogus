@@ -72,7 +72,7 @@ describe('EliminatedScreen', () => {
   it('renders return to lobby link', () => {
     render(<EliminatedScreen {...defaultProps} />);
     
-    const returnLink = screen.getByText('Return to Lobby');
+    const returnLink = screen.getByText('Retour à l\'accueil');
     expect(returnLink).toBeInTheDocument();
     expect(returnLink.closest('a')).toHaveAttribute('href', '/');
   });
