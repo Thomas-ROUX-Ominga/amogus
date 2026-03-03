@@ -6,14 +6,32 @@ import { QuestGame } from "@/types/quest";
 import { useQuestAnswer } from "@/hooks/use-quest-answer";
 
 interface QuestSingleInputProps {
-    quest: QuestGame;
+    quest: Extract<QuestGame, { type: "single-input" }>;
     onSuccess: () => void;
     onError: () => void;
 }
 
 export function QuestSingleInput({ quest, onSuccess, onError }: QuestSingleInputProps) {
     const prefersReducedMotion = useReducedMotion();
-    const { isCorrect, answered, failed, handleAnswer, handleRetry } = useQuestAnswer(quest, onSuccess, onError);
+    const { isCorrect, answered, failed, handleAnswer, handleRetry } = useQuestAnswer(
+        quest,
+        (val: string) => {
+            const { validation, answer } = quest.data;
+            let input = val;
+            let expected = answer;
+            if (validation.trim) {
+                input = input.trim();
+                expected = expected.trim();
+            }
+            if (validation.case === "insensitive") {
+                input = input.toLowerCase();
+                expected = expected.toLowerCase();
+            }
+            return input === expected;
+        },
+        onSuccess, 
+        onError
+    );
     const [inputValue, setInputValue] = useState("");
 
     const handleSubmit = (e: React.FormEvent) => {

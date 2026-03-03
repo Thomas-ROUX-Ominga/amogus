@@ -220,7 +220,6 @@ describe("QuestPage", () => {
         
         // Check for any quest content (title and instruction from QuestGame)
         expect(screen.getByRole("heading", { level: 2 })).toBeTruthy();
-        expect(screen.getByText(/Vrai ou Faux \?$/)).toBeTruthy();
         expect(screen.getByLabelText("Répondre VRAI")).toBeTruthy();
         expect(screen.getByLabelText("Répondre FAUX")).toBeTruthy();
     });

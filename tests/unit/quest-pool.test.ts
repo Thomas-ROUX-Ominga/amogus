@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getQuestGamesByDuration, getRandomQuestGame, getQuestGameById, isValidDuration, getTotalQuestGamesCount } from "@/lib/constants/quest-pool";
-import { QuestDuration, QuestType } from "@/types/quest";
+import { QuestDuration, QuestType, QuestGame } from "@/types/quest";
 
 describe("quest-pool", () => {
     describe("getQuestGamesByDuration", () => {
@@ -71,9 +71,10 @@ describe("quest-pool", () => {
 
     describe("getQuestGameById", () => {
         it("should return a quest game for valid ID", () => {
-            const game = getQuestGameById("s1");
+            const validId = getQuestGamesByDuration("short")[0].id;
+            const game = getQuestGameById(validId);
             expect(game).not.toBeNull();
-            expect(game!.id).toBe("s1");
+            expect(game!.id).toBe(validId);
         });
 
         it("should return undefined for invalid ID", () => {
@@ -94,83 +95,58 @@ describe("quest-pool", () => {
         });
     });
 
-    describe("quest game data model — options and answer fields", () => {
-        it("should have options array on all quest games", () => {
+    describe("quest game data model — data fields", () => {
+        it("should have data object on all quest games", () => {
             const allGames = [
                 ...getQuestGamesByDuration("short"),
                 ...getQuestGamesByDuration("medium"),
                 ...getQuestGamesByDuration("long"),
             ];
             allGames.forEach((g) => {
-                expect(g.options).toBeDefined();
-                expect(Array.isArray(g.options)).toBe(true);
-                expect(g.options!.length).toBeGreaterThanOrEqual(2);
+                expect(g.data).toBeDefined();
             });
         });
 
-        it("should have answer field on all quest games", () => {
+        it("should have choices and answerIds for true-false, qcm and intrus", () => {
             const allGames = [
                 ...getQuestGamesByDuration("short"),
                 ...getQuestGamesByDuration("medium"),
                 ...getQuestGamesByDuration("long"),
             ];
-            allGames.forEach((g) => {
-                expect(g.answer).toBeDefined();
-                expect(typeof g.answer).toBe("string");
-                expect(g.answer!.length).toBeGreaterThan(0);
+            allGames.filter(g => ["true-false", "qcm", "intrus"].includes(g.type)).forEach((g) => {
+                const quest = g as Extract<QuestGame, { type: "true-false" | "qcm" | "intrus" }>;
+                expect(quest.data.choices).toBeDefined();
+                expect(Array.isArray(quest.data.choices)).toBe(true);
+                expect(quest.data.choices.length).toBeGreaterThanOrEqual(2);
+                expect(quest.data.answerIds).toBeDefined();
+                expect(Array.isArray(quest.data.answerIds)).toBe(true);
             });
         });
 
-        it("should have options with label and value on all quest games", () => {
-            const allGames = [
-                ...getQuestGamesByDuration("short"),
-                ...getQuestGamesByDuration("medium"),
-                ...getQuestGamesByDuration("long"),
-            ];
-            allGames.forEach((g) => {
-                g.options!.forEach((opt) => {
-                    expect(opt).toHaveProperty("label");
-                    expect(opt).toHaveProperty("value");
-                    expect(typeof opt.label).toBe("string");
-                    expect(typeof opt.value).toBe("string");
-                });
-            });
-        });
-
-        it("should have answer matching one of the option values", () => {
-            const allGames = [
-                ...getQuestGamesByDuration("short"),
-                ...getQuestGamesByDuration("medium"),
-                ...getQuestGamesByDuration("long"),
-            ];
-            allGames.forEach((g) => {
-                const optionValues = g.options!.map((o) => o.value);
-                expect(optionValues).toContain(g.answer);
-            });
-        });
-
-        it("should have exactly 2 options for true-false quest games", () => {
+        it("should have exactly 2 choices for true-false quest games", () => {
             const allGames = [
                 ...getQuestGamesByDuration("short"),
                 ...getQuestGamesByDuration("medium"),
                 ...getQuestGamesByDuration("long"),
             ];
             allGames.filter((g) => g.type === "true-false").forEach((g) => {
-                expect(g.options!.length).toBe(2);
-                const values = g.options!.map((o) => o.value);
+                const quest = g as Extract<QuestGame, { type: "true-false" }>;
+                expect(quest.data.choices.length).toBe(2);
+                const values = quest.data.choices.map((o) => o.id);
                 expect(values).toContain("true");
                 expect(values).toContain("false");
             });
         });
 
-        it("should have 4 options for qcm quest games", () => {
+        it("should have 4 choices for qcm quest games", () => {
             const allGames = [
                 ...getQuestGamesByDuration("short"),
                 ...getQuestGamesByDuration("medium"),
                 ...getQuestGamesByDuration("long"),
             ];
             allGames.filter((g) => g.type === "qcm").forEach((g) => {
-                expect(g.options!.length).toBe(4);
+                const quest = g as Extract<QuestGame, { type: "qcm" }>;
+                expect(quest.data.choices.length).toBe(4);
             });
         });
     });
@@ -179,7 +155,7 @@ describe("quest-pool", () => {
         it("should return total count of all quest games", () => {
             const count = getTotalQuestGamesCount();
             expect(count).toBeGreaterThan(0);
-            expect(count).toBe(9); // 3 games each for short, medium, long
+            expect(count).toBe(60); // 20 games each for short, medium, long
         });
     });
 

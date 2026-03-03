@@ -1,26 +1,25 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Check, X } from "lucide-react";
 import { QuestGame } from "@/types/quest";
 import { useQuestAnswer } from "@/hooks/use-quest-answer";
 
-interface QuestTrueFalseProps {
-    quest: Extract<QuestGame, { type: "true-false" }>;
+interface QuestIntrusProps {
+    quest: Extract<QuestGame, { type: "intrus" }>;
     onSuccess: () => void;
     onError: () => void;
 }
 
-export function QuestTrueFalse({ quest, onSuccess, onError }: QuestTrueFalseProps) {
+export function QuestIntrus({ quest, onSuccess, onError }: QuestIntrusProps) {
     const prefersReducedMotion = useReducedMotion();
     const { selectedValue, isCorrect, answered, failed, handleAnswer, handleRetry } = useQuestAnswer(
         quest,
         (val: string) => quest.data.answerIds.includes(val),
-        onSuccess, 
+        onSuccess,
         onError
     );
 
-    const getButtonVariants = (value: string) => {
+    const getCardVariants = (value: string) => {
         if (selectedValue !== value) return {};
         if (isCorrect) {
             return prefersReducedMotion
@@ -32,8 +31,8 @@ export function QuestTrueFalse({ quest, onSuccess, onError }: QuestTrueFalseProp
             : { animate: { x: [-2, 2, -2, 0], transition: { duration: 0.3 } } };
     };
 
-    const getButtonStyle = (value: string) => {
-        const base = "w-full min-h-[56px] flex items-center justify-center gap-3 border-2 font-rajdhani font-bold uppercase tracking-widest text-lg transition-colors touch-manipulation";
+    const getCardStyle = (value: string) => {
+        const base = "w-full min-h-[48px] flex items-center px-4 py-3 border-2 font-rajdhani font-bold text-base transition-colors touch-manipulation backdrop-blur-sm";
 
         if (selectedValue === value) {
             if (isCorrect) {
@@ -41,32 +40,33 @@ export function QuestTrueFalse({ quest, onSuccess, onError }: QuestTrueFalseProp
             }
             return `${base} border-[#DA3633] bg-[#DA3633]/10 text-[#DA3633]`;
         }
-
-        if (value === "true") {
-            return `${base} border-[#2DA44E]/40 text-[#2DA44E] bg-black/50 backdrop-blur-sm hover:bg-[#2DA44E]/10`;
+        // highlight the actual correct answer when failed
+        if (failed && quest.data.answerIds.includes(value)) {
+            return `${base} border-[#2DA44E]/60 bg-[#2DA44E]/5 text-[#2DA44E]`;
         }
-        return `${base} border-[#DA3633]/40 text-[#DA3633] bg-black/50 backdrop-blur-sm hover:bg-[#DA3633]/10`;
+
+        return `${base} border-primary/20 bg-black/50 text-foreground/90 hover:bg-primary/10 hover:border-primary/40`;
     };
 
     return (
-        <div className="space-y-4" role="group" aria-label="Réponse Vrai ou Faux">
-            {quest.data.choices.map((option) => (
+        <div className="space-y-3" role="radiogroup" aria-label="Choix de l'intrus">
+            {quest.data.choices.map((option, index) => (
                 <motion.button
                     key={option.id}
-                    {...getButtonVariants(option.id)}
+                    {...getCardVariants(option.id)}
                     style={selectedValue === option.id ? { willChange: "transform" } : undefined}
-                    className={getButtonStyle(option.id)}
+                    className={getCardStyle(option.id)}
                     onClick={() => handleAnswer(option.id)}
                     disabled={answered || failed}
-                    aria-label={`Répondre ${option.label}`}
+                    role="radio"
+                    aria-checked={selectedValue === option.id}
+                    aria-label={`Option ${String.fromCharCode(65 + index)}: ${option.label}`}
                     tabIndex={0}
                 >
-                    {option.id === "true" ? (
-                        <Check className="w-5 h-5" aria-hidden="true" />
-                    ) : (
-                        <X className="w-5 h-5" aria-hidden="true" />
-                    )}
-                    {option.label}
+                    <span className="shrink-0 w-6 text-left text-xs font-[family-name:var(--font-jetbrains-mono)] text-foreground/40 uppercase">
+                        {String.fromCharCode(65 + index)})
+                    </span>
+                    <span className="text-left flex-1">{option.label}</span>
                 </motion.button>
             ))}
 

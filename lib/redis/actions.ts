@@ -797,3 +797,47 @@ export async function getGameQuests(gameId: string): Promise<ActionResponse<Ques
         };
     }
 }
+
+export async function deleteGame(gameId: string): Promise<ActionResponse<void>> {
+    try {
+        // Verify organizer session
+        const session = await verifySession();
+        if (!session.success) {
+            return {
+                success: false,
+                error: "Unauthorized access: Organizer credentials required.",
+                code: ERROR_CODES.ERR_UNAUTHORIZED,
+            };
+        }
+
+        if (!gameId?.trim()) {
+            return {
+                success: false,
+                error: "Game ID is required",
+                code: ERROR_CODES.ERR_INVALID_INPUT,
+            };
+        }
+
+        // Find all keys associated with this game
+        // Patterns used in the codebase:
+        // game:${gameId}:state
+        // game:${gameId}:player:${userId}:failed-quests
+        const gameKeys = await redis.keys(`game:${gameId}:*`);
+        
+        if (gameKeys.length > 0) {
+            const deletePromises = gameKeys.map(key => redis.del(key));
+            await Promise.all(deletePromises);
+        }
+
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error(`Failed to delete game ${gameId}:`, error);
+        return {
+            success: false,
+            error: "Failed to stop game session.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
+}

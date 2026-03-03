@@ -5,7 +5,7 @@ import { QuestTrueFalse } from "@/components/game/quest-true-false";
 import { QuestQCM } from "@/components/game/quest-qcm";
 import { QuestSingleInput } from "@/components/game/quest-single-input";
 import { QuestNumberInput } from "@/components/game/quest-number-input";
-import { QuestForm } from "@/components/game/quest-form";
+import { QuestIntrus } from "@/components/game/quest-intrus";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
@@ -17,14 +17,13 @@ interface QuestRendererProps {
 }
 
 export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRendererProps) {
-    // Validate quest has required fields
-    const needsOptions = quest.type === "true-false" || quest.type === "qcm";
-    if ((needsOptions && (!quest.options || quest.options.length === 0)) || !quest.answer) {
+    // Validate quest has data field
+    if (!quest.data) {
         return (
             <div className="p-6 border border-destructive/30 bg-destructive/5 backdrop-blur-sm text-center space-y-4">
                 <AlertTriangle className="w-8 h-8 text-destructive mx-auto" aria-hidden="true" />
                 <p className="text-sm text-destructive/80 font-rajdhani">
-                    Données de quête invalides. Options ou réponse manquantes.
+                    Données de quête invalides. Contenu manquant.
                 </p>
                 <Link
                     href={`/game/${gameId}`}
@@ -45,8 +44,8 @@ export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRender
             return <QuestSingleInput quest={quest} onSuccess={onSuccess} onError={onError} />;
         case "number-input":
             return <QuestNumberInput quest={quest} onSuccess={onSuccess} onError={onError} />;
-        case "form":
-            return <QuestForm quest={quest} onSuccess={onSuccess} onError={onError} />;
+        case "intrus":
+            return <QuestIntrus quest={quest} onSuccess={onSuccess} onError={onError} />;
         default:
             return (
                 <div className="p-6 border border-destructive/30 bg-destructive/5 backdrop-blur-sm text-center space-y-4">

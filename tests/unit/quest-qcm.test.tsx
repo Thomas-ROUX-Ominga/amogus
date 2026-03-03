@@ -3,19 +3,22 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { QuestQCM } from "@/components/game/quest-qcm";
 import { QuestGame } from "@/types/quest";
 
-const mockQuest: QuestGame = {
+const mockQuest: Extract<QuestGame, { type: "qcm" }> = {
     id: "s2",
     type: "qcm",
     duration: "short",
     title: "Test QCM",
     instruction: "Pick one",
-    options: [
-        { label: "Option A", value: "a" },
-        { label: "Option B", value: "b" },
-        { label: "Option C", value: "c" },
-        { label: "Option D", value: "d" },
-    ],
-    answer: "c",
+    data: {
+        mode: "single",
+        choices: [
+            { id: "a", label: "Option A" },
+            { id: "b", label: "Option B" },
+            { id: "c", label: "Option C" },
+            { id: "d", label: "Option D" },
+        ],
+        answerIds: ["c"],
+    }
 };
 
 describe("QuestQCM", () => {

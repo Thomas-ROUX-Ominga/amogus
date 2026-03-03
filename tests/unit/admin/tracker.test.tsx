@@ -57,9 +57,9 @@ describe("PlayerList", () => {
     it("should display quest progress", () => {
         render(<PlayerList players={mockPlayers} currentUserId="player1" />);
         
-        expect(screen.getByText("2/9 Quêtes")).toBeDefined();
-        expect(screen.getByText("1/9 Quêtes")).toBeDefined();
-        expect(screen.getByText("0/9 Quêtes")).toBeDefined();
+        expect(screen.getByText("2/60 Quêtes")).toBeDefined();
+        expect(screen.getByText("1/60 Quêtes")).toBeDefined();
+        expect(screen.getByText("0/60 Quêtes")).toBeDefined();
     });
 
     it("should show empty state when no players", () => {
@@ -103,15 +103,15 @@ describe("ProgressBar", () => {
     it("should calculate progress percentage correctly", () => {
         render(<ProgressBar gameState={mockGameState} />);
         
-        // 3 completed quests out of 18 possible (2 players * 9 quests each) = 16.7%
-        expect(screen.getByText("16.7%")).toBeDefined();
+        // 3 completed quests out of 120 possible (2 players * 60 quests each) = 2.5%
+        expect(screen.getByText("2.5%")).toBeDefined();
     });
 
     it("should display quest statistics", () => {
         render(<ProgressBar gameState={mockGameState} />);
         
         expect(screen.getByText("3")).toBeDefined(); // Total completed
-        expect(screen.getByText("18")).toBeDefined(); // Total possible
+        expect(screen.getByText("120")).toBeDefined(); // Total possible
     });
 
     it("should show individual progress", () => {
@@ -119,8 +119,8 @@ describe("ProgressBar", () => {
         
         expect(screen.getByText("TestPlayer1")).toBeDefined();
         expect(screen.getByText("TestPlayer2")).toBeDefined();
-        expect(screen.getByText("22%")).toBeDefined(); // Player 1: 2/9 = 22.2% rounded
-        expect(screen.getByText("11%")).toBeDefined(); // Player 2: 1/9 = 11.1% rounded
+        expect(screen.getByText("3%")).toBeDefined(); // Player 1: 2/60 = 3.3% rounded to 3%
+        expect(screen.getByText("2%")).toBeDefined(); // Player 2: 1/60 = 1.66% rounded to 2%
     });
 });
 
@@ -204,7 +204,7 @@ describe("TrackerStats", () => {
         
         // Check that the quest counts exist (they may appear multiple times)
         const completedElements = screen.getAllByText("3");
-        const possibleElements = screen.getAllByText("27");
+        const possibleElements = screen.getAllByText("180");
         expect(completedElements.length).toBeGreaterThan(0);
         expect(possibleElements.length).toBeGreaterThan(0);
     });
@@ -212,8 +212,8 @@ describe("TrackerStats", () => {
     it("should show average progress", () => {
         render(<TrackerStats gameState={mockGameState} />);
         
-        // 3 completed out of 27 possible = 11.1% average
-        expect(screen.getByText("11.1%")).toBeDefined();
+        // 3 completed out of 180 possible = 1.7% average
+        expect(screen.getByText("1.7%")).toBeDefined();
         expect(screen.getByText("Average Progress")).toBeDefined();
     });
 

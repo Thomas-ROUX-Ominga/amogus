@@ -3,17 +3,19 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { QuestTrueFalse } from "@/components/game/quest-true-false";
 import { QuestGame } from "@/types/quest";
 
-const mockQuest: QuestGame = {
+const mockQuest: Extract<QuestGame, { type: "true-false" }> = {
     id: "s1",
     type: "true-false",
     duration: "short",
     title: "Test Question",
     instruction: "Is this true?",
-    options: [
-        { label: "VRAI", value: "true" },
-        { label: "FAUX", value: "false" },
-    ],
-    answer: "true",
+    data: {
+        choices: [
+            { id: "true", label: "VRAI" },
+            { id: "false", label: "FAUX" },
+        ],
+        answerIds: ["true"],
+    }
 };
 
 describe("QuestTrueFalse", () => {

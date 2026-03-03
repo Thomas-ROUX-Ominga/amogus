@@ -111,6 +111,8 @@ export async function getAllBatches(): Promise<ActionResponse<BatchListItem[]>> 
   }
 }
 
+import { deleteGame } from "./actions";
+
 export async function deleteBatch(batchId: string): Promise<ActionResponse<void>> {
   try {
     // Verify admin session
@@ -144,17 +146,17 @@ export async function deleteBatch(batchId: string): Promise<ActionResponse<void>
       };
     }
 
-    // Check if batch is referenced by any active games
-    const gameKeys = await redis.keys("game:*");
+    // Stop and delete any active games using this batch
+    const gameKeys = await redis.keys("game:*:state");
     for (const key of gameKeys) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const game = await redis.get<any>(key);
       if (game?.batchId === batchId) {
-        return {
-          success: false,
-          error: "Batch is in use by an active game",
-          code: ERROR_CODES.ERR_INVALID_STATE,
-        };
+        // Extract gameId from key (game:ID:state)
+        const gameId = key.split(":")[1];
+        if (gameId) {
+            await deleteGame(gameId);
+        }
       }
     }
 

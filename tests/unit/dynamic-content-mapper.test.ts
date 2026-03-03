@@ -26,40 +26,47 @@ const mockQuestMetadata: Quest = {
 const mockQuestGames: QuestGame[] = [
     {
         id: "content-1",
-        type: "true-false" as QuestType,
-        duration: "short" as QuestDuration,
+        type: "true-false",
+        duration: "short",
         title: "Test Question 1",
         instruction: "Is this a test?",
-        options: [
-            { label: "Option 1", value: "opt1" },
-            { label: "Option 2", value: "opt2" }
-        ],
-        answer: "true"
-    },
+        data: {
+            choices: [
+                { id: "opt1", label: "Option 1" },
+                { id: "opt2", label: "Option 2" }
+            ],
+            answerIds: ["opt1"]
+        }
+    } as Extract<QuestGame, { type: "true-false" }>,
     {
         id: "content-2",
-        type: "true-false" as QuestType,
-        duration: "short" as QuestDuration,
+        type: "true-false",
+        duration: "short",
         title: "Test Question 2",
         instruction: "Is this another test?",
-        options: [
-            { label: "Option 1", value: "opt1" },
-            { label: "Option 2", value: "opt2" }
-        ],
-        answer: "true"
-    },
+        data: {
+            choices: [
+                { id: "opt1", label: "Option 1" },
+                { id: "opt2", label: "Option 2" }
+            ],
+            answerIds: ["opt2"]
+        }
+    } as Extract<QuestGame, { type: "true-false" }>,
     {
         id: "content-3",
-        type: "qcm" as QuestType,
-        duration: "short" as QuestDuration,
+        type: "qcm",
+        duration: "short",
         title: "Test QCM",
         instruction: "Choose an option",
-        options: [
-            { label: "Option A", value: "optA" },
-            { label: "Option B", value: "optB" }
-        ],
-        answer: "optA"
-    }
+        data: {
+            mode: "single",
+            choices: [
+                { id: "optA", label: "Option A" },
+                { id: "optB", label: "Option B" }
+            ],
+            answerIds: ["optA"]
+        }
+    } as Extract<QuestGame, { type: "qcm" }>
 ];
 
 describe("DynamicContentMapper", () => {
@@ -245,7 +252,7 @@ describe("DynamicContentMapper", () => {
                 success: true,
                 data: {
                     ...mockQuestMetadata,
-                    type: "form" as QuestType // No form content in mock data
+                    type: "single-input" as QuestType // No single-input content in mock data
                 }
             });
 

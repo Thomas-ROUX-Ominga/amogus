@@ -1,4 +1,4 @@
-export type QuestType = "true-false" | "qcm" | "form" | "single-input" | "number-input";
+export type QuestType = "true-false" | "qcm" | "single-input" | "number-input" | "intrus" | "mini-game";
 
 export type QuestDuration = "short" | "medium" | "long";
 
@@ -11,21 +11,25 @@ export interface Quest {
 }
 
 // QuestGame - actual game content with questions and answers
-export interface QuestOption {
+export interface Choice {
+    id: string;
     label: string;
-    value: string;
 }
 
-export interface QuestGame {
+export interface QuestGameBase {
     id: string;
-    type: QuestType;
     duration: QuestDuration;
     title: string;
     instruction: string;
-    options?: QuestOption[];
-    answer?: string;
-    // Add other fields as needed for different game types
 }
+
+export type QuestGame = 
+    | (QuestGameBase & { type: "true-false"; data: { choices: Choice[]; answerIds: string[] } })
+    | (QuestGameBase & { type: "qcm"; data: { mode: "single" | "multiple"; choices: Choice[]; answerIds: string[] } })
+    | (QuestGameBase & { type: "single-input"; data: { placeholder: string; validation: { trim: boolean; case: string }; answer: string } })
+    | (QuestGameBase & { type: "number-input"; data: { placeholder: string; validation: { kind: string; min: number; max: number }; answer: number } })
+    | (QuestGameBase & { type: "intrus"; data: { choices: Choice[]; answerIds: string[] } })
+    | (QuestGameBase & { type: "mini-game"; data: any });
 
 export interface QuestPool {
     short: Quest[];

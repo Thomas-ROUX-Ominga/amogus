@@ -190,7 +190,7 @@ describe("game-store", () => {
 
             const state = useGameStore.getState();
             expect(state.questsCompleted).toBe(2);
-            expect(state.questsTotal).toBe(9);
+            expect(state.questsTotal).toBe(60);
         });
 
         it("should default questsCompleted to 0 when completedQuests is undefined", async () => {
@@ -208,7 +208,7 @@ describe("game-store", () => {
 
             const state = useGameStore.getState();
             expect(state.questsCompleted).toBe(0);
-            expect(state.questsTotal).toBe(9);
+            expect(state.questsTotal).toBe(60);
         });
     });
 

@@ -9,6 +9,7 @@ import { useGameStore } from "@/lib/store/game-store";
 import { getRandomQuestGame } from "@/lib/constants/quest-pool";
 import { QuestRenderer } from "@/components/game/quest-renderer";
 import { SuccessOverlay } from "@/components/game/success-overlay";
+import { FailedOverlay } from "@/components/game/failed-overlay";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 
 interface QuestViewProps {
@@ -34,13 +35,14 @@ const SUCCESS_OVERLAY_DURATION_MS = 2000;
 export function QuestView({ quest, gameId, userId }: QuestViewProps) {
     const router = useRouter();
     const prefersReducedMotion = useReducedMotion();
-    const { gameState, clearQuest, setQuestAnswered, completeQuestAction, isCompletingQuest, completionError, completionErrorCode, questAnswered, currentQuestContent, recordFailedQuest } = useGameStore();
+    const { gameState, clearQuest, setQuestAnswered, completeQuestAction, isCompletingQuest, completionError, completionErrorCode, questAnswered, currentQuestContent, recordFailedQuest, loadDynamicQuestContent } = useGameStore();
     
     // Story 4.1: Identify player role
     const currentPlayer = gameState?.players.find(p => p.id === userId);
     const isImpostor = currentPlayer?.role === "IMPOSTOR";
     const completionTriggered = useRef(false);
     const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
+    const [showFailedOverlay, setShowFailedOverlay] = useState(false);
     
     // Fetch QuestGame based on Quest metadata
     const [questGame, setQuestGame] = useState<QuestGame | null>(null);
@@ -130,9 +132,16 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
         // Story 8.2: Record failed quest when user gets wrong answer
         if (userId && currentQuestContent && !isImpostor) {
             recordFailedQuest(gameId, userId, quest.id, currentQuestContent.contentId);
+            setShowFailedOverlay(true);
         }
-        // No store update on error — visual feedback only (handled by quest components)
     }, [userId, currentQuestContent, isImpostor, gameId, quest.id, recordFailedQuest]);
+
+    const handleFailedAutoRedirect = useCallback(() => {
+        setShowFailedOverlay(false);
+        if (userId) {
+            loadDynamicQuestContent(quest.id, gameId, userId);
+        }
+    }, [quest.id, gameId, userId, loadDynamicQuestContent]);
 
     const handleFlee = useCallback(() => {
         try {
@@ -231,6 +240,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
 
                                 {/* Interactive Quest Area */}
                                 <QuestRenderer
+                                    key={questGame.id}
                                     quest={questGame}
                                     gameId={gameId}
                                     onSuccess={handleSuccess}
@@ -317,6 +327,13 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                         isImpostor={isImpostor}
                         duration={SUCCESS_OVERLAY_DURATION_MS}
                         allowManualExit={false}
+                    />
+                )}
+                {showFailedOverlay && (
+                    <FailedOverlay 
+                        onAutoExit={handleFailedAutoRedirect}
+                        reducedMotion={!!prefersReducedMotion}
+                        duration={2000}
                     />
                 )}
             </AnimatePresence>

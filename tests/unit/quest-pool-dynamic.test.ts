@@ -21,32 +21,28 @@ describe("Quest Pool Dynamic Functions", () => {
     const mockQuestGames: QuestGame[] = [
         {
             id: "content-1",
-            type: "true-false" as QuestType,
-            duration: "short" as QuestDuration,
+            type: "true-false",
+            duration: "short",
             title: "Test Question 1",
             instruction: "Is this a test?",
-            answer: "true"
-        },
+            data: { choices: [], answerIds: ["true"] }
+        } as Extract<QuestGame, { type: "true-false" }>,
         {
             id: "content-2",
-            type: "true-false" as QuestType,
-            duration: "short" as QuestDuration,
+            type: "true-false",
+            duration: "short",
             title: "Test Question 2",
             instruction: "Is this another test?",
-            answer: "false"
-        },
+            data: { choices: [], answerIds: ["false"] }
+        } as Extract<QuestGame, { type: "true-false" }>,
         {
             id: "content-3",
-            type: "qcm" as QuestType,
-            duration: "short" as QuestDuration,
+            type: "qcm",
+            duration: "short",
             title: "Test QCM",
             instruction: "Choose an option",
-            options: [
-                { label: "Option 1", value: "opt1" },
-                { label: "Option 2", value: "opt2" }
-            ],
-            answer: "opt1"
-        }
+            data: { mode: "single", choices: [], answerIds: ["opt1"] }
+        } as Extract<QuestGame, { type: "qcm" }>
     ];
 
     beforeEach(() => {
@@ -97,9 +93,9 @@ describe("Quest Pool Dynamic Functions", () => {
 
             // Act
             const result = getRandomQuestGameWithExclusion(
-                "form",
+                "form" as any, // Unsupported type
                 "short",
-                excludedIds
+                []
             );
 
             // Assert
@@ -172,9 +168,9 @@ describe("Quest Pool Dynamic Functions", () => {
 
             // Act
             const result = getSecureRandomQuestGameWithExclusion(
-                "form",
+                "form" as any, // Unsupported type
                 "short",
-                excludedIds
+                []
             );
 
             // Assert

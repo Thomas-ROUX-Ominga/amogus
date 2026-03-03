@@ -6,14 +6,22 @@ import { QuestGame } from "@/types/quest";
 import { useQuestAnswer } from "@/hooks/use-quest-answer";
 
 interface QuestNumberInputProps {
-    quest: QuestGame;
+    quest: Extract<QuestGame, { type: "number-input" }>;
     onSuccess: () => void;
     onError: () => void;
 }
 
 export function QuestNumberInput({ quest, onSuccess, onError }: QuestNumberInputProps) {
     const prefersReducedMotion = useReducedMotion();
-    const { isCorrect, answered, failed, handleAnswer, handleRetry } = useQuestAnswer(quest, onSuccess, onError);
+    const { isCorrect, answered, failed, handleAnswer, handleRetry } = useQuestAnswer(
+        quest,
+        (val: string) => {
+            const numericVal = parseInt(val, 10);
+            return !isNaN(numericVal) && numericVal === quest.data.answer;
+        },
+        onSuccess, 
+        onError
+    );
     const [inputValue, setInputValue] = useState("");
 
     const handleSubmit = (e: React.FormEvent) => {

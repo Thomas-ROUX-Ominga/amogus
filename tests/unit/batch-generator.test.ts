@@ -40,7 +40,7 @@ describe('Batch Generator', () => {
       const input: BatchCreateInput = { totalQuests: 15 };
       const batch = generateBatch(input);
 
-      const validTypes: QuestType[] = ['true-false', 'qcm', 'form', 'single-input'];
+      const validTypes: QuestType[] = ['true-false', 'qcm', 'single-input', 'number-input', 'intrus'];
       
       batch.quests.forEach(quest => {
         expect(validTypes).toContain(quest.type);

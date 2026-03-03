@@ -1,40 +1,294 @@
-[
-  {
-    "id": "s1",
-    "type": "true-false",
-    "duration": "short",
-    "title": "Vérification de Protocole",
-    "instruction": "Le vaisseau spatial possède exactement 12 modules de survie. Vrai ou Faux ?",
-    "options": [
-      {"label": "VRAI", "value": "true"},
-      {"label": "FAUX", "value": "false"}
-    ],
-    "answer": "true"
-  },
-  {
-    "id": "s2",
-    "type": "qcm",
-    "duration": "short",
-    "title": "Code d'Accès",
-    "instruction": "Quel est le code d'accès au terminal principal ?",
-    "options": [
-      {"label": "4815", "value": "a"},
-      {"label": "1623", "value": "b"},
-      {"label": "4242", "value": "c"},
-      {"label": "0007", "value": "d"}
-    ],
-    "answer": "c"
-  },
-  {
-    "id": "s3",
-    "type": "single-input",
-    "duration": "short",
-    "title": "Alerte Oxygène",
-    "instruction": "Le niveau d'oxygène du secteur B est critique. Vrai ou Faux ?",
-    "options": [
-      {"label": "VRAI", "value": "true"},
-      {"label": "FAUX", "value": "false"}
-    ],
-    "answer": "true"
-  }
-]
+{
+  "version": 1,
+  "locale": "fr-FR",
+  "quests": [
+    {
+      "id": "tf-1",
+      "type": "true-false",
+      "duration": "short",
+      "title": "Révolution",
+      "instruction": "La Révolution française commence en 1789.",
+      "data": {
+        "choices": [
+          { "id": "true", "label": "VRAI" },
+          { "id": "false", "label": "FAUX" }
+        ],
+        "answerIds": ["true"]
+      }
+    },
+    {
+      "id": "tf-2",
+      "type": "true-false",
+      "duration": "short",
+      "title": "Géographie",
+      "instruction": "La Loire est le plus long fleuve de France.",
+      "data": {
+        "choices": [
+          { "id": "true", "label": "VRAI" },
+          { "id": "false", "label": "FAUX" }
+        ],
+        "answerIds": ["true"]
+      }
+    },
+    {
+      "id": "tf-3",
+      "type": "true-false",
+      "duration": "short",
+      "title": "Littérature",
+      "instruction": "Molière a écrit « Le Cid ».",
+      "data": {
+        "choices": [
+          { "id": "true", "label": "VRAI" },
+          { "id": "false", "label": "FAUX" }
+        ],
+        "answerIds": ["false"]
+      }
+    },
+    {
+      "id": "tf-4",
+      "type": "true-false",
+      "duration": "short",
+      "title": "Cinéma",
+      "instruction": "Le film « Les Choristes » est sorti en 2004.",
+      "data": {
+        "choices": [
+          { "id": "true", "label": "VRAI" },
+          { "id": "false", "label": "FAUX" }
+        ],
+        "answerIds": ["true"]
+      }
+    },
+
+    {
+      "id": "qcm-1",
+      "type": "qcm",
+      "duration": "short",
+      "title": "Littérature",
+      "instruction": "Qui a écrit « Les Misérables » ?",
+      "data": {
+        "mode": "single",
+        "choices": [
+          { "id": "a", "label": "Victor Hugo" },
+          { "id": "b", "label": "Émile Zola" },
+          { "id": "c", "label": "Albert Camus" },
+          { "id": "d", "label": "Gustave Flaubert" }
+        ],
+        "answerIds": ["a"]
+      }
+    },
+    {
+      "id": "qcm-2",
+      "type": "qcm",
+      "duration": "short",
+      "title": "Histoire",
+      "instruction": "Quel roi est le plus associé au château de Versailles ?",
+      "data": {
+        "mode": "single",
+        "choices": [
+          { "id": "a", "label": "Louis XIV" },
+          { "id": "b", "label": "Louis XVI" },
+          { "id": "c", "label": "François Ier" },
+          { "id": "d", "label": "Napoléon Ier" }
+        ],
+        "answerIds": ["a"]
+      }
+    },
+    {
+      "id": "qcm-3",
+      "type": "qcm",
+      "duration": "short",
+      "title": "Gastronomie",
+      "instruction": "Quels sont des fromages français ?",
+      "data": {
+        "mode": "multiple",
+        "choices": [
+          { "id": "a", "label": "Camembert" },
+          { "id": "b", "label": "Roquefort" },
+          { "id": "c", "label": "Gouda" },
+          { "id": "d", "label": "Comté" }
+        ],
+        "answerIds": ["a", "b", "d"]
+      }
+    },
+    {
+      "id": "qcm-4",
+      "type": "qcm",
+      "duration": "short",
+      "title": "Cinéma",
+      "instruction": "Quels films sont français ?",
+      "data": {
+        "mode": "multiple",
+        "choices": [
+          { "id": "a", "label": "La Haine" },
+          { "id": "b", "label": "Intouchables" },
+          { "id": "c", "label": "Inception" },
+          { "id": "d", "label": "Le Fabuleux Destin d'Amélie Poulain" }
+        ],
+        "answerIds": ["a", "b", "d"]
+      }
+    },
+
+    {
+      "id": "single-1",
+      "type": "single-input",
+      "duration": "short",
+      "title": "Devise",
+      "instruction": "Complète : Liberté, Égalité, ____.",
+      "data": {
+        "placeholder": "Votre réponse",
+        "validation": { "trim": true, "case": "insensitive" },
+        "answer": "fraternité"
+      }
+    },
+    {
+      "id": "single-2",
+      "type": "single-input",
+      "duration": "short",
+      "title": "Monument",
+      "instruction": "Dans quelle ville se trouve la Tour Eiffel ?",
+      "data": {
+        "placeholder": "Ville",
+        "validation": { "trim": true, "case": "insensitive" },
+        "answer": "paris"
+      }
+    },
+    {
+      "id": "single-3",
+      "type": "single-input",
+      "duration": "short",
+      "title": "Cuisine",
+      "instruction": "Comment s'appelle le sandwich jambon-fromage français ? (2 mots)",
+      "data": {
+        "placeholder": "Réponse",
+        "validation": { "trim": true, "case": "insensitive" },
+        "answer": "croque monsieur"
+      }
+    },
+    {
+      "id": "single-4",
+      "type": "single-input",
+      "duration": "short",
+      "title": "Auteur",
+      "instruction": "Qui a écrit « Le Petit Prince » ? (nom de famille)",
+      "data": {
+        "placeholder": "Nom",
+        "validation": { "trim": true, "case": "insensitive" },
+        "answer": "saint-exupéry"
+      }
+    },
+
+    {
+      "id": "number-1",
+      "type": "number-input",
+      "duration": "short",
+      "title": "Histoire",
+      "instruction": "En quelle année débute la Première Guerre mondiale ?",
+      "data": {
+        "placeholder": "AAAA",
+        "validation": { "kind": "integer", "min": 1800, "max": 2100 },
+        "answer": 1914
+      }
+    },
+    {
+      "id": "number-2",
+      "type": "number-input",
+      "duration": "short",
+      "title": "Drapeau",
+      "instruction": "Combien y a-t-il de couleurs sur le drapeau français ?",
+      "data": {
+        "placeholder": "Nombre",
+        "validation": { "kind": "integer", "min": 1, "max": 10 },
+        "answer": 3
+      }
+    },
+    {
+      "id": "number-3",
+      "type": "number-input",
+      "duration": "short",
+      "title": "République",
+      "instruction": "La France est actuellement sous la combienième République ?",
+      "data": {
+        "placeholder": "Nombre",
+        "validation": { "kind": "integer", "min": 1, "max": 10 },
+        "answer": 5
+      }
+    },
+    {
+      "id": "number-4",
+      "type": "number-input",
+      "duration": "short",
+      "title": "Orthographe",
+      "instruction": "Combien de lettres dans le mot « France » ?",
+      "data": {
+        "placeholder": "Nombre",
+        "validation": { "kind": "integer", "min": 1, "max": 20 },
+        "answer": 6
+      }
+    },
+
+    {
+      "id": "intrus-1",
+      "type": "intrus",
+      "duration": "short",
+      "title": "Fromages",
+      "instruction": "Trouve l'intrus.",
+      "data": {
+        "choices": [
+          { "id": "a", "label": "Camembert" },
+          { "id": "b", "label": "Roquefort" },
+          { "id": "c", "label": "Comté" },
+          { "id": "d", "label": "Gouda" }
+        ],
+        "answerIds": ["d"]
+      }
+    },
+    {
+      "id": "intrus-2",
+      "type": "intrus",
+      "duration": "short",
+      "title": "Auteurs",
+      "instruction": "Trouve l'intrus.",
+      "data": {
+        "choices": [
+          { "id": "a", "label": "Victor Hugo" },
+          { "id": "b", "label": "Molière" },
+          { "id": "c", "label": "Voltaire" },
+          { "id": "d", "label": "William Shakespeare" }
+        ],
+        "answerIds": ["d"]
+      }
+    },
+    {
+      "id": "intrus-3",
+      "type": "intrus",
+      "duration": "short",
+      "title": "Villes",
+      "instruction": "Trouve l'intrus.",
+      "data": {
+        "choices": [
+          { "id": "a", "label": "Paris" },
+          { "id": "b", "label": "Lyon" },
+          { "id": "c", "label": "Marseille" },
+          { "id": "d", "label": "Barcelone" }
+        ],
+        "answerIds": ["d"]
+      }
+    },
+    {
+      "id": "intrus-4",
+      "type": "intrus",
+      "duration": "short",
+      "title": "Monuments",
+      "instruction": "Trouve l'intrus.",
+      "data": {
+        "choices": [
+          { "id": "a", "label": "Arc de Triomphe" },
+          { "id": "b", "label": "Tour Eiffel" },
+          { "id": "c", "label": "Sacré-Cœur" },
+          { "id": "d", "label": "Colisée" }
+        ],
+        "answerIds": ["d"]
+      }
+    }
+  ]
+}

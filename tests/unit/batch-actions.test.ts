@@ -14,18 +14,25 @@ vi.mock('@/lib/redis/client', () => ({
 // Mock auth utils
 vi.mock('@/lib/redis/auth-utils', () => ({
   verifyAdminSession: vi.fn(),
+  verifySession: vi.fn(),
 }));
 
 import { createBatch, getAllBatches, deleteBatch, updateQuestsLocations, getBatch, getBatchData } from '@/lib/redis/batch-actions';
 import { BatchCreateInput } from '@/types/quest';
 import { redis } from '@/lib/redis/client';
-import { verifyAdminSession } from '@/lib/redis/auth-utils';
+import { verifyAdminSession, verifySession } from '@/lib/redis/auth-utils';
 
 describe('Batch Actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset implementations to prevent state leaks
+    vi.resetAllMocks();
     // Default to authorized
     (verifyAdminSession as any).mockResolvedValue({ success: true, data: { role: 'admin' } });
+    (verifySession as any).mockResolvedValue({ 
+      success: true, 
+      data: { userId: 'admin-id', username: 'admin' } 
+    });
   });
 
   describe('createBatch', () => {
@@ -112,7 +119,7 @@ describe('Batch Actions', () => {
   });
 
   describe('deleteBatch', () => {
-    it('should delete a batch successfully', async () => {
+    it('should delete a batch and its associated games successfully', async () => {
       const mockBatch = {
         id: 'batch-123',
         questCount: 30,
@@ -120,31 +127,36 @@ describe('Batch Actions', () => {
         createdAt: '2026-02-15T10:00:00.000Z',
       };
       
-      (redis.get as any).mockResolvedValue(mockBatch);
-      (redis.keys as any).mockResolvedValue([]); // No active games
+      const mockGame = { batchId: 'batch-123' };
+      
+      // Order of Redis calls in deleteBatch:
+      // 1. redis.get(batchKey)
+      // 2. redis.keys("game:*:state")
+      // 3. redis.get(gameKey) for each found key
+      // 4. deleteGame(gameId) is called:
+      //    a. verifySession()
+      //    b. redis.keys(`game:${gameId}:*`)
+      //    c. redis.del(key) for each associated key
+      // 5. redis.del(batchKey)
+
+      (redis.get as any)
+        .mockResolvedValueOnce(mockBatch) // get batch
+        .mockResolvedValueOnce(mockGame);  // get game for key game:GAME1:state
+      
+      (redis.keys as any)
+        .mockResolvedValueOnce(['game:GAME1:state']) // gameKeys search in deleteBatch
+        .mockResolvedValueOnce(['game:GAME1:state', 'game:GAME1:player:p1:failed-quests']); // gameKeys search in deleteGame
+      
       (redis.del as any).mockResolvedValue(1);
 
       const result = await deleteBatch('batch-123');
 
       expect(result.success).toBe(true);
-      expect(redis.keys).toHaveBeenCalledWith('game:*');
       expect(redis.get).toHaveBeenCalledWith('batch:batch-123');
+      expect(redis.keys).toHaveBeenCalledWith('game:*:state');
+      expect(redis.keys).toHaveBeenCalledWith('game:GAME1:*');
       expect(redis.del).toHaveBeenCalledWith('batch:batch-123');
-    });
-
-    it('should fail if batch is in use by a game', async () => {
-      const mockBatch = { id: 'batch-123' };
-      const mockGame = { batchId: 'batch-123' };
-      
-      (redis.get as any)
-        .mockResolvedValueOnce(mockBatch) // first call for batch check
-        .mockResolvedValueOnce(mockGame);  // second call for game check
-      (redis.keys as any).mockResolvedValue(['game:123']);
-
-      const result = await deleteBatch('batch-123');
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Batch is in use by an active game');
+      expect(redis.del).toHaveBeenCalledWith('game:GAME1:state');
     });
 
     it('should handle non-existent batch', async () => {

@@ -3,10 +3,18 @@ import longGames from "./long.json";
 import mediumGames from "./medium.json";
 import shortGames from "./short.json";
 
+const getGamesArray = (imported: any): QuestGame[] => {
+    if (Array.isArray(imported)) return imported;
+    if (imported && Array.isArray(imported.quests)) return imported.quests;
+    if (imported && imported.default && Array.isArray(imported.default.quests)) return imported.default.quests;
+    if (imported && Array.isArray(imported.default)) return imported.default;
+    return [];
+};
+
 const questGamePool = {
-    short: shortGames as QuestGame[],
-    medium: mediumGames as QuestGame[],
-    long: longGames as QuestGame[]
+    short: getGamesArray(shortGames),
+    medium: getGamesArray(mediumGames),
+    long: getGamesArray(longGames)
 };
 
 export function getQuestGamesByDuration(duration: QuestDuration): QuestGame[] {

@@ -62,8 +62,6 @@ export async function verifySession(): Promise<ActionResponse<SessionPayload>> {
 
     const { payload } = await jwtVerify(token, JWT_SECRET);
 
-    console.log({payload});
-    
     return {
       success: true,
       data: {

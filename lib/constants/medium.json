@@ -1,42 +1,294 @@
-[
-  {
-    "id": "m1",
-    "type": "qcm",
-    "duration": "medium",
-    "title": "Diagnostic Moteur",
-    "instruction": "Le moteur principal montre une anomalie. Quelle est la cause probable ?",
-    "options": [
-      {"label": "Surchauffe du réacteur", "value": "a"},
-      {"label": "Fuite de carburant", "value": "b"},
-      {"label": "Défaillance électrique", "value": "c"},
-      {"label": "Sabotage", "value": "d"}
-    ],
-    "answer": "d"
-  },
-  {
-    "id": "m2",
-    "type": "true-false",
-    "duration": "medium",
-    "title": "Transmission Cryptée",
-    "instruction": "Un message crypté a été intercepté depuis la station orbitale. Le signal provient du secteur Delta. Vrai ou Faux ?",
-    "options": [
-      {"label": "VRAI", "value": "true"},
-      {"label": "FAUX", "value": "false"}
-    ],
-    "answer": "true"
-  },
-  {
-    "id": "m3",
-    "type": "qcm",
-    "duration": "medium",
-    "title": "Navigation Stellaire",
-    "instruction": "Pour atteindre la station relais, quelle trajectoire emprunter ?",
-    "options": [
-      {"label": "Couloir Alpha-7", "value": "a"},
-      {"label": "Passage Nebula", "value": "b"},
-      {"label": "Route directe", "value": "c"},
-      {"label": "Saut hyperspatial", "value": "d"}
-    ],
-    "answer": "a"
-  }
-]
+{
+  "version": 1,
+  "locale": "fr-FR",
+  "quests": [
+    {
+      "id": "m-tf-1",
+      "type": "true-false",
+      "duration": "medium",
+      "title": "Histoire moderne",
+      "instruction": "La loi de séparation des Églises et de l’État en France date de 1905.",
+      "data": {
+        "choices": [
+          { "id": "true", "label": "VRAI" },
+          { "id": "false", "label": "FAUX" }
+        ],
+        "answerIds": ["true"]
+      }
+    },
+    {
+      "id": "m-tf-2",
+      "type": "true-false",
+      "duration": "medium",
+      "title": "Littérature",
+      "instruction": "« L’Étranger » est un roman d’Albert Camus.",
+      "data": {
+        "choices": [
+          { "id": "true", "label": "VRAI" },
+          { "id": "false", "label": "FAUX" }
+        ],
+        "answerIds": ["true"]
+      }
+    },
+    {
+      "id": "m-tf-3",
+      "type": "true-false",
+      "duration": "medium",
+      "title": "Géographie",
+      "instruction": "Le mont Blanc est le point culminant de la France métropolitaine.",
+      "data": {
+        "choices": [
+          { "id": "true", "label": "VRAI" },
+          { "id": "false", "label": "FAUX" }
+        ],
+        "answerIds": ["true"]
+      }
+    },
+    {
+      "id": "m-tf-4",
+      "type": "true-false",
+      "duration": "medium",
+      "title": "Cinéma",
+      "instruction": "Le film « La Grande Vadrouille » est sorti dans les années 1960.",
+      "data": {
+        "choices": [
+          { "id": "true", "label": "VRAI" },
+          { "id": "false", "label": "FAUX" }
+        ],
+        "answerIds": ["true"]
+      }
+    },
+
+    {
+      "id": "m-qcm-1",
+      "type": "qcm",
+      "duration": "medium",
+      "title": "Histoire",
+      "instruction": "Quel événement est associé au 14 juillet 1789 ?",
+      "data": {
+        "mode": "single",
+        "choices": [
+          { "id": "a", "label": "La prise de la Bastille" },
+          { "id": "b", "label": "Le sacre de Napoléon" },
+          { "id": "c", "label": "La bataille de Verdun" },
+          { "id": "d", "label": "La signature du traité de Rome" }
+        ],
+        "answerIds": ["a"]
+      }
+    },
+    {
+      "id": "m-qcm-2",
+      "type": "qcm",
+      "duration": "medium",
+      "title": "Littérature",
+      "instruction": "Quel auteur est associé au mouvement du romantisme ?",
+      "data": {
+        "mode": "single",
+        "choices": [
+          { "id": "a", "label": "Victor Hugo" },
+          { "id": "b", "label": "Molière" },
+          { "id": "c", "label": "Denis Diderot" },
+          { "id": "d", "label": "François Rabelais" }
+        ],
+        "answerIds": ["a"]
+      }
+    },
+    {
+      "id": "m-qcm-3",
+      "type": "qcm",
+      "duration": "medium",
+      "title": "Gastronomie",
+      "instruction": "Quels éléments trouvent-on traditionnellement dans une quiche lorraine ?",
+      "data": {
+        "mode": "multiple",
+        "choices": [
+          { "id": "a", "label": "Œufs" },
+          { "id": "b", "label": "Lardons" },
+          { "id": "c", "label": "Crème" },
+          { "id": "d", "label": "Ananas" }
+        ],
+        "answerIds": ["a", "b", "c"]
+      }
+    },
+    {
+      "id": "m-qcm-4",
+      "type": "qcm",
+      "duration": "medium",
+      "title": "Arts & monuments",
+      "instruction": "Quels monuments se trouvent à Paris ?",
+      "data": {
+        "mode": "multiple",
+        "choices": [
+          { "id": "a", "label": "Tour Eiffel" },
+          { "id": "b", "label": "Arc de Triomphe" },
+          { "id": "c", "label": "Pont du Gard" },
+          { "id": "d", "label": "Notre-Dame de Paris" }
+        ],
+        "answerIds": ["a", "b", "d"]
+      }
+    },
+
+    {
+      "id": "m-single-1",
+      "type": "single-input",
+      "duration": "medium",
+      "title": "Patrimoine",
+      "instruction": "Quel musée parisien est célèbre pour la Joconde ? (un mot)",
+      "data": {
+        "placeholder": "Réponse",
+        "validation": { "trim": true, "case": "insensitive" },
+        "answer": "louvre"
+      }
+    },
+    {
+      "id": "m-single-2",
+      "type": "single-input",
+      "duration": "medium",
+      "title": "Histoire",
+      "instruction": "Quel empereur a été exilé sur l’île d’Elbe ? (nom)",
+      "data": {
+        "placeholder": "Nom",
+        "validation": { "trim": true, "case": "insensitive" },
+        "answer": "napoléon"
+      }
+    },
+    {
+      "id": "m-single-3",
+      "type": "single-input",
+      "duration": "medium",
+      "title": "Littérature",
+      "instruction": "Quel écrivain a écrit « Madame Bovary » ? (nom de famille)",
+      "data": {
+        "placeholder": "Nom",
+        "validation": { "trim": true, "case": "insensitive" },
+        "answer": "flaubert"
+      }
+    },
+    {
+      "id": "m-single-4",
+      "type": "single-input",
+      "duration": "medium",
+      "title": "Cinéma",
+      "instruction": "Quel réalisateur français a signé « Amélie » ? (nom de famille)",
+      "data": {
+        "placeholder": "Nom",
+        "validation": { "trim": true, "case": "insensitive" },
+        "answer": "jeunet"
+      }
+    },
+
+    {
+      "id": "m-number-1",
+      "type": "number-input",
+      "duration": "medium",
+      "title": "Histoire",
+      "instruction": "En quelle année l’Armistice met-il fin à la Première Guerre mondiale ?",
+      "data": {
+        "placeholder": "AAAA",
+        "validation": { "kind": "integer", "min": 1800, "max": 2100 },
+        "answer": 1918
+      }
+    },
+    {
+      "id": "m-number-2",
+      "type": "number-input",
+      "duration": "medium",
+      "title": "République",
+      "instruction": "En quelle année débute la Ve République ?",
+      "data": {
+        "placeholder": "AAAA",
+        "validation": { "kind": "integer", "min": 1800, "max": 2100 },
+        "answer": 1958
+      }
+    },
+    {
+      "id": "m-number-3",
+      "type": "number-input",
+      "duration": "medium",
+      "title": "Culture",
+      "instruction": "Combien y a-t-il de régions en France métropolitaine depuis la réforme de 2016 ?",
+      "data": {
+        "placeholder": "Nombre",
+        "validation": { "kind": "integer", "min": 1, "max": 30 },
+        "answer": 13
+      }
+    },
+    {
+      "id": "m-number-4",
+      "type": "number-input",
+      "duration": "medium",
+      "title": "Tour de France",
+      "instruction": "Combien de points vaut un maillot jaune ?",
+      "data": {
+        "placeholder": "Nombre",
+        "validation": { "kind": "integer", "min": 0, "max": 9999 },
+        "answer": 0
+      }
+    },
+
+    {
+      "id": "m-intrus-1",
+      "type": "intrus",
+      "duration": "medium",
+      "title": "Peintres",
+      "instruction": "Trouve l’intrus.",
+      "data": {
+        "choices": [
+          { "id": "a", "label": "Claude Monet" },
+          { "id": "b", "label": "Edgar Degas" },
+          { "id": "c", "label": "Pierre-Auguste Renoir" },
+          { "id": "d", "label": "Pablo Picasso" }
+        ],
+        "answerIds": ["d"]
+      }
+    },
+    {
+      "id": "m-intrus-2",
+      "type": "intrus",
+      "duration": "medium",
+      "title": "Villes",
+      "instruction": "Trouve l’intrus.",
+      "data": {
+        "choices": [
+          { "id": "a", "label": "Bordeaux" },
+          { "id": "b", "label": "Strasbourg" },
+          { "id": "c", "label": "Nice" },
+          { "id": "d", "label": "Bruxelles" }
+        ],
+        "answerIds": ["d"]
+      }
+    },
+    {
+      "id": "m-intrus-3",
+      "type": "intrus",
+      "duration": "medium",
+      "title": "Œuvres",
+      "instruction": "Trouve l’intrus.",
+      "data": {
+        "choices": [
+          { "id": "a", "label": "Les Misérables" },
+          { "id": "b", "label": "Germinal" },
+          { "id": "c", "label": "Le Rouge et le Noir" },
+          { "id": "d", "label": "Hamlet" }
+        ],
+        "answerIds": ["d"]
+      }
+    },
+    {
+      "id": "m-intrus-4",
+      "type": "intrus",
+      "duration": "medium",
+      "title": "Fromages",
+      "instruction": "Trouve l’intrus.",
+      "data": {
+        "choices": [
+          { "id": "a", "label": "Brie" },
+          { "id": "b", "label": "Roquefort" },
+          { "id": "c", "label": "Gouda" },
+          { "id": "d", "label": "Comté" }
+        ],
+        "answerIds": ["c"]
+      }
+    }
+  ]
+}

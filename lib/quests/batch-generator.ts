@@ -1,7 +1,7 @@
 import { Batch, BatchCreateInput, Quest, QuestDuration, QuestType } from '@/types/quest';
 
 // Extension registry - available quest types in the system
-const AVAILABLE_QUEST_TYPES: QuestType[] = ['true-false', 'qcm', 'form', 'single-input'];
+const AVAILABLE_QUEST_TYPES: QuestType[] = ['true-false', 'qcm', 'single-input', 'number-input', 'intrus'];
 
 function getRandomQuestType(): QuestType {
   const randomIndex = Math.floor(Math.random() * AVAILABLE_QUEST_TYPES.length);

@@ -3,31 +3,32 @@
 import { useState, useCallback } from "react";
 import { QuestGame } from "@/types/quest";
 
-interface UseQuestAnswerReturn {
-    selectedValue: string | null;
+interface UseQuestAnswerReturn<T> {
+    selectedValue: T | null;
     isCorrect: boolean | null;
     answered: boolean;
     failed: boolean;
-    handleAnswer: (value: string) => void;
+    handleAnswer: (value: T) => void;
     handleRetry: () => void;
 }
 
-export function useQuestAnswer(
+export function useQuestAnswer<T>(
     quest: QuestGame,
+    validateAnswer: (value: T) => boolean,
     onSuccess: () => void,
     onError: () => void
-): UseQuestAnswerReturn {
-    const [selectedValue, setSelectedValue] = useState<string | null>(null);
+): UseQuestAnswerReturn<T> {
+    const [selectedValue, setSelectedValue] = useState<T | null>(null);
     const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
 
     const answered = isCorrect === true;
     const failed = isCorrect === false;
 
-    const handleAnswer = useCallback((value: string) => {
+    const handleAnswer = useCallback((value: T) => {
         // Guard: ignore clicks if already answered (correct) or in error state (must retry first)
         if (isCorrect !== null) return;
 
-        const correct = value === quest.answer;
+        const correct = validateAnswer(value);
         setSelectedValue(value);
         setIsCorrect(correct);
 
@@ -48,7 +49,7 @@ export function useQuestAnswer(
         } else {
             onError();
         }
-    }, [quest.answer, onSuccess, onError, isCorrect]);
+    }, [validateAnswer, onSuccess, onError, isCorrect]);
 
     const handleRetry = useCallback(() => {
         setSelectedValue(null);
