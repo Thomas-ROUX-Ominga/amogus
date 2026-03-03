@@ -33,11 +33,18 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         generateImpostorQuestAssignments,
         completeImpostorQuest,
         setImpostorQuestLocation,
+        getImpostorQuestData,
         isEliminating,
         eliminationError,
         eliminatePlayerAction
     } = useGameStore();
     
+    // Story 12.0: Check if all quests are finished to hide the scan button
+    const impostorData = getImpostorQuestData();
+    const allQuestsDone = currentPlayer.role === "IMPOSTOR"
+        ? impostorQuestsInitialized && impostorData.total > 0 && impostorData.completed >= impostorData.total
+        : questsTotal > 0 && questsCompleted >= questsTotal;
+
     // Sync local overlay state with player alive status
     useEffect(() => {
         if (!currentPlayer.isAlive) {
@@ -54,8 +61,8 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     const handleScan = async (questId: string) => {
         // For impostors, also mark quest as completed in their fake quest list
         if (currentPlayer.role === "IMPOSTOR") {
-            const { getImpostorQuestData } = useGameStore.getState();
-            const impostorQuestData = getImpostorQuestData();
+            const { getImpostorQuestData: getImpostorData } = useGameStore.getState();
+            const impostorQuestData = getImpostorData();
             
             // Find the next uncompleted quest and mark it as complete
             const nextUncompletedQuest = impostorQuestData.quests.find(q => !q.completed);
@@ -205,7 +212,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     )}
 
                     {/* SCAN Button (thumb zone — bottom) */}
-                    {gameState.creatorId !== userId && (
+                    {gameState.creatorId !== userId && !allQuestsDone && (
                         <ScanButton 
                             disabled={false} 
                             onClick={openScanner}
@@ -214,7 +221,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     )}
 
                     {/* Camera Scanner Overlay */}
-                    {gameState.creatorId !== userId && (
+                    {gameState.creatorId !== userId && !allQuestsDone && (
                         <CameraScanner
                             isOpen={isOpen}
                             onClose={closeScanner}
