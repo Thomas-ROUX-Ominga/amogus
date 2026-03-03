@@ -67,6 +67,7 @@ export class DynamicContentMapper {
                 failedContentIds
             );
 
+            console.log({contentResult})
             if (!contentResult) {
                 console.error(`No content available for quest ${questId} with type ${questMeta.type} and duration ${questMeta.duration}`);
                 return null;

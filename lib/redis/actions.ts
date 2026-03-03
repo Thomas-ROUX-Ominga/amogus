@@ -754,3 +754,46 @@ export async function eliminatePlayer(
     }
 }
 
+
+export async function getGameQuests(gameId: string): Promise<ActionResponse<Quest[]>> {
+    try {
+        const stateKey = `game:${gameId}:state`;
+        const state = await redis.get<GameState>(stateKey);
+
+        if (!state) {
+            return {
+                success: false,
+                error: "Game session not found.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
+            };
+        }
+
+        if (!state.batchId) {
+            return {
+                success: true,
+                data: [],
+            };
+        }
+
+        const batchResponse = await getBatchData(state.batchId);
+        if (batchResponse.success && batchResponse.data) {
+            return {
+                success: true,
+                data: batchResponse.data.quests,
+            };
+        }
+
+        return {
+            success: false,
+            error: "Failed to get batch data for game.",
+            code: ERROR_CODES.ERR_NOT_FOUND,
+        };
+    } catch (error) {
+        console.error("Failed to get game quests:", error);
+        return {
+            success: false,
+            error: "Failed to establish link with game module.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
+}

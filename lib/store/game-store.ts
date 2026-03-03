@@ -2,7 +2,7 @@ import { create } from "zustand";
 import React from "react";
 import { GameState, PlayerRole } from "@/types/game";
 import { Quest, QuestContentResult } from "@/types/quest";
-import { getGame, joinGame, startGame, selectRole, completeQuest, refreshGame, addFailedQuest, getPlayerFailedQuests, eliminatePlayer } from "@/lib/redis/actions";
+import { getGame, joinGame, startGame, selectRole, completeQuest, refreshGame, addFailedQuest, getPlayerFailedQuests, eliminatePlayer, getGameQuests } from "@/lib/redis/actions";
 import { getQuestGamesByDuration } from "@/lib/constants/quest-pool";
 import { getTotalQuests } from "@/lib/utils/quest-calculations";
 import { DynamicContentMapper } from "@/lib/quests/dynamic-content-mapper";
@@ -31,6 +31,10 @@ interface GameStore {
     currentQuestContent: QuestContentResult | null;
     failedQuests: Record<string, string[]>;
     isFailedQuestsLoading: boolean;
+    
+    // Store all quests for the current game
+    gameQuests: Quest[];
+    isGameQuestsLoading: boolean;
 
     // Story 9.2: Impostor Credible Tracker state
     impostorQuests: Array<Quest & { completed: boolean; location?: string }>;
@@ -43,6 +47,7 @@ interface GameStore {
 
     // Actions
     fetchGame: (id: string, userId?: string) => Promise<void>;
+    fetchGameQuests: (gameId: string) => Promise<void>;
     refreshGameData: (id: string, userId?: string) => Promise<void>;
     join: (gameId: string, playerName: string, userId: string) => Promise<void>;
     launch: (gameId: string) => Promise<boolean>;
@@ -170,6 +175,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     failedQuests: {},
     isFailedQuestsLoading: false,
 
+    gameQuests: [],
+    isGameQuestsLoading: false,
+
     // Story 9.2: Impostor Credible Tracker state
     impostorQuests: [],
     impostorQuestsInitialized: false,
@@ -205,6 +213,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
                 errorCode: response.code || null,
                 isLoading: false
             });
+        }
+    },
+
+    fetchGameQuests: async (gameId: string) => {
+        set({ isGameQuestsLoading: true });
+        const response = await getGameQuests(gameId);
+
+        if (response.success && response.data) {
+            set({ gameQuests: response.data, isGameQuestsLoading: false });
+        } else {
+            console.error("Failed to fetch game quests:", response.error);
+            set({ gameQuests: [], isGameQuestsLoading: false });
         }
     },
 
@@ -369,6 +389,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         isEliminating: false,
         eliminationError: null,
         eliminationErrorCode: null,
+        gameQuests: [],
+        isGameQuestsLoading: false,
     }),
 
     // Story 8.2: Dynamic Content Mapper actions

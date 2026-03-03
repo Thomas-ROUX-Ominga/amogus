@@ -96,21 +96,26 @@ function QuestPageContent() {
     }, [duration, questId]);
 
     useEffect(() => {
-        if (gameState && !currentQuest) {
-            // Role check for Impostors - Story 4.1
-            const currentPlayer = gameState.players.find((p) => p.id === userId);
-            const isImpostor = currentPlayer?.role === "IMPOSTOR";
-            if (isImpostor && isValidDuration(duration)) {
+        if (!gameState) return;
+
+        // Role check for Impostors - Story 4.1
+        const currentPlayer = gameState.players.find((p) => p.id === userId);
+        const isImpostor = currentPlayer?.role === "IMPOSTOR";
+        
+        if (isImpostor && isValidDuration(duration)) {
+            if (currentQuest?.id !== "impostor-sim") {
                 setCurrentQuest({
                     id: "impostor-sim",
                     type: "true-false",
                     duration: (isValidDuration(duration) ? duration : "short") as QuestDuration,
                     location: "Système de camouflage",
                 });
-                return;
             }
+            return;
+        }
 
-            if (questId) {
+        if (questId) {
+            if (currentQuest?.id !== questId) {
                 // Story 8.2: Use dynamic content mapper for questId-based content
                 loadDynamicQuestContent(questId, gameId, userId!);
                 
@@ -132,7 +137,9 @@ function QuestPageContent() {
                 } catch {
                     // Ignore haptic failures
                 }
-            } else if (isValidDuration(duration)) {
+            }
+        } else if (isValidDuration(duration)) {
+            if (!currentQuest || currentQuest.duration !== duration) {
                 const questGame = getRandomQuestGame("true-false", duration); // TODO: This needs to be updated to get type from somewhere
                 if (questGame) {
                     // Convert QuestGame to Quest for now (temporary fix)
@@ -154,7 +161,7 @@ function QuestPageContent() {
                 }
             }
         }
-    }, [gameState, duration, questId, currentQuest, setCurrentQuest, userId, gameId, loadDynamicQuestContent]);
+    }, [gameState, duration, questId, currentQuest?.id, currentQuest?.duration, setCurrentQuest, userId, gameId, loadDynamicQuestContent]);
 
     // Loading state
     if (isLoading || !userId) {

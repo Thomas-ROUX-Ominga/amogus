@@ -28,7 +28,7 @@ export function QuestProgress({
     completedQuests = EMPTY_ARRAY,
     batchId
 }: QuestProgressProps) {
-    const { getImpostorQuestData, impostorQuestsInitialized } = useGameStore();
+    const { getImpostorQuestData, impostorQuestsInitialized, gameQuests = [], fetchGameQuests = async () => {}, isGameQuestsLoading, gameState } = useGameStore();
 
     // For impostors, show quest list if initialized, otherwise show loading
     if (role === "IMPOSTOR") {
@@ -98,12 +98,17 @@ export function QuestProgress({
             setIsCrewQuestsLoading(true);
             try {
                 let assignedList: Array<Quest & { completed: boolean; location?: string }> = [];
-
+                
                 if (batchId) {
-                    const response = await getBatch(batchId);
-                    if (response.success && response.data) {
-                        const allQuests = response.data.quests;
-                        
+                    // Fetch quests from server action via store if they aren't loaded yet
+                    if (gameQuests.length === 0 && gameState?.id && !isGameQuestsLoading) {
+                        await fetchGameQuests(gameState.id);
+                    }
+                    
+                    const storeState = useGameStore.getState();
+                    const allQuests = storeState.gameQuests;
+                    
+                    if (allQuests.length > 0) {
                         if (assignedQuests.length > 0) {
                             assignedList = assignedQuests.map(id => {
                                 const questDef = allQuests.find(q => q.id === id);
@@ -161,7 +166,7 @@ export function QuestProgress({
             }
         };
         fetchQuests();
-    }, [role, batchId, assignedQuests, completedQuests, total, completed]);
+    }, [role, batchId, assignedQuests, completedQuests, total, completed, gameQuests.length, gameState?.id]);
 
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
