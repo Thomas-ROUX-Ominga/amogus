@@ -12,6 +12,7 @@ import { ScanButton } from "@/components/game/scan-button";
 import { CameraScanner } from "@/components/game/camera-scanner";
 import { EliminationButton } from "@/components/game/elimination-button";
 import { EliminatedScreen } from "@/components/game/eliminated-screen";
+import { GameOverScreen } from "@/components/game/game-over-screen";
 import { useCameraScanner } from "@/hooks/use-camera-scanner";
 import { getBatch } from "@/lib/redis/batch-actions";
 import { getGlobalQuestStats } from "@/lib/utils/quest-calculations";
@@ -164,6 +165,16 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         <span className="sr-only">Game is {currentPlayer.isAlive ? "active" : "finished for you"}</span>
                     </div>
                 </div>
+
+                {/* Victory/Defeat Overlay */}
+                {gameState.status === "FINISHED" && gameState.winner && (
+                    <GameOverScreen 
+                        winner={gameState.winner}
+                        userRole={role}
+                        isHost={gameState.creatorId === userId}
+                        gameId={gameState.id}
+                    />
+                )}
 
                 <div className="space-y-6">
                     {/* Role Badge */}

@@ -101,45 +101,77 @@ describe("QuestPage", () => {
         expect(screen.getByText(/Chargement de la quête/)).toBeTruthy();
     });
 
-    it("should show error when game fetch fails", () => {
+    it("should show error when game fetch fails", async () => {
+        mockSearchParams = new URLSearchParams("duration=short"); // Add duration to prevent stale check
         vi.mocked(useGameStore).mockReturnValue({
             ...baseStoreState,
+            isLoading: false,
             error: "Game not found",
             errorCode: "GAME_NOT_FOUND",
+            currentQuest: { id: "test", type: "true-false", duration: "short", location: "test" }, // Match duration to prevent stale check
         });
         render(
             <AuthProvider>
                 <QuestPage />
             </AuthProvider>
         );
+        
+        // Wait for async operations to complete
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 0));
+        });
+        
         expect(screen.getByText("SESSION INTROUVABLE")).toBeTruthy();
     });
 
-    it("should show error for invalid duration param", () => {
+    it("should show error for invalid duration param", async () => {
         mockSearchParams = new URLSearchParams("duration=invalid");
-        vi.mocked(useGameStore).mockReturnValue(baseStoreState);
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
-        expect(screen.getByText("DURÉE INVALIDE")).toBeTruthy();
-    });
-
-    it("should show error for missing duration param", () => {
-        mockSearchParams = new URLSearchParams("");
-        vi.mocked(useGameStore).mockReturnValue(baseStoreState);
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
-        expect(screen.getByText("DURÉE INVALIDE")).toBeTruthy();
-    });
-
-    it("should show error when game is not IN_PROGRESS", () => {
         vi.mocked(useGameStore).mockReturnValue({
             ...baseStoreState,
+            isLoading: false,
+            currentQuest: { id: "test", type: "true-false", duration: "invalid", location: "test" }, // Match duration to prevent stale check
+        });
+        render(
+            <AuthProvider>
+                <QuestPage />
+            </AuthProvider>
+        );
+        
+        // Wait for async operations to complete
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 0));
+        });
+        
+        expect(screen.getByText("DURÉE INVALIDE")).toBeTruthy();
+    });
+
+    it("should show error for missing duration param", async () => {
+        mockSearchParams = new URLSearchParams("");
+        vi.mocked(useGameStore).mockReturnValue({
+            ...baseStoreState,
+            isLoading: false,
+            currentQuest: null, // No duration means no stale check issue
+        });
+        render(
+            <AuthProvider>
+                <QuestPage />
+            </AuthProvider>
+        );
+        
+        // Wait for async operations to complete
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 0));
+        });
+        
+        expect(screen.getByText("DURÉE INVALIDE")).toBeTruthy();
+    });
+
+    it("should show error when game is not IN_PROGRESS", async () => {
+        mockSearchParams = new URLSearchParams("duration=short");
+        vi.mocked(useGameStore).mockReturnValue({
+            ...baseStoreState,
+            isLoading: false,
+            currentQuest: { id: "test", type: "true-false", duration: "short", location: "test" }, // Match duration to prevent stale check
             gameState: {
                 id: "game-123",
                 status: "LOBBY",
@@ -152,12 +184,21 @@ describe("QuestPage", () => {
                 <QuestPage />
             </AuthProvider>
         );
+        
+        // Wait for async operations to complete
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 0));
+        });
+        
         expect(screen.getByText("MISSION INACTIVE")).toBeTruthy();
     });
 
-    it("should show error when player is not in game", () => {
+    it("should show error when player is not in game", async () => {
+        mockSearchParams = new URLSearchParams("duration=short");
         vi.mocked(useGameStore).mockReturnValue({
             ...baseStoreState,
+            isLoading: false,
+            currentQuest: { id: "test", type: "true-false", duration: "short", location: "test" }, // Match duration to prevent stale check
             gameState: {
                 id: "game-123",
                 status: "IN_PROGRESS",
@@ -170,12 +211,21 @@ describe("QuestPage", () => {
                 <QuestPage />
             </AuthProvider>
         );
+        
+        // Wait for async operations to complete
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 0));
+        });
+        
         expect(screen.getByText("ACCÈS REFUSÉ")).toBeTruthy();
     });
 
-    it("should show error when player has no role", () => {
+    it("should show error when player has no role", async () => {
+        mockSearchParams = new URLSearchParams("duration=short");
         vi.mocked(useGameStore).mockReturnValue({
             ...baseStoreState,
+            isLoading: false,
+            currentQuest: { id: "test", type: "true-false", duration: "short", location: "test" }, // Match duration to prevent stale check
             gameState: {
                 id: "game-123",
                 status: "IN_PROGRESS",
@@ -188,6 +238,12 @@ describe("QuestPage", () => {
                 <QuestPage />
             </AuthProvider>
         );
+        
+        // Wait for async operations to complete
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 0));
+        });
+        
         expect(screen.getByText("RÔLE NON ASSIGNÉ")).toBeTruthy();
     });
 

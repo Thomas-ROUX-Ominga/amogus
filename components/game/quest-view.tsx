@@ -99,11 +99,11 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
 
     // Handle background redirect during success overlay
     const handleAutoRedirect = useCallback(async () => {
-        // Initiate background redirect asynchronously first
+        // Story 11.2: Clear quest state IMMEDIATELY when leaving
+        clearQuest();
+        
         try {
             await router.push(`/game/${gameId}`);
-            // Only clear quest state after successful redirect
-            clearQuest();
         } catch (error) {
             console.error('Redirect failed:', error);
             // Fallback: try again after a short delay
@@ -114,6 +114,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
     // Remove the old auto-redirect useEffect since we handle it in SuccessOverlay
 
     const handleManualExit = useCallback(() => {
+        // Story 11.2: Clear quest state IMMEDIATELY when leaving
         clearQuest();
         router.push(`/game/${gameId}`);
     }, [clearQuest, router, gameId]);

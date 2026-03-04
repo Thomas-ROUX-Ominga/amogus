@@ -23,6 +23,7 @@ vi.mock("@/lib/redis/auth-utils", () => ({
 // Mock quest-pool functions
 vi.mock("@/lib/constants/quest-pool", () => ({
     getTotalQuestGamesCount: vi.fn(() => 9), // Mock total quest count
+    getQuestGamesByDuration: vi.fn(() => []), // Mock getQuestGamesByDuration
 }));
 
 // Mock crypto with getRandomValues for generateShortCode
@@ -140,7 +141,10 @@ describe("completeQuest", () => {
 
     it("should record quest completion successfully", async () => {
         vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
-            return updater(structuredClone(baseGame));
+            const game = structuredClone(baseGame);
+            // Ensure no batchId to bypass assigned quests validation
+            const result = updater(game);
+            return result;
         });
 
         const result = await completeQuest("game-123", "user-1", "s1");

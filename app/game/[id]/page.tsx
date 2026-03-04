@@ -14,8 +14,22 @@ import { Rocket, Loader2, Wifi, WifiOff } from "lucide-react";
 
 export default function LobbyPage() {
     const { id } = useParams();
-    const { gameState, isLoading, isLaunching, error, errorCode, launchError, selectedRole, fetchGame, launch } = useGameStore();
+    const { gameState, isLoading, isLaunching, error, errorCode, launchError, selectedRole, fetchGame, launch, reset } = useGameStore();
     const { authState } = useAuth();
+    
+    // Reset state when switching between different games
+    useEffect(() => {
+        if (id && gameState && gameState.id !== id) {
+            reset();
+        }
+    }, [id, gameState, reset]);
+
+    // Cleanup store when leaving the game page
+    useEffect(() => {
+        return () => {
+            reset();
+        };
+    }, [reset]);
     
     // Auth session is now the single source of truth for both admin and anonymous players.
     // AuthProvider ensures at least an anonymous session is always present.
@@ -28,24 +42,27 @@ export default function LobbyPage() {
         gameState: realTimeGameState, 
         isConnected, 
         isGameInProgress: realTimeGameInProgress,
+        isGameFinished: realTimeGameFinished,
         playerCount: realTimePlayerCount,
         newPlayers
     } = useRealTimeGamePolling(id as string || '', userId ?? undefined, true);
 
-    // Use real-time data when available, fallback to store data
-    const currentGameState = realTimeGameState || gameState;
+    // Use store data as the primary source of truth (always freshest)
+    const currentGameState = gameState;
     const currentPlayerCount = realTimePlayerCount || currentGameState?.players.length || 0;
     const currentGameInProgress = realTimeGameInProgress || currentGameState?.status === 'IN_PROGRESS';
+    const currentGameFinished = realTimeGameFinished || currentGameState?.status === 'FINISHED';
+    const isGameStarted = currentGameInProgress || currentGameFinished;
 
     useEffect(() => {
-        if (id) {
+        if (id && !gameState) {
             fetchGame(id as string, userId ?? undefined);
         }
-    }, [id, userId, fetchGame]);
+    }, [id, userId, fetchGame, gameState]);
 
     // Game start detection - redirect when game starts
     useEffect(() => {
-        if (currentGameInProgress && currentGameState && !showTransition && !showGameHome) {
+        if (isGameStarted && currentGameState && !showTransition && !showGameHome) {
             const currentPlayer = currentGameState.players.find((p) => p.id === userId);
             
             // Haptic feedback for game start
@@ -66,7 +83,7 @@ export default function LobbyPage() {
             // Player has role, show game home (using setTimeout to avoid setState in effect)
             setTimeout(() => setShowGameHome(true), 0);
         }
-    }, [currentGameInProgress, currentGameState, userId, showTransition, showGameHome]);
+    }, [isGameStarted, currentGameState, userId, showTransition, showGameHome]);
 
     const handleLaunch = useCallback(async () => {
         if (!id || isLaunching) return;
@@ -104,7 +121,7 @@ export default function LobbyPage() {
 
     // Derive whether to show game home: either after transition completes,
     // or directly if player already has a role (idempotency / page reload)
-    const shouldShowGameHome = currentGameInProgress && hasRole && (showGameHome || !showTransition);
+    const shouldShowGameHome = isGameStarted && hasRole && (showGameHome || !showTransition);
 
     if (isLoading || !userId) {
         return (

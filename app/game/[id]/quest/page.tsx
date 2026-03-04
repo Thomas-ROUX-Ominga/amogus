@@ -46,12 +46,20 @@ function QuestPageContent() {
         currentQuest,
         currentQuestContent,
         setCurrentQuest,
+        clearQuestContent,
         fetchGame,
         loadDynamicQuestContent,
         loadFailedQuests,
     } = useGameStore();
 
     const gameId = id as string;
+
+    // Story 11.1: Synchronous stale check to prevent flicker
+    // If we have a questId in URL but the store has a different quest,
+    // or if we have a duration but the store has a different duration,
+    // we must show the loading state IMMEDIATELY instead of waiting for useEffect.
+    const isStale = (questId && currentQuest?.id !== questId) || 
+                   (!questId && duration && currentQuest?.duration !== duration);
 
     useEffect(() => {
         if (id) {
@@ -68,16 +76,17 @@ function QuestPageContent() {
 
     // Update quest metadata when dynamic content loads
     useEffect(() => {
-        if (currentQuestContent && currentQuest && questId) {
-            // Update quest with correct metadata from dynamic content
-            if (
+        if (currentQuestContent && questId) {
+            // If currentQuest is null, or it's out of sync with content
+            if (!currentQuest || currentQuest.id !== questId || 
                 currentQuest.type !== currentQuestContent.content.type ||
-                currentQuest.duration !== currentQuestContent.content.duration
-            ) {
+                currentQuest.duration !== currentQuestContent.content.duration) {
+                
                 const updatedQuest: Quest = {
-                    ...currentQuest,
+                    id: questId,
                     type: currentQuestContent.content.type,
                     duration: currentQuestContent.content.duration,
+                    location: currentQuest?.location || "Zone de quête",
                 };
                 setCurrentQuest(updatedQuest);
             }
@@ -119,17 +128,7 @@ function QuestPageContent() {
                 // Story 8.2: Use dynamic content mapper for questId-based content
                 loadDynamicQuestContent(questId, gameId, userId!);
                 
-                // Set quest metadata from Redis (not from content pool)
-                // This ensures we get the correct quest metadata, not content metadata
-                const quest: Quest = {
-                    id: questId,
-                    type: "true-false", // Will be updated when dynamic content loads
-                    duration: "short", // Will be updated when dynamic content loads  
-                    location: "Zone de quête",
-                };
-                setCurrentQuest(quest);
-                
-                // Haptic feedback on successful quest load
+                // Haptic feedback on successful quest load initiation
                 try {
                     if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
                         navigator.vibrate([30]);
@@ -163,8 +162,7 @@ function QuestPageContent() {
         }
     }, [gameState, duration, questId, currentQuest?.id, currentQuest?.duration, setCurrentQuest, userId, gameId, loadDynamicQuestContent]);
 
-    // Loading state
-    if (isLoading || !userId) {
+    if (isStale || isLoading || !userId) {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <div className="max-w-2xl w-full border-2 border-primary/20 p-12 space-y-6 bg-black/50 backdrop-blur-sm animate-pulse">

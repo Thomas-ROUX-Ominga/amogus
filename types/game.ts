@@ -25,6 +25,7 @@ export interface GameState {
         medium: number;
         long: number;
     }; // Quest distribution configuration
+    winner?: PlayerRole; // Victory condition result
 }
 
 export interface ActionResponse<T> {

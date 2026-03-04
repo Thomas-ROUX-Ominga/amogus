@@ -12,16 +12,23 @@ interface JoinFormProps {
 
 export function JoinForm({ gameId, userId }: JoinFormProps) {
     const [pseudo, setPseudo] = useState("");
-    const { join, isLoading, error } = useGameStore();
+    const [isSuccess, setIsSuccess] = useState(false);
+    const { join, isJoining, error } = useGameStore();
     const { setAnonymousSession } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!pseudo.trim() || isLoading) return;
+        if (!pseudo.trim() || isJoining || isSuccess) return;
+        
         await join(gameId, pseudo.trim(), userId);
         
-        // Sync the anonymous session with the pseudo and gameId
-        setAnonymousSession(pseudo.trim(), gameId);
+        // If there's an error in the store, we don't treat it as success
+        // Note: we check the CURRENT store state after await
+        if (!useGameStore.getState().error) {
+            setIsSuccess(true);
+            // Sync the anonymous session with the pseudo and gameId
+            setAnonymousSession(pseudo.trim(), gameId);
+        }
     };
 
     return (
@@ -62,13 +69,13 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
 
                 <button
                     type="submit"
-                    disabled={!pseudo.trim() || isLoading}
+                    disabled={!pseudo.trim() || isJoining || isSuccess}
                     className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground font-black py-4 rounded-sm transition-all flex items-center justify-center gap-2 group relative overflow-hidden"
                 >
                     <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                     <span className="relative flex items-center gap-2 tracking-[0.3em] uppercase text-sm">
-                        {isLoading ? "ESTABLISHING..." : "REJOINDRE"}
-                        {!isLoading && <UserPlus size={18} />}
+                        {isJoining || isSuccess ? "ESTABLISHING..." : "REJOINDRE"}
+                        {!(isJoining || isSuccess) && <UserPlus size={18} />}
                     </span>
                 </button>
             </form>

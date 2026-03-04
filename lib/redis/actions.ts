@@ -10,6 +10,31 @@ import { Quest, QuestGame } from "@/types/quest";
 import { assignQuestsFromBatch } from "@/lib/quests/quest-assignment";
 
 import { verifySession, createPlayerSession, verifyPlayerSession } from "./auth-utils";
+import { getGlobalQuestStats } from "@/lib/utils/quest-calculations";
+
+/**
+ * Utility to check if any win conditions are met
+ */
+function checkWinConditions(state: GameState): { finished: boolean; winner?: PlayerRole } {
+    const players = state.players;
+    
+    // 1. Check Crewmate Victory: All assigned quests completed
+    const stats = getGlobalQuestStats(players, state);
+    if (stats.total > 0 && stats.completed >= stats.total) {
+        return { finished: true, winner: "CREWMATE" };
+    }
+
+    // 2. Check Impostor Victory: All Crewmates eliminated
+    const aliveCrewmates = players.filter(p => p.role === "CREWMATE" && p.isAlive);
+    const totalCrewmates = players.filter(p => p.role === "CREWMATE");
+    
+    // Only trigger if there were actually crewmates and they are all dead
+    if (totalCrewmates.length > 0 && aliveCrewmates.length === 0) {
+        return { finished: true, winner: "IMPOSTOR" };
+    }
+
+    return { finished: false };
+}
 
 export interface CreateGameInput {
     batchId?: string;
@@ -435,6 +460,17 @@ export async function completeQuest(
                 lastQuestCompleted: Date.now(), // Set timestamp for last completed quest
             };
 
+            // Check for victory after quest completion
+            const winCheck = checkWinConditions({ ...state, players: updatedPlayers });
+            if (winCheck.finished) {
+                return {
+                    ...state,
+                    players: updatedPlayers,
+                    status: "FINISHED",
+                    winner: winCheck.winner
+                };
+            }
+
             return {
                 ...state,
                 players: updatedPlayers,
@@ -725,6 +761,17 @@ export async function eliminatePlayer(
                 ...updatedPlayers[playerIndex],
                 isAlive: false,
             };
+
+            // Check for victory after player elimination
+            const winCheck = checkWinConditions({ ...state, players: updatedPlayers });
+            if (winCheck.finished) {
+                return {
+                    ...state,
+                    players: updatedPlayers,
+                    status: "FINISHED",
+                    winner: winCheck.winner
+                };
+            }
 
             return {
                 ...state,

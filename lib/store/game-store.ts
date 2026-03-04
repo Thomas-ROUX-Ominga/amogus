@@ -11,6 +11,7 @@ import useSWR from "swr";
 interface GameStore {
     gameState: GameState | null;
     isLoading: boolean;
+    isJoining: boolean;
     isLaunching: boolean;
     isSelectingRole: boolean;
     isCompletingQuest: boolean;
@@ -113,7 +114,7 @@ export function useRealTimeGamePolling(gameId: string, userId?: string, enabled 
     // Story 11.5: Only stop polling for eliminated Impostors or when game is finished.
     // Crewmates in Ghost Mode still need real-time updates.
     const shouldStopPolling = isEliminated && currentPlayer?.role === "IMPOSTOR";
-    const isGameFinished = gameStateFromStore?.status === "FINISHED";
+    const isGameFinished = gameStateFromStore?.status === "FINISHED" && gameStateFromStore?.id === gameId;
     
     const {
         data,
@@ -147,6 +148,7 @@ export function useRealTimeGamePolling(gameId: string, userId?: string, enabled 
         isConnected: !error && !isLoading,
         playerCount: data?.players.length ?? 0,
         isGameInProgress: data?.status === 'IN_PROGRESS',
+        isGameFinished: data?.status === 'FINISHED',
         newPlayers: data?.newPlayers ?? []
     };
 }
@@ -154,6 +156,7 @@ export function useRealTimeGamePolling(gameId: string, userId?: string, enabled 
 export const useGameStore = create<GameStore>((set, get) => ({
     gameState: null,
     isLoading: false,
+    isJoining: false,
     isLaunching: false,
     isSelectingRole: false,
     isCompletingQuest: false,
@@ -264,16 +267,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
     },
 
     join: async (gameId: string, playerName: string, userId: string) => {
-        set({ isLoading: true, error: null, errorCode: null });
+        set({ isJoining: true, error: null, errorCode: null });
         const response = await joinGame(gameId, playerName, userId);
 
         if (response.success && response.data) {
-            set({ gameState: response.data, isLoading: false });
+            set({ gameState: response.data, isJoining: false });
         } else {
             set({
                 error: response.error || "Unknown error",
                 errorCode: response.code || null,
-                isLoading: false
+                isJoining: false
             });
         }
     },
@@ -366,6 +369,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     reset: () => set({ 
         gameState: null, 
         isLoading: false, 
+        isJoining: false,
         isLaunching: false, 
         isSelectingRole: false,
         isCompletingQuest: false,

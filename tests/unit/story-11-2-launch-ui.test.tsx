@@ -62,6 +62,7 @@ describe('Task 3: Restrict Game Launch to Admin - UI', () => {
       selectedRole: null,
       fetchGame: vi.fn(),
       launch: vi.fn(),
+      reset: vi.fn(),
     } as any);
 
     vi.mocked(useRealTimeGamePolling).mockReturnValue({
@@ -122,6 +123,7 @@ describe('Task 3: Restrict Game Launch to Admin - UI', () => {
       selectedRole: null,
       fetchGame: vi.fn(),
       launch: vi.fn(),
+      reset: vi.fn(),
     } as any);
 
     vi.mocked(useRealTimeGamePolling).mockReturnValue({
