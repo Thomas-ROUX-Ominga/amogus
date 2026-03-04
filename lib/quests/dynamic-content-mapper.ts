@@ -95,8 +95,24 @@ export class DynamicContentMapper {
         duration: QuestDuration,
         excludedContentIds: string[]
     ): { content: QuestGame; contentId: string } | null {
+        // Mini-games are self-contained components — they handle their own content
+        // We return a synthetic QuestGame so quest-view renders the mini-game component
+        if (type === "mini-game") {
+            const syntheticId = `mini-game-${duration}`;
+            const syntheticContent: QuestGame = {
+                id: syntheticId,
+                type: "mini-game",
+                duration,
+                title: "Mini-Bac",
+                instruction: "Trouve un mot par catégorie commençant par la lettre tirée.",
+                data: {},
+            };
+            return { content: syntheticContent, contentId: syntheticId };
+        }
+
         // Get all content matching the duration first (more efficient)
         const allContent = getQuestGamesByDuration(duration);
+
         
         // Create exclusion set for O(1) lookup
         const exclusionSet = new Set(excludedContentIds);

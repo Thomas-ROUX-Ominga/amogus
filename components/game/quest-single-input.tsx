@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { QuestGame } from "@/types/quest";
 import { useQuestAnswer } from "@/hooks/use-quest-answer";
+import { normalize } from "@/lib/utils/word-utils";
 
 interface QuestSingleInputProps {
     quest: Extract<QuestGame, { type: "single-input" }>;
@@ -24,8 +25,8 @@ export function QuestSingleInput({ quest, onSuccess, onError }: QuestSingleInput
                 expected = expected.trim();
             }
             if (validation.case === "insensitive") {
-                input = input.toLowerCase();
-                expected = expected.toLowerCase();
+                input = normalize(input);
+                expected = normalize(expected);
             }
             return input === expected;
         },

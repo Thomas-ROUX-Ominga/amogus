@@ -8,7 +8,9 @@ export interface Quest {
     type: QuestType;
     duration: QuestDuration;
     location?: string;
+    miniGameId?: string; // Only set when type === "mini-game"
 }
+
 
 // QuestGame - actual game content with questions and answers
 export interface Choice {

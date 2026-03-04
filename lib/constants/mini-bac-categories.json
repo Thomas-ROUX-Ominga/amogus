@@ -1,0 +1,24 @@
+{
+  "categories": [
+    { "name": "Prénom", "type": "proper" },
+    { "name": "Animal", "type": "common" },
+    { "name": "Pays", "type": "proper" },
+    { "name": "Ville", "type": "proper" },
+    { "name": "Métier", "type": "common" },
+    { "name": "Film", "type": "proper" },
+    { "name": "Marque", "type": "proper" },
+    { "name": "Sport", "type": "common" },
+    { "name": "Plante", "type": "common" },
+    { "name": "Couleur", "type": "common" },
+    { "name": "Aliment", "type": "common" },
+    { "name": "Personnage célèbre", "type": "proper" },
+    { "name": "Monument", "type": "proper" },
+    { "name": "Matière scolaire", "type": "common" },
+    { "name": "Instrument de musique", "type": "common" },
+    { "name": "Légume", "type": "common" },
+    { "name": "Fruit", "type": "common" },
+    { "name": "Voiture", "type": "proper" },
+    { "name": "Vêtement", "type": "common" },
+    { "name": "Objet de la maison", "type": "common" }
+  ]
+}

@@ -60,12 +60,24 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
             if (currentQuestContent) {
                 setQuestGame(currentQuestContent.content);
                 setIsLoadingGame(false);
+            } else if (quest.type === "mini-game") {
+                // Mini-games are self-contained — provide a synthetic entry so the renderer picks it up
+                setQuestGame({
+                    id: `mini-game-${quest.duration}`,
+                    type: "mini-game",
+                    duration: quest.duration,
+                    title: "Mini-Bac",
+                    instruction: "Trouve un mot par catégorie commençant par la lettre tirée.",
+                    data: {},
+                });
+                setIsLoadingGame(false);
             } else {
                 const game = getRandomQuestGame(quest.type, quest.duration);
                 setQuestGame(game);
                 setIsLoadingGame(false);
             }
         };
+
 
         loadQuestGame();
     }, [quest, currentQuestContent, isImpostor]);

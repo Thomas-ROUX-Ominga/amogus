@@ -35,23 +35,49 @@ export async function assignQuestsFromBatch(gameState: GameState): Promise<Quest
     const mediumQuests = batch.quests.filter(q => q.duration === 'medium');
     const longQuests = batch.quests.filter(q => q.duration === 'long');
 
+    // Identify mini-games in the batch to ensure at least one is assigned
+    const miniGames = batch.quests.filter(q => q.type === 'mini-game');
+    let forcedMiniGame: Quest | null = null;
+    
+    if (miniGames.length > 0) {
+      // Pick one random mini-game to guarantee for this player
+      forcedMiniGame = miniGames[Math.floor(Math.random() * miniGames.length)];
+    }
+
     // Helper to select random quests using Fisher-Yates shuffle
-    const selectRandomQuests = (quests: Quest[], count: number, durationName: string): Quest[] => {
+    const selectRandomQuests = (quests: Quest[], count: number, durationName: 'short' | 'medium' | 'long', forced?: Quest | null): Quest[] => {
+      if (count <= 0) return [];
+      
       if (count > quests.length) {
         throw new Error(`Insufficient ${durationName} quests available. Requested ${count}, but only ${quests.length} found in batch.`);
       }
-      const shuffled = [...quests];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+
+      let pool = [...quests];
+      const selected: Quest[] = [];
+
+      // If we have a forced quest for this duration, include it first
+      if (forced && forced.duration === durationName) {
+        selected.push(forced);
+        pool = pool.filter(q => q.id !== forced.id);
       }
-      return shuffled.slice(0, count);
+
+      // Shuffle the remaining pool
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+
+      // Fill remaining slots
+      const remainingCount = count - selected.length;
+      selected.push(...pool.slice(0, remainingCount));
+
+      return selected;
     };
 
-    // Select quests according to distribution
-    const selectedShort = selectRandomQuests(shortQuests, distribution.short, 'short');
-    const selectedMedium = selectRandomQuests(mediumQuests, distribution.medium, 'medium');
-    const selectedLong = selectRandomQuests(longQuests, distribution.long, 'long');
+    // Select quests according to distribution, forcing the mini-game if applicable
+    const selectedShort = selectRandomQuests(shortQuests, distribution.short, 'short', forcedMiniGame);
+    const selectedMedium = selectRandomQuests(mediumQuests, distribution.medium, 'medium', forcedMiniGame);
+    const selectedLong = selectRandomQuests(longQuests, distribution.long, 'long', forcedMiniGame);
 
     // Convert to quest assignments
     const assignments: QuestAssignment[] = [
@@ -71,6 +97,7 @@ export async function assignQuestsFromBatch(gameState: GameState): Promise<Quest
         duration: 'long' as const
       }))
     ];
+
 
     return assignments;
   } catch (error) {

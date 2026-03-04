@@ -6,6 +6,7 @@ import { QuestQCM } from "@/components/game/quest-qcm";
 import { QuestSingleInput } from "@/components/game/quest-single-input";
 import { QuestNumberInput } from "@/components/game/quest-number-input";
 import { QuestIntrus } from "@/components/game/quest-intrus";
+import { QuestMiniBac } from "@/components/game/mini-games/quest-mini-bac";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
@@ -46,12 +47,15 @@ export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRender
             return <QuestNumberInput quest={quest} onSuccess={onSuccess} onError={onError} />;
         case "intrus":
             return <QuestIntrus quest={quest} onSuccess={onSuccess} onError={onError} />;
-        default:
+        case "mini-game":
+            return <QuestMiniBac duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
+        default: {
+            const unknownType = (quest as unknown as { type: string }).type;
             return (
                 <div className="p-6 border border-destructive/30 bg-destructive/5 backdrop-blur-sm text-center space-y-4">
                     <AlertTriangle className="w-8 h-8 text-destructive mx-auto" aria-hidden="true" />
                     <p className="text-sm text-destructive/80 font-rajdhani">
-                        Type de quête non supporté : {quest.type}
+                        Type de quête non supporté : {unknownType}
                     </p>
                     <Link
                         href={`/game/${gameId}`}
@@ -61,5 +65,6 @@ export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRender
                     </Link>
                 </div>
             );
+        }
     }
 }

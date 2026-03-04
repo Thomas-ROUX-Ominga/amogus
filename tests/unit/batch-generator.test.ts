@@ -4,20 +4,37 @@ import { BatchCreateInput, QuestType } from '@/types/quest';
 
 describe('Batch Generator', () => {
   describe('generateBatch', () => {
-    it('should generate exact 1/3 split for divisible numbers', () => {
+    it('should always contain exactly 3 mini-game quests (one per duration)', () => {
+      const input: BatchCreateInput = { totalQuests: 30 };
+      const batch = generateBatch(input);
+
+      const miniGames = batch.quests.filter(q => q.type === 'mini-game');
+      expect(miniGames).toHaveLength(3);
+      
+      const durations = miniGames.map(mg => mg.duration);
+      expect(durations).toContain('short');
+      expect(durations).toContain('medium');
+      expect(durations).toContain('long');
+    });
+
+    it('should generate exact count with 3 mini-games + 27 classic quests for 30', () => {
       const input: BatchCreateInput = { totalQuests: 30 };
       const batch = generateBatch(input);
 
       expect(batch.quests).toHaveLength(30);
       expect(batch.questCount).toBe(30);
-      
-      const shortQuests = batch.quests.filter(q => q.duration === 'short');
-      const mediumQuests = batch.quests.filter(q => q.duration === 'medium');
-      const longQuests = batch.quests.filter(q => q.duration === 'long');
 
-      expect(shortQuests).toHaveLength(10);
-      expect(mediumQuests).toHaveLength(10);
-      expect(longQuests).toHaveLength(10);
+      const classicQuests = batch.quests.filter(q => q.type !== 'mini-game');
+      expect(classicQuests).toHaveLength(27);
+
+      const shortQuests = classicQuests.filter(q => q.duration === 'short');
+      const mediumQuests = classicQuests.filter(q => q.duration === 'medium');
+      const longQuests = classicQuests.filter(q => q.duration === 'long');
+
+      // 27 classic quests: 9 short, 9 medium, 9 long
+      expect(shortQuests).toHaveLength(9);
+      expect(mediumQuests).toHaveLength(9);
+      expect(longQuests).toHaveLength(9);
     });
 
     it('should handle odd numbers with proper rounding', () => {
@@ -25,26 +42,48 @@ describe('Batch Generator', () => {
       const batch = generateBatch(input);
 
       expect(batch.quests).toHaveLength(31);
-      
-      const shortQuests = batch.quests.filter(q => q.duration === 'short');
-      const mediumQuests = batch.quests.filter(q => q.duration === 'medium');
-      const longQuests = batch.quests.filter(q => q.duration === 'long');
 
-      // Should distribute the extra quest to one of the durations
-      expect(shortQuests.length + mediumQuests.length + longQuests.length).toBe(31);
-      expect(Math.abs(shortQuests.length - mediumQuests.length)).toBeLessThanOrEqual(1);
-      expect(Math.abs(mediumQuests.length - longQuests.length)).toBeLessThanOrEqual(1);
+      const classicQuests = batch.quests.filter(q => q.type !== 'mini-game');
+      expect(classicQuests).toHaveLength(28); // 31 - 3 mini-games
+
+      const shortQuests = classicQuests.filter(q => q.duration === 'short');
+      const mediumQuests = classicQuests.filter(q => q.duration === 'medium');
+      const longQuests = classicQuests.filter(q => q.duration === 'long');
+
+      // 28 classic quests: 10 short, 9 medium, 9 long
+      expect(shortQuests).toHaveLength(10);
+      expect(mediumQuests).toHaveLength(9);
+      expect(longQuests).toHaveLength(9);
     });
 
-    it('should assign valid quest types to all quests', () => {
+
+    it('should assign valid quest types to all classic quests', () => {
       const input: BatchCreateInput = { totalQuests: 15 };
       const batch = generateBatch(input);
 
-      const validTypes: QuestType[] = ['true-false', 'qcm', 'single-input', 'number-input', 'intrus'];
-      
-      batch.quests.forEach(quest => {
-        expect(validTypes).toContain(quest.type);
+      const validClassicTypes: QuestType[] = ['true-false', 'qcm', 'single-input', 'number-input', 'intrus'];
+
+      batch.quests.filter(q => q.type !== 'mini-game').forEach(quest => {
+        expect(validClassicTypes).toContain(quest.type);
       });
+    });
+
+    it('should assign a miniGameId to the mini-game quest', () => {
+      const input: BatchCreateInput = { totalQuests: 10 };
+      const batch = generateBatch(input);
+
+      const miniGame = batch.quests.find(q => q.type === 'mini-game');
+      expect(miniGame).toBeDefined();
+      expect(miniGame?.miniGameId).toBeDefined();
+      expect(typeof miniGame?.miniGameId).toBe('string');
+    });
+
+    it('should assign a valid duration to the mini-game quest', () => {
+      const input: BatchCreateInput = { totalQuests: 10 };
+      const batch = generateBatch(input);
+
+      const miniGame = batch.quests.find(q => q.type === 'mini-game');
+      expect(['short', 'medium', 'long']).toContain(miniGame?.duration);
     });
 
     it('should generate unique IDs for batch and all quests', () => {
@@ -52,11 +91,11 @@ describe('Batch Generator', () => {
       const batch = generateBatch(input);
 
       expect(batch.id).toBeDefined();
-      expect(batch.id).toMatch(/^[0-9a-f-]+$/); // UUID format
-      
+      expect(batch.id).toMatch(/^[0-9a-f-]+$/);
+
       const questIds = batch.quests.map(q => q.id);
       const uniqueQuestIds = new Set(questIds);
-      
+
       expect(uniqueQuestIds.size).toBe(10);
       expect(questIds.every(id => id.match(/^[0-9a-f-]+$/))).toBe(true);
     });
@@ -69,9 +108,8 @@ describe('Batch Generator', () => {
         expect(quest).toHaveProperty('id');
         expect(quest).toHaveProperty('type');
         expect(quest).toHaveProperty('duration');
-        
+
         expect(typeof quest.id).toBe('string');
-        
         expect(quest.id.length).toBeGreaterThan(0);
       });
     });
@@ -85,3 +123,4 @@ describe('Batch Generator', () => {
     });
   });
 });
+
