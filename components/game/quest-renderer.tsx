@@ -7,8 +7,11 @@ import { QuestSingleInput } from "@/components/game/quest-single-input";
 import { QuestNumberInput } from "@/components/game/quest-number-input";
 import { QuestIntrus } from "@/components/game/quest-intrus";
 import { QuestMiniBac } from "@/components/game/mini-games/quest-mini-bac";
+import { QuestSimon } from "@/components/game/mini-games/quest-simon";
+import { getRandomMiniGame } from "@/lib/mini-games";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
 interface QuestRendererProps {
     quest: QuestGame;
@@ -18,6 +21,8 @@ interface QuestRendererProps {
 }
 
 export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRendererProps) {
+    const [miniGameId] = useState(() => getRandomMiniGame());
+
     // Validate quest has data field
     if (!quest.data) {
         return (
@@ -48,7 +53,11 @@ export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRender
         case "intrus":
             return <QuestIntrus quest={quest} onSuccess={onSuccess} onError={onError} />;
         case "mini-game":
+            if (miniGameId === 'simon') {
+                return <QuestSimon duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
+            }
             return <QuestMiniBac duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
+
         default: {
             const unknownType = (quest as unknown as { type: string }).type;
             return (

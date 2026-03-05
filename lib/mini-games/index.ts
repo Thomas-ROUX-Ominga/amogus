@@ -1,6 +1,6 @@
 import { QuestDuration } from "@/types/quest";
 
-export const AVAILABLE_MINI_GAMES = ['mini-bac'] as const;
+export const AVAILABLE_MINI_GAMES = ['mini-bac', 'simon'] as const;
 export type MiniGameId = typeof AVAILABLE_MINI_GAMES[number];
 
 export function getRandomMiniGame(): MiniGameId {
@@ -14,3 +14,11 @@ export const MINI_BAC_CATEGORY_COUNT: Record<QuestDuration, number> = {
     medium: 6,
     long: 8,
 };
+
+// Target sequence length for Simon per duration
+export const SIMON_SEQUENCE_LENGTH: Record<QuestDuration, number> = {
+    short: 4,
+    medium: 5,
+    long: 6,
+};
+
