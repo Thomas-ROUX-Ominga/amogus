@@ -1,18 +1,11 @@
 import { Batch, BatchCreateInput, Quest, QuestDuration, QuestType } from '@/types/quest';
-import { getRandomMiniGame } from '@/lib/mini-games';
 
 // Classic quest types — mini-game is never randomly assigned here
 const AVAILABLE_QUEST_TYPES: QuestType[] = ['true-false', 'qcm', 'single-input', 'number-input', 'intrus'];
 
-const DURATIONS: QuestDuration[] = ['short', 'medium', 'long'];
-
 function getRandomQuestType(): QuestType {
   const randomIndex = Math.floor(Math.random() * AVAILABLE_QUEST_TYPES.length);
   return AVAILABLE_QUEST_TYPES[randomIndex];
-}
-
-function getRandomDuration(): QuestDuration {
-  return DURATIONS[Math.floor(Math.random() * DURATIONS.length)];
 }
 
 function distributeQuests(totalCount: number): { short: number; medium: number; long: number } {
@@ -33,15 +26,6 @@ function createQuest(duration: QuestDuration): Quest {
     id: globalThis.crypto.randomUUID(),
     type,
     duration,
-  };
-}
-
-function createMiniGameQuest(): Quest {
-  return {
-    id: globalThis.crypto.randomUUID(),
-    type: 'mini-game',
-    duration: getRandomDuration(),
-    miniGameId: getRandomMiniGame(),
   };
 }
 
@@ -87,7 +71,6 @@ export function generateBatch(input: BatchCreateInput): Batch {
       id: globalThis.crypto.randomUUID(),
       type: 'mini-game' as QuestType,
       duration,
-      miniGameId: getRandomMiniGame(),
     };
     const insertAt = Math.floor(Math.random() * (quests.length + 1));
     quests.splice(insertAt, 0, miniGame);

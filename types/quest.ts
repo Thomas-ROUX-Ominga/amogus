@@ -8,7 +8,6 @@ export interface Quest {
     type: QuestType;
     duration: QuestDuration;
     location?: string;
-    miniGameId?: string; // Only set when type === "mini-game"
 }
 
 

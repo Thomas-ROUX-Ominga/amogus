@@ -26,7 +26,7 @@ interface QuestRendererProps {
 }
 
 export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRendererProps) {
-    const [miniGameId] = useState(() => getRandomMiniGame());
+    const [selectedMiniGame] = useState(() => getRandomMiniGame());
 
     // Validate quest has data field
     if (!quest.data) {
@@ -58,7 +58,7 @@ export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRender
         case "intrus":
             return <QuestIntrus quest={quest} onSuccess={onSuccess} onError={onError} />;
         case "mini-game":
-            switch (miniGameId) {
+            switch (selectedMiniGame) {
                 case "simon":
                     return <QuestSimon duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
                 case "wires":

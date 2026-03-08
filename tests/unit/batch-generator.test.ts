@@ -68,16 +68,6 @@ describe('Batch Generator', () => {
       });
     });
 
-    it('should assign a miniGameId to the mini-game quest', () => {
-      const input: BatchCreateInput = { totalQuests: 10 };
-      const batch = generateBatch(input);
-
-      const miniGame = batch.quests.find(q => q.type === 'mini-game');
-      expect(miniGame).toBeDefined();
-      expect(miniGame?.miniGameId).toBeDefined();
-      expect(typeof miniGame?.miniGameId).toBe('string');
-    });
-
     it('should assign a valid duration to the mini-game quest', () => {
       const input: BatchCreateInput = { totalQuests: 10 };
       const batch = generateBatch(input);
@@ -123,4 +113,3 @@ describe('Batch Generator', () => {
     });
   });
 });
-
