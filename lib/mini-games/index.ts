@@ -1,6 +1,6 @@
 import { QuestDuration } from "@/types/quest";
 
-export const AVAILABLE_MINI_GAMES = ["mini-bac", "simon", "wires", "gauges", "pad", "memory"] as const;
+export const AVAILABLE_MINI_GAMES = ["mini-bac", "simon", "wires", "gauges", "pad", "memory", "rings"] as const;
 export type MiniGameId = typeof AVAILABLE_MINI_GAMES[number];
 
 export function getRandomMiniGame(): MiniGameId {
@@ -50,3 +50,11 @@ export const MEMORY_PAIR_COUNT_BY_DURATION: Record<QuestDuration, number> = {
 };
 
 export const MEMORY_MISMATCH_FLIPBACK_DELAY_MS = 700;
+
+export const RINGS_COUNT_BY_DURATION: Record<QuestDuration, number> = {
+    short: 3,
+    medium: 4,
+    long: 5,
+};
+
+export const RINGS_TOLERANCE_DEG = 18;

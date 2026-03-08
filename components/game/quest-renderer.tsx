@@ -12,6 +12,7 @@ import { QuestWires } from "@/components/game/mini-games/quest-wires";
 import { QuestGauges } from "@/components/game/mini-games/quest-gauges";
 import { QuestPad } from "@/components/game/mini-games/quest-pad";
 import { QuestMemory } from "@/components/game/mini-games/quest-memory";
+import { QuestRings } from "@/components/game/mini-games/quest-rings";
 import { getRandomMiniGame } from "@/lib/mini-games";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
@@ -68,6 +69,8 @@ export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRender
                     return <QuestPad duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
                 case "memory":
                     return <QuestMemory duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
+                case "rings":
+                    return <QuestRings duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
                 case "mini-bac":
                 default:
                     return <QuestMiniBac duration={quest.duration} onSuccess={onSuccess} onError={onError} />;

@@ -133,6 +133,13 @@ describe("QuestRenderer", () => {
         expect(screen.getByText(/Paires trouvées : 0\/4/i)).toBeTruthy();
     });
 
+    it("should render QuestRings when random mini-game is rings", () => {
+        mockGetRandomMiniGame.mockReturnValue("rings");
+        render(<QuestRenderer quest={baseMiniGameQuest} gameId="g1" onSuccess={onSuccess} onError={onError} />);
+        expect(screen.getByText(/Alignez les bagues dans l'ordre/i)).toBeTruthy();
+        expect(screen.getByText(/Anneau : 1\/3/i)).toBeTruthy();
+    });
+
     it("should show 'Retour au Game Home' link for malformed quest", () => {
         const malformed = { ...baseTrueFalseQuest, data: undefined } as unknown as QuestGame;
         render(<QuestRenderer quest={malformed} gameId="g1" onSuccess={onSuccess} onError={onError} />);
