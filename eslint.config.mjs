@@ -35,6 +35,7 @@ const eslintConfig = defineConfig([
         URLSearchParams: "readonly",
         HTMLButtonElement: "readonly",
         HTMLInputElement: "readonly",
+        HTMLDivElement: "readonly",
         HTMLElement: "readonly",
         structuredClone: "readonly",
         Storage: "readonly",

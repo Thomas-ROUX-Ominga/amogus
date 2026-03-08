@@ -113,13 +113,17 @@ describe("QuestView - Impostor Silent Success", () => {
 
     it("should show immediate success overlay for impostor without loading content", async () => {
         // Arrange
-        const { container } = render(
-            <QuestView 
-                quest={mockQuest} 
-                gameId={mockGameId} 
-                userId={mockUserId} 
-            />
-        );
+        let container: HTMLElement;
+        await act(async () => {
+            const result = render(
+                <QuestView 
+                    quest={mockQuest} 
+                    gameId={mockGameId} 
+                    userId={mockUserId} 
+                />
+            );
+            container = result.container;
+        });
 
         // Assert - No loading state should be visible for impostors
         expect(screen.queryByText("Chargement de la quête...")).not.toBeInTheDocument();
@@ -131,36 +135,42 @@ describe("QuestView - Impostor Silent Success", () => {
         expect(screen.queryByText("LONG")).not.toBeInTheDocument();
         
         // Assert - Quest content area should be empty
-        const questContentArea = container.querySelector('.flex-1');
+        const questContentArea = container!.querySelector('.flex-1');
         expect(questContentArea).toBeInTheDocument();
         expect(questContentArea).toBeEmptyDOMElement();
     });
 
-    it("should not render quest content area for impostors", () => {
+    it("should not render quest content area for impostors", async () => {
         // Arrange
-        const { container } = render(
-            <QuestView 
-                quest={mockQuest} 
-                gameId={mockGameId} 
-                userId={mockUserId} 
-            />
-        );
+        let container: HTMLElement;
+        await act(async () => {
+            const result = render(
+                <QuestView 
+                    quest={mockQuest} 
+                    gameId={mockGameId} 
+                    userId={mockUserId} 
+                />
+            );
+            container = result.container;
+        });
 
         // Assert - Quest content section should be empty (no loading, no quest game)
-        const questContentArea = container.querySelector('.flex-1');
+        const questContentArea = container!.querySelector('.flex-1');
         expect(questContentArea).toBeInTheDocument();
         expect(questContentArea).toBeEmptyDOMElement();
     });
 
-    it("should not show duration badge for impostors", () => {
+    it("should not show duration badge for impostors", async () => {
         // Arrange
-        render(
-            <QuestView 
-                quest={mockQuest} 
-                gameId={mockGameId} 
-                userId={mockUserId} 
-            />
-        );
+        await act(async () => {
+            render(
+                <QuestView 
+                    quest={mockQuest} 
+                    gameId={mockGameId} 
+                    userId={mockUserId} 
+                />
+            );
+        });
 
         // Assert - Duration badge should not be visible
         expect(screen.queryByText("COURT")).not.toBeInTheDocument();
@@ -170,13 +180,15 @@ describe("QuestView - Impostor Silent Success", () => {
 
     it("should trigger haptic feedback on success", async () => {
         // Arrange
-        render(
-            <QuestView 
-                quest={mockQuest} 
-                gameId={mockGameId} 
-                userId={mockUserId} 
-            />
-        );
+        await act(async () => {
+            render(
+                <QuestView 
+                    quest={mockQuest} 
+                    gameId={mockGameId} 
+                    userId={mockUserId} 
+                />
+            );
+        });
 
         // Assert - Component renders without crashing and haptic feedback is available
         expect(typeof navigator.vibrate).toBe('function');
@@ -242,13 +254,15 @@ describe("QuestView - Impostor Silent Success", () => {
             recordFailedQuest: mockRecordFailedQuest
         } as Partial<ReturnType<typeof useGameStore>>);
 
-        render(
-            <QuestView 
-                quest={mockQuest} 
-                gameId={mockGameId} 
-                userId={mockUserId} 
-            />
-        );
+        await act(async () => {
+            render(
+                <QuestView 
+                    quest={mockQuest} 
+                    gameId={mockGameId} 
+                    userId={mockUserId} 
+                />
+            );
+        });
 
         // Assert - recordFailedQuest should never be called for impostors
         // Since impostors get automatic success, error handling shouldn't be triggered

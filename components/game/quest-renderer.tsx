@@ -8,6 +8,7 @@ import { QuestNumberInput } from "@/components/game/quest-number-input";
 import { QuestIntrus } from "@/components/game/quest-intrus";
 import { QuestMiniBac } from "@/components/game/mini-games/quest-mini-bac";
 import { QuestSimon } from "@/components/game/mini-games/quest-simon";
+import { QuestWires } from "@/components/game/mini-games/quest-wires";
 import { getRandomMiniGame } from "@/lib/mini-games";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
@@ -53,10 +54,15 @@ export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRender
         case "intrus":
             return <QuestIntrus quest={quest} onSuccess={onSuccess} onError={onError} />;
         case "mini-game":
-            if (miniGameId === 'simon') {
-                return <QuestSimon duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
+            switch (miniGameId) {
+                case "simon":
+                    return <QuestSimon duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
+                case "wires":
+                    return <QuestWires duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
+                case "mini-bac":
+                default:
+                    return <QuestMiniBac duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
             }
-            return <QuestMiniBac duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
 
         default: {
             const unknownType = (quest as unknown as { type: string }).type;

@@ -1,6 +1,6 @@
 import { QuestDuration } from "@/types/quest";
 
-export const AVAILABLE_MINI_GAMES = ['mini-bac', 'simon'] as const;
+export const AVAILABLE_MINI_GAMES = ["mini-bac", "simon", "wires"] as const;
 export type MiniGameId = typeof AVAILABLE_MINI_GAMES[number];
 
 export function getRandomMiniGame(): MiniGameId {
@@ -22,3 +22,9 @@ export const SIMON_SEQUENCE_LENGTH: Record<QuestDuration, number> = {
     long: 6,
 };
 
+// Number of wires to connect per duration
+export const WIRES_COUNT_BY_DURATION: Record<QuestDuration, number> = {
+    short: 4,
+    medium: 5,
+    long: 6,
+};

@@ -152,37 +152,47 @@ describe("QuestView", () => {
         expect(screen.queryByText(/Zone d'interaction/)).toBeNull();
     });
 
-    it("should NOT show completion status display (atomic flow)", () => {
+    it("should NOT show completion status display (atomic flow)", async () => {
         mockStoreState.questAnswered = true;
         mockStoreState.isCompletingQuest = false;
         mockStoreState.completionError = null;
-        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        await act(async () => {
+            render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        });
         // Should NOT show the old completion status message
         expect(screen.queryByText("MISSION ENREGISTRÉE")).toBeNull();
     });
 
-    it("should show completion error with retry button on failure", () => {
+    it("should show completion error with retry button on failure", async () => {
         mockStoreState.questAnswered = true;
         mockStoreState.completionError = "Failed to record quest completion.";
-        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        await act(async () => {
+            render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        });
         expect(screen.getByText("ERREUR DE SAUVEGARDE")).toBeTruthy();
         expect(screen.getByText("RÉESSAYER")).toBeTruthy();
     });
 
-    it("should call completeQuestAction when retry button is clicked", () => {
+    it("should call completeQuestAction when retry button is clicked", async () => {
         mockStoreState.questAnswered = true;
         mockStoreState.completionError = "Failed";
         mockCompleteQuestAction.mockResolvedValue(true);
-        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        await act(async () => {
+            render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        });
         const retryButton = screen.getByText("RÉESSAYER").closest("button")!;
-        fireEvent.click(retryButton);
+        await act(async () => {
+            fireEvent.click(retryButton);
+        });
         expect(mockCompleteQuestAction).toHaveBeenCalledWith("game-123", "user-1", "s1");
     });
 
-    it("should show loading state during completion", () => {
+    it("should show loading state during completion", async () => {
         mockStoreState.questAnswered = true;
         mockStoreState.isCompletingQuest = true;
-        render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        await act(async () => {
+            render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
+        });
         expect(screen.getByText("Enregistrement...")).toBeTruthy();
     });
 

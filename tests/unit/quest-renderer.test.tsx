@@ -3,6 +3,14 @@ import { render, screen } from "@testing-library/react";
 import { QuestRenderer } from "@/components/game/quest-renderer";
 import { QuestGame, QuestType } from "@/types/quest";
 
+vi.mock("@/lib/mini-games", async () => {
+    const actual = await vi.importActual<typeof import("@/lib/mini-games")>("@/lib/mini-games");
+    return {
+        ...actual,
+        getRandomMiniGame: vi.fn(() => "wires"),
+    };
+});
+
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: vi.fn() }),
 }));
@@ -42,6 +50,15 @@ const baseQCMQuest: Extract<QuestGame, { type: "qcm" }> = {
         ],
         answerIds: ["c"],
     }
+};
+
+const baseMiniGameQuest: Extract<QuestGame, { type: "mini-game" }> = {
+    id: "mg1",
+    type: "mini-game",
+    duration: "short",
+    title: "Mini-jeu",
+    instruction: "Relie les fils",
+    data: {},
 };
 
 describe("QuestRenderer", () => {
@@ -84,6 +101,12 @@ describe("QuestRenderer", () => {
         const noData = { ...baseTrueFalseQuest, data: undefined } as unknown as QuestGame;
         render(<QuestRenderer quest={noData} gameId="g1" onSuccess={onSuccess} onError={onError} />);
         expect(screen.getByText(/Données de quête invalides/)).toBeTruthy();
+    });
+
+    it("should render QuestWires when random mini-game is wires", () => {
+        render(<QuestRenderer quest={baseMiniGameQuest} gameId="g1" onSuccess={onSuccess} onError={onError} />);
+        expect(screen.getByText(/Reliez les fils de la même couleur/i)).toBeTruthy();
+        expect(screen.getByText(/Fils reliés : 0\/4/i)).toBeTruthy();
     });
 
     it("should show 'Retour au Game Home' link for malformed quest", () => {
