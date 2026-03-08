@@ -1,6 +1,6 @@
 import { QuestDuration } from "@/types/quest";
 
-export const AVAILABLE_MINI_GAMES = ["mini-bac", "simon", "wires"] as const;
+export const AVAILABLE_MINI_GAMES = ["mini-bac", "simon", "wires", "gauges"] as const;
 export type MiniGameId = typeof AVAILABLE_MINI_GAMES[number];
 
 export function getRandomMiniGame(): MiniGameId {
@@ -28,3 +28,11 @@ export const WIRES_COUNT_BY_DURATION: Record<QuestDuration, number> = {
     medium: 5,
     long: 6,
 };
+
+export const GAUGES_COUNT_BY_DURATION: Record<QuestDuration, number> = {
+    short: 4,
+    medium: 5,
+    long: 6,
+};
+
+export const GAUGE_ALIGNMENT_TOLERANCE_PERCENT = 1;

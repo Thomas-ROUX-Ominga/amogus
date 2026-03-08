@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QuestRenderer } from "@/components/game/quest-renderer";
 import { QuestGame, QuestType } from "@/types/quest";
+import { getRandomMiniGame } from "@/lib/mini-games";
 
 vi.mock("@/lib/mini-games", async () => {
     const actual = await vi.importActual<typeof import("@/lib/mini-games")>("@/lib/mini-games");
@@ -64,9 +65,11 @@ const baseMiniGameQuest: Extract<QuestGame, { type: "mini-game" }> = {
 describe("QuestRenderer", () => {
     const onSuccess = vi.fn();
     const onError = vi.fn();
+    const mockGetRandomMiniGame = vi.mocked(getRandomMiniGame);
 
     beforeEach(() => {
         vi.clearAllMocks();
+        mockGetRandomMiniGame.mockReturnValue("wires");
     });
 
     it("should render QuestTrueFalse for true-false type", () => {
@@ -107,6 +110,13 @@ describe("QuestRenderer", () => {
         render(<QuestRenderer quest={baseMiniGameQuest} gameId="g1" onSuccess={onSuccess} onError={onError} />);
         expect(screen.getByText(/Reliez les fils de la même couleur/i)).toBeTruthy();
         expect(screen.getByText(/Fils reliés : 0\/4/i)).toBeTruthy();
+    });
+
+    it("should render QuestGauges when random mini-game is gauges", () => {
+        mockGetRandomMiniGame.mockReturnValue("gauges");
+        render(<QuestRenderer quest={baseMiniGameQuest} gameId="g1" onSuccess={onSuccess} onError={onError} />);
+        expect(screen.getByText(/Alignez les curseurs sur chaque trait/i)).toBeTruthy();
+        expect(screen.getByText(/Jauges alignées : 0\/4/i)).toBeTruthy();
     });
 
     it("should show 'Retour au Game Home' link for malformed quest", () => {

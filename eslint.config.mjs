@@ -37,6 +37,7 @@ const eslintConfig = defineConfig([
         HTMLInputElement: "readonly",
         HTMLDivElement: "readonly",
         HTMLElement: "readonly",
+        DOMRect: "readonly",
         structuredClone: "readonly",
         Storage: "readonly",
         ServiceWorkerGlobalScope: "readonly",

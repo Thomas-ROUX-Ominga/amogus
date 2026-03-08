@@ -9,6 +9,7 @@ import { QuestIntrus } from "@/components/game/quest-intrus";
 import { QuestMiniBac } from "@/components/game/mini-games/quest-mini-bac";
 import { QuestSimon } from "@/components/game/mini-games/quest-simon";
 import { QuestWires } from "@/components/game/mini-games/quest-wires";
+import { QuestGauges } from "@/components/game/mini-games/quest-gauges";
 import { getRandomMiniGame } from "@/lib/mini-games";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
@@ -59,6 +60,8 @@ export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRender
                     return <QuestSimon duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
                 case "wires":
                     return <QuestWires duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
+                case "gauges":
+                    return <QuestGauges duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
                 case "mini-bac":
                 default:
                     return <QuestMiniBac duration={quest.duration} onSuccess={onSuccess} onError={onError} />;
