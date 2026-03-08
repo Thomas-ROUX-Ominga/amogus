@@ -135,26 +135,34 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
         <>
             <form
                 onSubmit={handleSubmit}
-                className="space-y-4"
+                className="space-y-5 max-w-3xl mx-auto"
                 aria-label="Formulaire Mini-Bac"
             >
                 {/* Letter display */}
-                <div className="flex items-center justify-center">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 p-4">
                     <motion.div
                         key={gameState.letter}
                         initial={{ scale: 0.5, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                        className="w-24 h-24 flex items-center justify-center border-2 border-primary/60 bg-primary/10 backdrop-blur-sm"
+                        className="w-24 h-24 flex items-center justify-center border-2 border-primary/60 shrink-0 "
                     >
                         <span className="text-5xl font-bold font-orbitron text-primary tracking-widest">
                             {gameState.letter}
                         </span>
                     </motion.div>
+                    <div className="text-center sm:text-left max-w-md space-y-1">
+                        <p className="font-rajdhani text-sm uppercase tracking-[0.2em] text-primary/70">
+                            Mini-Bac
+                        </p>
+                        <p className="font-rajdhani text-xs text-foreground/70">
+                            Trouve un mot valide pour chaque catégorie en commençant par la lettre affichée.
+                        </p>
+                    </div>
                 </div>
 
                 {/* Category inputs */}
-                <div className="space-y-3">
+                <div className="space-y-3 max-w-2xl mx-auto w-full">
                     {gameState.categories.map((category, index) => {
                         const hasError = errors[index] === true;
                         return (
@@ -207,7 +215,7 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
                 <button
                     type="submit"
                     disabled={submitted || !allFilled}
-                    className="w-full min-h-[44px] flex items-center justify-center border-2 border-primary/80 bg-primary/20 text-primary font-rajdhani text-sm uppercase tracking-widest hover:bg-primary/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+                    className="w-full max-w-2xl mx-auto min-h-[44px] flex items-center justify-center border-2 border-primary/80 bg-primary/20 text-primary font-rajdhani text-sm uppercase tracking-widest hover:bg-primary/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
                     aria-label="Valider les réponses"
                 >
                     Valider
