@@ -126,6 +126,13 @@ describe("QuestRenderer", () => {
         expect(screen.getByText(/Série : 1 \/ 3/i)).toBeTruthy();
     });
 
+    it("should render QuestMemory when random mini-game is memory", () => {
+        mockGetRandomMiniGame.mockReturnValue("memory");
+        render(<QuestRenderer quest={baseMiniGameQuest} gameId="g1" onSuccess={onSuccess} onError={onError} />);
+        expect(screen.getByText(/Trouvez les paires d'icônes/i)).toBeTruthy();
+        expect(screen.getByText(/Paires trouvées : 0\/4/i)).toBeTruthy();
+    });
+
     it("should show 'Retour au Game Home' link for malformed quest", () => {
         const malformed = { ...baseTrueFalseQuest, data: undefined } as unknown as QuestGame;
         render(<QuestRenderer quest={malformed} gameId="g1" onSuccess={onSuccess} onError={onError} />);
