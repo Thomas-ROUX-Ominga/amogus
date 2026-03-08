@@ -119,6 +119,13 @@ describe("QuestRenderer", () => {
         expect(screen.getByText(/Jauges alignées : 0\/4/i)).toBeTruthy();
     });
 
+    it("should render QuestPad when random mini-game is pad", () => {
+        mockGetRandomMiniGame.mockReturnValue("pad");
+        render(<QuestRenderer quest={baseMiniGameQuest} gameId="g1" onSuccess={onSuccess} onError={onError} />);
+        expect(screen.getByText(/Mémorisez la séquence affichée sur l'écran de gauche/i)).toBeTruthy();
+        expect(screen.getByText(/Série : 1 \/ 3/i)).toBeTruthy();
+    });
+
     it("should show 'Retour au Game Home' link for malformed quest", () => {
         const malformed = { ...baseTrueFalseQuest, data: undefined } as unknown as QuestGame;
         render(<QuestRenderer quest={malformed} gameId="g1" onSuccess={onSuccess} onError={onError} />);

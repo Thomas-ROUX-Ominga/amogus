@@ -7,5 +7,6 @@ describe("mini-games registry", () => {
         expect(AVAILABLE_MINI_GAMES).toContain("simon");
         expect(AVAILABLE_MINI_GAMES).toContain("wires");
         expect(AVAILABLE_MINI_GAMES).toContain("gauges");
+        expect(AVAILABLE_MINI_GAMES).toContain("pad");
     });
 });

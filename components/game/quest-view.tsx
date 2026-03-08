@@ -66,8 +66,8 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                     id: `mini-game-${quest.duration}`,
                     type: "mini-game",
                     duration: quest.duration,
-                    title: "Mini-Bac",
-                    instruction: "Trouve un mot par catégorie commençant par la lettre tirée.",
+                    title: "Mini-Jeu",
+                    instruction: "Réussis le mini-jeu affiché pour valider la quête.",
                     data: {},
                 });
                 setIsLoadingGame(false);

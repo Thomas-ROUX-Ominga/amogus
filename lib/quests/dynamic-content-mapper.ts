@@ -103,8 +103,8 @@ export class DynamicContentMapper {
                 id: syntheticId,
                 type: "mini-game",
                 duration,
-                title: "Mini-Bac",
-                instruction: "Trouve un mot par catégorie commençant par la lettre tirée.",
+                title: "Mini-Jeu",
+                instruction: "Réussis le mini-jeu affiché pour valider la quête.",
                 data: {},
             };
             return { content: syntheticContent, contentId: syntheticId };
