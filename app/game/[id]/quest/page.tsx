@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { ErrorView } from "@/components/game/error-view";
 import { QuestView } from "@/components/game/quest-view";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
-import { isValidDuration, getRandomQuestGame, getQuestGamesByDuration, getQuestGameById } from "@/lib/constants/quest-pool";
+import { isValidDuration, getRandomQuestGame, getQuestGamesByDuration } from "@/lib/constants/quest-pool";
 import { QuestDuration, Quest } from "@/types/quest";
 
 export default function QuestPage() {
@@ -46,10 +46,10 @@ function QuestPageContent() {
         currentQuest,
         currentQuestContent,
         setCurrentQuest,
-        clearQuestContent,
-        fetchGame,
-        loadDynamicQuestContent,
-        loadFailedQuests,
+        fetchGame = async () => {},
+        refreshGameData = async () => {},
+        loadDynamicQuestContent = async () => {},
+        loadFailedQuests = async () => {},
     } = useGameStore();
 
     const gameId = id as string;
@@ -66,6 +66,15 @@ function QuestPageContent() {
             fetchGame(id as string, userId ?? undefined);
         }
     }, [id, userId, fetchGame]);
+
+    useEffect(() => {
+        if (!id || !userId) return;
+        const interval = setInterval(() => {
+            refreshGameData(id as string, userId);
+        }, 2000);
+
+        return () => clearInterval(interval);
+    }, [id, userId, refreshGameData]);
 
     // Load failed quests when game and user are available
     useEffect(() => {
@@ -243,6 +252,35 @@ function QuestPageContent() {
                         code={ERROR_CODES.ERR_INVALID_ROLE}
                         onRetry={() => { router.push(`/game/${gameId}`); }}
                     />
+                </main>
+            );
+        }
+
+        if (gameState.meeting?.status === "ACTIVE") {
+            return (
+                <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
+                    <div className="max-w-2xl w-full border-2 border-red-500/30 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm">
+                        <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-red-300 font-orbitron text-center">
+                            MEETING EN COURS
+                        </h1>
+                        <p className="text-center text-muted-foreground font-rajdhani">
+                            Un buzz a été déclenché. Rejoignez la salle de meeting et rassemblez-vous IRL.
+                        </p>
+                        <div className="flex flex-col gap-3">
+                            <Link
+                                href={`/game/${gameId}/meeting`}
+                                className="flex items-center justify-center w-full min-h-[44px] border-2 border-red-500/40 text-red-200 font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-red-500/15 transition-colors"
+                            >
+                                Rejoindre le meeting
+                            </Link>
+                            <Link
+                                href={`/game/${gameId}`}
+                                className="flex items-center justify-center w-full min-h-[44px] border-2 border-primary/50 bg-transparent text-primary font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-primary/10 transition-colors"
+                            >
+                                Retour au cockpit
+                            </Link>
+                        </div>
+                    </div>
                 </main>
             );
         }

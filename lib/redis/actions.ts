@@ -1,16 +1,170 @@
 "use server";
 
 import { redis, GAME_TTL_SECONDS } from "./client";
-import { GameState, ActionResponse, PlayerRole } from "@/types/game";
+import {
+    GameState,
+    ActionResponse,
+    PlayerRole,
+    MeetingSnapshot,
+    MeetingState,
+    MeetingView,
+} from "@/types/game";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
-import { getBatch, getBatchData } from "./batch-actions";
+import { getBatchData } from "./batch-actions";
 import { getTotalQuestGamesCount } from "@/lib/constants/quest-pool";
 import { generateShortCode } from "@/lib/utils/short-code.server";
-import { Quest, QuestGame } from "@/types/quest";
+import { Quest } from "@/types/quest";
 import { assignQuestsFromBatch } from "@/lib/quests/quest-assignment";
 
 import { verifySession, createPlayerSession, verifyPlayerSession } from "./auth-utils";
 import { getGlobalQuestStats } from "@/lib/utils/quest-calculations";
+
+const MEETING_DURATION_MS = 5 * 60 * 1000;
+
+function createMeetingVoteKey(gameId: string, meetingId: string, voterId: string): string {
+    return `game:${gameId}:meeting:${meetingId}:vote:${voterId}`;
+}
+
+function getEligibleMeetingVoterIds(state: GameState): string[] {
+    return state.players
+        .filter((player) => player.isAlive && !!player.role && player.role !== "ADMIN")
+        .map((player) => player.id);
+}
+
+function buildMeetingSnapshot(state: GameState, capturedAt: number): MeetingSnapshot {
+    const progress = getGlobalQuestStats(state.players, state);
+
+    return {
+        capturedAt,
+        progress,
+        players: state.players.map((player) => ({
+            id: player.id,
+            name: player.name,
+            role: player.role,
+            isAlive: player.isAlive,
+        })),
+    };
+}
+
+function sumVoteCounts(voteCounts: Record<string, number>, eligibleVoterIds: string[]): number {
+    return eligibleVoterIds.reduce((sum, playerId) => {
+        const count = voteCounts[playerId] ?? 0;
+        return sum + (count > 0 ? count : 0);
+    }, 0);
+}
+
+function resolveMeetingState(
+    state: GameState,
+    reason: "ALL_VOTED" | "TIMEOUT",
+    now: number
+): GameState {
+    const meeting = state.meeting;
+    if (!meeting || meeting.status !== "ACTIVE") {
+        return state;
+    }
+
+    const normalizedVoteCounts: Record<string, number> = {};
+    meeting.eligibleVoterIds.forEach((playerId) => {
+        normalizedVoteCounts[playerId] = Math.max(0, meeting.voteCounts[playerId] ?? 0);
+    });
+
+    const totalVotes = sumVoteCounts(normalizedVoteCounts, meeting.eligibleVoterIds);
+
+    let eliminatedPlayerId: string | undefined;
+    let eliminatedPlayerName: string | undefined;
+    let updatedPlayers = state.players;
+
+    if (totalVotes > 0) {
+        const ranked = meeting.eligibleVoterIds
+            .map((playerId) => ({ playerId, votes: normalizedVoteCounts[playerId] ?? 0 }))
+            .sort((a, b) => b.votes - a.votes);
+
+        const maxVotes = ranked[0]?.votes ?? 0;
+        if (maxVotes > 0) {
+            const topPlayers = ranked.filter((entry) => entry.votes === maxVotes).map((entry) => entry.playerId);
+            const selectedIndex = Math.floor(Math.random() * topPlayers.length);
+            eliminatedPlayerId = topPlayers[selectedIndex];
+
+            const targetPlayer = state.players.find((player) => player.id === eliminatedPlayerId);
+            if (targetPlayer) {
+                eliminatedPlayerName = targetPlayer.name;
+                updatedPlayers = state.players.map((player) =>
+                    player.id === eliminatedPlayerId ? { ...player, isAlive: false } : player
+                );
+            } else {
+                eliminatedPlayerId = undefined;
+            }
+        }
+    }
+
+    const finalSnapshot = buildMeetingSnapshot(
+        {
+            ...state,
+            players: updatedPlayers,
+        },
+        now
+    );
+
+    const completedMeeting: MeetingState = {
+        ...meeting,
+        status: "COMPLETED",
+        snapshot: finalSnapshot,
+        voteCounts: normalizedVoteCounts,
+        totalVotes,
+        eliminatedPlayerId,
+        eliminatedPlayerName,
+        endReason: reason,
+        endedAt: now,
+    };
+
+    const updatedState: GameState = {
+        ...state,
+        players: updatedPlayers,
+        meeting: completedMeeting,
+    };
+
+    if (eliminatedPlayerId) {
+        const winCheck = checkWinConditions(updatedState);
+        if (winCheck.finished) {
+            return {
+                ...updatedState,
+                status: "FINISHED",
+                winner: winCheck.winner,
+            };
+        }
+    }
+
+    return updatedState;
+}
+
+function resolveMeetingIfExpired(state: GameState, now: number): GameState {
+    if (!state.meeting || state.meeting.status !== "ACTIVE") {
+        return state;
+    }
+    if (now < state.meeting.endsAt) {
+        return state;
+    }
+    return resolveMeetingState(state, "TIMEOUT", now);
+}
+
+async function buildMeetingViewData(gameId: string, userId: string, state: GameState): Promise<MeetingView> {
+    const meeting = state.meeting ?? null;
+    if (!meeting || meeting.status !== "ACTIVE" || !meeting.eligibleVoterIds.includes(userId)) {
+        return {
+            meeting,
+            myVoteTargetId: null,
+        };
+    }
+
+    const voteKey = createMeetingVoteKey(gameId, meeting.id, userId);
+    const myVoteTargetId = await redis.get<string>(voteKey);
+    const isValidTarget = myVoteTargetId ? meeting.eligibleVoterIds.includes(myVoteTargetId) : false;
+
+    return {
+        meeting,
+        myVoteTargetId: isValidTarget ? myVoteTargetId : null,
+    };
+}
 
 /**
  * Utility to check if any win conditions are met
@@ -396,7 +550,19 @@ export async function completeQuest(
                 return null;
             }
 
-            if (state.status !== "IN_PROGRESS") {
+            const now = Date.now();
+            const workingState = resolveMeetingIfExpired(state, now);
+
+            if (workingState.meeting?.status === "ACTIVE") {
+                validationError = {
+                    success: false,
+                    error: "Cannot complete quest during an active meeting.",
+                    code: ERROR_CODES.ERR_MEETING_ACTIVE,
+                };
+                return null;
+            }
+
+            if (workingState.status !== "IN_PROGRESS") {
                 validationError = {
                     success: false,
                     error: "Cannot complete quest: game is not in progress.",
@@ -405,7 +571,7 @@ export async function completeQuest(
                 return null;
             }
 
-            const playerIndex = state.players.findIndex((p) => p.id === userId);
+            const playerIndex = workingState.players.findIndex((p) => p.id === userId);
             if (playerIndex === -1) {
                 validationError = {
                     success: false,
@@ -415,7 +581,7 @@ export async function completeQuest(
                 return null;
             }
 
-            const player = state.players[playerIndex];
+            const player = workingState.players[playerIndex];
 
             // Story 11.5: Allow eliminated Crewmates to complete quests (Ghost Mode)
             // Only block if player is eliminated AND is an Impostor
@@ -430,7 +596,7 @@ export async function completeQuest(
 
             // Story 11.3: Game Settings from Batch - Validate quest is in player's assigned quests
             // CRITICAL: If game is from a batch, player MUST have assignedQuests
-            if (state.batchId) {
+            if (workingState.batchId) {
                 if (!player.assignedQuests || !player.assignedQuests.includes(questId)) {
                     validationError = {
                         success: false,
@@ -453,18 +619,18 @@ export async function completeQuest(
             }
 
             const updatedCompleted = [...completed, questId];
-            const updatedPlayers = [...state.players];
+            const updatedPlayers = [...workingState.players];
             updatedPlayers[playerIndex] = {
                 ...updatedPlayers[playerIndex],
                 completedQuests: updatedCompleted,
-                lastQuestCompleted: Date.now(), // Set timestamp for last completed quest
+                lastQuestCompleted: now, // Set timestamp for last completed quest
             };
 
             // Check for victory after quest completion
-            const winCheck = checkWinConditions({ ...state, players: updatedPlayers });
+            const winCheck = checkWinConditions({ ...workingState, players: updatedPlayers });
             if (winCheck.finished) {
                 return {
-                    ...state,
+                    ...workingState,
                     players: updatedPlayers,
                     status: "FINISHED",
                     winner: winCheck.winner
@@ -472,7 +638,7 @@ export async function completeQuest(
             }
 
             return {
-                ...state,
+                ...workingState,
                 players: updatedPlayers,
             };
         }, GAME_TTL_SECONDS);
@@ -506,14 +672,495 @@ export async function refreshGame(
     gameId: string
 ): Promise<ActionResponse<GameState>> {
     try {
-        // Simply call getGame - this ensures fresh data from Redis
-        const result = await getGame(gameId);
-        return result;
+        const stateKey = `game:${gameId}:state`;
+        let validationError: ActionResponse<GameState> | null = null;
+
+        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
+            if (!state) {
+                validationError = {
+                    success: false,
+                    error: "Game module not found or decommissioned.",
+                    code: ERROR_CODES.GAME_NOT_FOUND,
+                };
+                return null;
+            }
+
+            const now = Date.now();
+            return resolveMeetingIfExpired(state, now);
+        }, GAME_TTL_SECONDS);
+
+        if (validationError) {
+            return validationError;
+        }
+
+        return {
+            success: true,
+            data: result!,
+        };
     } catch (error) {
         console.error("Failed to refresh game:", error);
         return {
             success: false,
             error: "Failed to refresh game data.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
+}
+
+export async function getMeetingView(
+    gameId: string,
+    userId: string
+): Promise<ActionResponse<MeetingView>> {
+    try {
+        const sessionCheck = await verifyPlayerSession(userId, gameId);
+        if (!sessionCheck.success) {
+            return {
+                success: false,
+                error: sessionCheck.error || "Session verification failed",
+                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+            };
+        }
+
+        const stateKey = `game:${gameId}:state`;
+        let validationError: ActionResponse<MeetingView> | null = null;
+
+        const state = await redis.atomicUpdate<GameState>(stateKey, (currentState) => {
+            if (!currentState) {
+                validationError = {
+                    success: false,
+                    error: "Game session not found.",
+                    code: ERROR_CODES.GAME_NOT_FOUND,
+                };
+                return null;
+            }
+
+            const now = Date.now();
+            return resolveMeetingIfExpired(currentState, now);
+        }, GAME_TTL_SECONDS);
+
+        if (validationError) {
+            return validationError;
+        }
+
+        const data = await buildMeetingViewData(gameId, userId, state!);
+        return {
+            success: true,
+            data,
+        };
+    } catch (error) {
+        console.error("Failed to fetch meeting view:", error);
+        return {
+            success: false,
+            error: "Failed to fetch meeting state.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
+}
+
+export async function triggerMeeting(
+    gameId: string,
+    userId: string
+): Promise<ActionResponse<MeetingView>> {
+    try {
+        const sessionCheck = await verifyPlayerSession(userId, gameId);
+        if (!sessionCheck.success) {
+            return {
+                success: false,
+                error: sessionCheck.error || "Session verification failed",
+                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+            };
+        }
+
+        const stateKey = `game:${gameId}:state`;
+        let validationError: ActionResponse<MeetingView> | null = null;
+        const now = Date.now();
+
+        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
+            if (!state) {
+                validationError = {
+                    success: false,
+                    error: "Game session not found.",
+                    code: ERROR_CODES.GAME_NOT_FOUND,
+                };
+                return null;
+            }
+
+            const workingState = resolveMeetingIfExpired(state, now);
+
+            if (workingState.status !== "IN_PROGRESS") {
+                validationError = {
+                    success: false,
+                    error: "Cannot trigger meeting: game is not in progress.",
+                    code: ERROR_CODES.ERR_INVALID_STATE,
+                };
+                return null;
+            }
+
+            if (workingState.meeting?.status === "ACTIVE") {
+                validationError = {
+                    success: false,
+                    error: "A meeting is already active.",
+                    code: ERROR_CODES.ERR_MEETING_ACTIVE,
+                };
+                return null;
+            }
+
+            const playerIndex = workingState.players.findIndex((player) => player.id === userId);
+            if (playerIndex === -1) {
+                validationError = {
+                    success: false,
+                    error: "Player not found in game.",
+                    code: ERROR_CODES.ERR_INVALID_SIGNATURE,
+                };
+                return null;
+            }
+
+            const player = workingState.players[playerIndex];
+            const isEligible = player.isAlive && player.role && player.role !== "ADMIN";
+            if (!isEligible) {
+                validationError = {
+                    success: false,
+                    error: "You are not allowed to trigger meetings.",
+                    code: ERROR_CODES.ERR_MEETING_FORBIDDEN,
+                };
+                return null;
+            }
+
+            if (player.meetingBuzzUsedAt) {
+                validationError = {
+                    success: false,
+                    error: "You already used your buzzer in this game.",
+                    code: ERROR_CODES.ERR_MEETING_ALREADY_USED,
+                };
+                return null;
+            }
+
+            const eligibleVoterIds = getEligibleMeetingVoterIds(workingState);
+            if (eligibleVoterIds.length < 2) {
+                validationError = {
+                    success: false,
+                    error: "Not enough eligible players to start a meeting.",
+                    code: ERROR_CODES.ERR_MEETING_FORBIDDEN,
+                };
+                return null;
+            }
+
+            const voteCounts: Record<string, number> = {};
+            eligibleVoterIds.forEach((playerId) => {
+                voteCounts[playerId] = 0;
+            });
+
+            const meetingId = `${now}-${Math.floor(Math.random() * 1_000_000)}`;
+            const meeting: MeetingState = {
+                id: meetingId,
+                status: "ACTIVE",
+                startedAt: now,
+                endsAt: now + MEETING_DURATION_MS,
+                startedBy: userId,
+                snapshot: buildMeetingSnapshot(workingState, now),
+                eligibleVoterIds,
+                voteCounts,
+                totalEligibleVoters: eligibleVoterIds.length,
+                totalVotes: 0,
+            };
+
+            const updatedPlayers = [...workingState.players];
+            updatedPlayers[playerIndex] = {
+                ...updatedPlayers[playerIndex],
+                meetingBuzzUsedAt: now,
+            };
+
+            return {
+                ...workingState,
+                players: updatedPlayers,
+                meeting,
+            };
+        }, GAME_TTL_SECONDS);
+
+        if (validationError) {
+            return validationError;
+        }
+
+        const data = await buildMeetingViewData(gameId, userId, result!);
+        return {
+            success: true,
+            data,
+        };
+    } catch (error) {
+        console.error("Failed to trigger meeting:", error);
+        return {
+            success: false,
+            error: "Failed to trigger meeting.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
+}
+
+export async function castMeetingVote(
+    gameId: string,
+    userId: string,
+    targetId: string
+): Promise<ActionResponse<MeetingView>> {
+    try {
+        const sessionCheck = await verifyPlayerSession(userId, gameId);
+        if (!sessionCheck.success) {
+            return {
+                success: false,
+                error: sessionCheck.error || "Session verification failed",
+                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+            };
+        }
+
+        const preloadedState = await redis.get<GameState>(`game:${gameId}:state`);
+        if (!preloadedState) {
+            return {
+                success: false,
+                error: "Game session not found.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
+            };
+        }
+
+        const activeMeetingId = preloadedState.meeting?.status === "ACTIVE" ? preloadedState.meeting.id : null;
+        if (!activeMeetingId) {
+            return {
+                success: false,
+                error: "No active meeting.",
+                code: ERROR_CODES.ERR_MEETING_NOT_ACTIVE,
+            };
+        }
+
+        const voteKey = createMeetingVoteKey(gameId, activeMeetingId, userId);
+        const previousVote = await redis.get<string>(voteKey);
+
+        const stateKey = `game:${gameId}:state`;
+        let validationError: ActionResponse<MeetingView> | null = null;
+
+        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
+            if (!state) {
+                validationError = {
+                    success: false,
+                    error: "Game session not found.",
+                    code: ERROR_CODES.GAME_NOT_FOUND,
+                };
+                return null;
+            }
+
+            const now = Date.now();
+            const workingState = resolveMeetingIfExpired(state, now);
+            const meeting = workingState.meeting;
+
+            if (!meeting || meeting.status !== "ACTIVE") {
+                validationError = {
+                    success: false,
+                    error: "No active meeting.",
+                    code: ERROR_CODES.ERR_MEETING_NOT_ACTIVE,
+                };
+                return null;
+            }
+
+            if (meeting.id !== activeMeetingId) {
+                validationError = {
+                    success: false,
+                    error: "Meeting changed. Please retry your vote.",
+                    code: ERROR_CODES.ERR_MEETING_NOT_ACTIVE,
+                };
+                return null;
+            }
+
+            if (!meeting.eligibleVoterIds.includes(userId)) {
+                validationError = {
+                    success: false,
+                    error: "You are not eligible to vote.",
+                    code: ERROR_CODES.ERR_MEETING_FORBIDDEN,
+                };
+                return null;
+            }
+
+            if (!meeting.eligibleVoterIds.includes(targetId)) {
+                validationError = {
+                    success: false,
+                    error: "Invalid vote target.",
+                    code: ERROR_CODES.ERR_MEETING_VOTE_INVALID,
+                };
+                return null;
+            }
+
+            if (targetId === userId) {
+                validationError = {
+                    success: false,
+                    error: "Self-vote is not allowed.",
+                    code: ERROR_CODES.ERR_MEETING_VOTE_INVALID,
+                };
+                return null;
+            }
+
+            const voteCounts: Record<string, number> = { ...meeting.voteCounts };
+            let totalVotes = meeting.totalVotes;
+            const hasPreviousVote = !!previousVote && meeting.eligibleVoterIds.includes(previousVote);
+
+            if (hasPreviousVote && previousVote === targetId) {
+                return workingState;
+            }
+
+            if (hasPreviousVote && previousVote) {
+                voteCounts[previousVote] = Math.max(0, (voteCounts[previousVote] ?? 0) - 1);
+                totalVotes = Math.max(0, totalVotes - 1);
+            }
+
+            voteCounts[targetId] = (voteCounts[targetId] ?? 0) + 1;
+            totalVotes += 1;
+
+            const updatedMeeting: MeetingState = {
+                ...meeting,
+                voteCounts,
+                totalVotes,
+            };
+
+            const updatedState: GameState = {
+                ...workingState,
+                meeting: updatedMeeting,
+            };
+
+            if (totalVotes >= updatedMeeting.totalEligibleVoters) {
+                return resolveMeetingState(updatedState, "ALL_VOTED", now);
+            }
+
+            return updatedState;
+        }, GAME_TTL_SECONDS);
+
+        if (validationError) {
+            return validationError;
+        }
+
+        await redis.set(voteKey, targetId, GAME_TTL_SECONDS);
+        const data = await buildMeetingViewData(gameId, userId, result!);
+        return {
+            success: true,
+            data,
+        };
+    } catch (error) {
+        console.error("Failed to cast meeting vote:", error);
+        return {
+            success: false,
+            error: "Failed to cast vote.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
+}
+
+export async function cancelMeetingVote(
+    gameId: string,
+    userId: string
+): Promise<ActionResponse<MeetingView>> {
+    try {
+        const sessionCheck = await verifyPlayerSession(userId, gameId);
+        if (!sessionCheck.success) {
+            return {
+                success: false,
+                error: sessionCheck.error || "Session verification failed",
+                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+            };
+        }
+
+        const preloadedState = await redis.get<GameState>(`game:${gameId}:state`);
+        if (!preloadedState) {
+            return {
+                success: false,
+                error: "Game session not found.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
+            };
+        }
+
+        const activeMeetingId = preloadedState.meeting?.status === "ACTIVE" ? preloadedState.meeting.id : null;
+        if (!activeMeetingId) {
+            return {
+                success: false,
+                error: "No active meeting.",
+                code: ERROR_CODES.ERR_MEETING_NOT_ACTIVE,
+            };
+        }
+
+        const voteKey = createMeetingVoteKey(gameId, activeMeetingId, userId);
+        const previousVote = await redis.get<string>(voteKey);
+
+        const stateKey = `game:${gameId}:state`;
+        let validationError: ActionResponse<MeetingView> | null = null;
+
+        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
+            if (!state) {
+                validationError = {
+                    success: false,
+                    error: "Game session not found.",
+                    code: ERROR_CODES.GAME_NOT_FOUND,
+                };
+                return null;
+            }
+
+            const now = Date.now();
+            const workingState = resolveMeetingIfExpired(state, now);
+            const meeting = workingState.meeting;
+
+            if (!meeting || meeting.status !== "ACTIVE") {
+                validationError = {
+                    success: false,
+                    error: "No active meeting.",
+                    code: ERROR_CODES.ERR_MEETING_NOT_ACTIVE,
+                };
+                return null;
+            }
+
+            if (meeting.id !== activeMeetingId) {
+                validationError = {
+                    success: false,
+                    error: "Meeting changed. Please retry.",
+                    code: ERROR_CODES.ERR_MEETING_NOT_ACTIVE,
+                };
+                return null;
+            }
+
+            if (!meeting.eligibleVoterIds.includes(userId)) {
+                validationError = {
+                    success: false,
+                    error: "You are not eligible to vote.",
+                    code: ERROR_CODES.ERR_MEETING_FORBIDDEN,
+                };
+                return null;
+            }
+
+            if (!previousVote || !meeting.eligibleVoterIds.includes(previousVote)) {
+                return workingState;
+            }
+
+            const voteCounts: Record<string, number> = { ...meeting.voteCounts };
+            voteCounts[previousVote] = Math.max(0, (voteCounts[previousVote] ?? 0) - 1);
+
+            const updatedMeeting: MeetingState = {
+                ...meeting,
+                voteCounts,
+                totalVotes: Math.max(0, meeting.totalVotes - 1),
+            };
+
+            return {
+                ...workingState,
+                meeting: updatedMeeting,
+            };
+        }, GAME_TTL_SECONDS);
+
+        if (validationError) {
+            return validationError;
+        }
+
+        await redis.del(voteKey);
+        const data = await buildMeetingViewData(gameId, userId, result!);
+        return {
+            success: true,
+            data,
+        };
+    } catch (error) {
+        console.error("Failed to cancel meeting vote:", error);
+        return {
+            success: false,
+            error: "Failed to cancel vote.",
             code: ERROR_CODES.ERR_SIGNAL_LOST,
         };
     }
@@ -726,7 +1373,19 @@ export async function eliminatePlayer(
                 return null;
             }
 
-            if (state.status !== "IN_PROGRESS") {
+            const now = Date.now();
+            const workingState = resolveMeetingIfExpired(state, now);
+
+            if (workingState.meeting?.status === "ACTIVE") {
+                validationError = {
+                    success: false,
+                    error: "Cannot eliminate player during an active meeting.",
+                    code: ERROR_CODES.ERR_MEETING_ACTIVE,
+                };
+                return null;
+            }
+
+            if (workingState.status !== "IN_PROGRESS") {
                 validationError = {
                     success: false,
                     error: "Cannot eliminate player: game is not in progress.",
@@ -735,7 +1394,7 @@ export async function eliminatePlayer(
                 return null;
             }
 
-            const playerIndex = state.players.findIndex((p) => p.id === userId);
+            const playerIndex = workingState.players.findIndex((p) => p.id === userId);
             if (playerIndex === -1) {
                 validationError = {
                     success: false,
@@ -745,7 +1404,7 @@ export async function eliminatePlayer(
                 return null;
             }
 
-            const player = state.players[playerIndex];
+            const player = workingState.players[playerIndex];
 
             // Idempotent: already eliminated - return success without changing state
             if (!player.isAlive) {
@@ -756,17 +1415,17 @@ export async function eliminatePlayer(
                 return null;
             }
 
-            const updatedPlayers = [...state.players];
+            const updatedPlayers = [...workingState.players];
             updatedPlayers[playerIndex] = {
                 ...updatedPlayers[playerIndex],
                 isAlive: false,
             };
 
             // Check for victory after player elimination
-            const winCheck = checkWinConditions({ ...state, players: updatedPlayers });
+            const winCheck = checkWinConditions({ ...workingState, players: updatedPlayers });
             if (winCheck.finished) {
                 return {
-                    ...state,
+                    ...workingState,
                     players: updatedPlayers,
                     status: "FINISHED",
                     winner: winCheck.winner
@@ -774,7 +1433,7 @@ export async function eliminatePlayer(
             }
 
             return {
-                ...state,
+                ...workingState,
                 players: updatedPlayers,
             };
         }, GAME_TTL_SECONDS);

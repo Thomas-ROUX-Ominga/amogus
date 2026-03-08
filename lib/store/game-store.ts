@@ -1,9 +1,23 @@
 import { create } from "zustand";
 import React from "react";
-import { GameState, PlayerRole } from "@/types/game";
+import { GameState, MeetingView, PlayerRole } from "@/types/game";
 import { Quest, QuestContentResult } from "@/types/quest";
-import { getGame, joinGame, startGame, selectRole, completeQuest, refreshGame, addFailedQuest, getPlayerFailedQuests, eliminatePlayer, getGameQuests } from "@/lib/redis/actions";
-import { getQuestGamesByDuration } from "@/lib/constants/quest-pool";
+import {
+    getGame,
+    joinGame,
+    startGame,
+    selectRole,
+    completeQuest,
+    refreshGame,
+    addFailedQuest,
+    getPlayerFailedQuests,
+    eliminatePlayer,
+    getGameQuests,
+    triggerMeeting,
+    getMeetingView,
+    castMeetingVote,
+    cancelMeetingVote,
+} from "@/lib/redis/actions";
 import { getTotalQuests } from "@/lib/utils/quest-calculations";
 import { DynamicContentMapper } from "@/lib/quests/dynamic-content-mapper";
 import useSWR from "swr";
@@ -46,6 +60,14 @@ interface GameStore {
     eliminationError: string | null;
     eliminationErrorCode: string | null;
 
+    // Meeting state
+    meetingView: MeetingView | null;
+    isMeetingLoading: boolean;
+    isTriggeringMeeting: boolean;
+    isMeetingVoting: boolean;
+    meetingError: string | null;
+    meetingErrorCode: string | null;
+
     // Actions
     fetchGame: (id: string, userId?: string) => Promise<void>;
     fetchGameQuests: (gameId: string) => Promise<void>;
@@ -75,6 +97,12 @@ interface GameStore {
     
     // Story 10.2: Self-Elimination Flow actions
     eliminatePlayerAction: (gameId: string, userId: string) => Promise<boolean>;
+
+    // Meeting actions
+    fetchMeetingView: (gameId: string, userId: string) => Promise<void>;
+    triggerMeetingAction: (gameId: string, userId: string) => Promise<boolean>;
+    castMeetingVoteAction: (gameId: string, userId: string, targetId: string) => Promise<boolean>;
+    cancelMeetingVoteAction: (gameId: string, userId: string) => Promise<boolean>;
 }
 
 // Real-time polling hook for lobby updates
@@ -190,6 +218,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     eliminationError: null,
     eliminationErrorCode: null,
 
+    // Meeting state
+    meetingView: null,
+    isMeetingLoading: false,
+    isTriggeringMeeting: false,
+    isMeetingVoting: false,
+    meetingError: null,
+    meetingErrorCode: null,
+
     fetchGame: async (id: string, userId?: string) => {
         set({ isLoading: true, error: null, errorCode: null });
         const response = await getGame(id);
@@ -264,6 +300,109 @@ export const useGameStore = create<GameStore>((set, get) => ({
                 isRefreshing: false
             });
         }
+    },
+
+    fetchMeetingView: async (gameId: string, userId: string) => {
+        set((state) => ({
+            isMeetingLoading: !state.meetingView,
+            meetingError: null,
+            meetingErrorCode: null,
+        }));
+        const response = await getMeetingView(gameId, userId);
+
+        if (response.success && response.data) {
+            set((state) => ({
+                isMeetingLoading: false,
+                meetingView: response.data!,
+                meetingError: null,
+                meetingErrorCode: null,
+                gameState: state.gameState && state.gameState.id === gameId
+                    ? { ...state.gameState, meeting: response.data!.meeting ?? undefined }
+                    : state.gameState,
+            }));
+            return;
+        }
+
+        set({
+            isMeetingLoading: false,
+            meetingError: response.error || "Unknown error",
+            meetingErrorCode: response.code || null,
+        });
+    },
+
+    triggerMeetingAction: async (gameId: string, userId: string) => {
+        set({ isTriggeringMeeting: true, meetingError: null, meetingErrorCode: null });
+        const response = await triggerMeeting(gameId, userId);
+
+        if (response.success && response.data) {
+            set((state) => ({
+                isTriggeringMeeting: false,
+                meetingView: response.data!,
+                meetingError: null,
+                meetingErrorCode: null,
+                gameState: state.gameState && state.gameState.id === gameId
+                    ? { ...state.gameState, meeting: response.data!.meeting ?? undefined }
+                    : state.gameState,
+            }));
+            return true;
+        }
+
+        set({
+            isTriggeringMeeting: false,
+            meetingError: response.error || "Unknown error",
+            meetingErrorCode: response.code || null,
+        });
+        return false;
+    },
+
+    castMeetingVoteAction: async (gameId: string, userId: string, targetId: string) => {
+        set({ isMeetingVoting: true, meetingError: null, meetingErrorCode: null });
+        const response = await castMeetingVote(gameId, userId, targetId);
+
+        if (response.success && response.data) {
+            set((state) => ({
+                isMeetingVoting: false,
+                meetingView: response.data!,
+                meetingError: null,
+                meetingErrorCode: null,
+                gameState: state.gameState && state.gameState.id === gameId
+                    ? { ...state.gameState, meeting: response.data!.meeting ?? undefined }
+                    : state.gameState,
+            }));
+            return true;
+        }
+
+        set({
+            isMeetingVoting: false,
+            meetingError: response.error || "Unknown error",
+            meetingErrorCode: response.code || null,
+        });
+        return false;
+    },
+
+    cancelMeetingVoteAction: async (gameId: string, userId: string) => {
+        set({ isMeetingVoting: true, meetingError: null, meetingErrorCode: null });
+        const response = await cancelMeetingVote(gameId, userId);
+
+        if (response.success && response.data) {
+            set((state) => ({
+                isMeetingVoting: false,
+                meetingView: response.data!,
+                meetingError: null,
+                meetingErrorCode: null,
+                gameState: state.gameState && state.gameState.id === gameId
+                    ? { ...state.gameState, meeting: response.data!.meeting ?? undefined }
+                    : state.gameState,
+            }));
+            return true;
+        }
+
+        set({
+            isMeetingVoting: false,
+            meetingError: response.error || "Unknown error",
+            meetingErrorCode: response.code || null,
+        });
+        return false;
     },
 
     join: async (gameId: string, playerName: string, userId: string) => {
@@ -393,6 +532,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
         isEliminating: false,
         eliminationError: null,
         eliminationErrorCode: null,
+        meetingView: null,
+        isMeetingLoading: false,
+        isTriggeringMeeting: false,
+        isMeetingVoting: false,
+        meetingError: null,
+        meetingErrorCode: null,
         gameQuests: [],
         isGameQuestsLoading: false,
     }),

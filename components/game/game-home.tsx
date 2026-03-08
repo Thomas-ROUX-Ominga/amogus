@@ -1,14 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { useEffect } from "react";
 import { GameState, Player } from "@/types/game";
 import { useGameStore } from "@/lib/store/game-store";
 import { RoleBadge } from "@/components/game/role-badge";
 import { QuestProgress } from "@/components/game/quest-progress";
 import { ScanButton } from "@/components/game/scan-button";
+import { BuzzerButton } from "@/components/game/buzzer-button";
 import { CameraScanner } from "@/components/game/camera-scanner";
 import { EliminationButton } from "@/components/game/elimination-button";
 import { EliminatedScreen } from "@/components/game/eliminated-screen";
@@ -25,6 +25,11 @@ interface GameHomeProps {
 
 export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     const storageKey = `elimination-dismissed-${gameState.id}-${userId}`;
+    const isMeetingActive = gameState.meeting?.status === "ACTIVE";
+    const activeMeetingId = gameState.meeting?.id;
+    const meetingPopupStorageKey = activeMeetingId
+        ? `meeting-popup-dismissed-${gameState.id}-${activeMeetingId}-${userId}`
+        : null;
     const [showEliminatedOverlay, setShowEliminatedOverlay] = React.useState(() => {
         if (currentPlayer.isAlive) return false;
         if (typeof window !== "undefined") {
@@ -32,6 +37,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         }
         return true;
     });
+    const [showMeetingPopup, setShowMeetingPopup] = React.useState(false);
     const { 
         questsCompleted, 
         questsTotal, 
@@ -44,7 +50,10 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         getImpostorQuestData,
         isEliminating,
         eliminationError,
-        eliminatePlayerAction
+        eliminatePlayerAction,
+        isTriggeringMeeting = false,
+        meetingError = null,
+        triggerMeetingAction = async () => false,
     } = useGameStore();
     
     // Story 12.0: Check if all quests are finished to hide the scan button
@@ -62,6 +71,16 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
             }
         }
     }, [currentPlayer.isAlive, storageKey]);
+
+    useEffect(() => {
+        if (!isMeetingActive || !meetingPopupStorageKey) {
+            setShowMeetingPopup(false);
+            return;
+        }
+
+        const dismissed = sessionStorage.getItem(meetingPopupStorageKey);
+        setShowMeetingPopup(!dismissed);
+    }, [isMeetingActive, meetingPopupStorageKey]);
 
     // Camera scanner state management
     const { isOpen, openScanner, closeScanner, handleScan: originalHandleScan } = useCameraScanner({
@@ -144,6 +163,27 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     }
     
     const role = currentPlayer.role;
+    const hasUsedBuzzer = Boolean(currentPlayer.meetingBuzzUsedAt);
+    const canUseBuzzer =
+        currentPlayer.isAlive &&
+        currentPlayer.role !== "ADMIN" &&
+        !hasUsedBuzzer &&
+        !isMeetingActive &&
+        gameState.status === "IN_PROGRESS";
+
+    const handleBuzz = async () => {
+        const success = await triggerMeetingAction(gameState.id, userId);
+        if (!success) {
+            console.error("Meeting trigger failed");
+        }
+    };
+
+    const dismissMeetingPopup = () => {
+        if (meetingPopupStorageKey) {
+            sessionStorage.setItem(meetingPopupStorageKey, "true");
+        }
+        setShowMeetingPopup(false);
+    };
 
     return (
         <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
@@ -237,7 +277,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     )}
 
                     {/* SCAN Button (thumb zone — bottom) */}
-                    {gameState.creatorId !== userId && !allQuestsDone && (
+                    {gameState.creatorId !== userId && !allQuestsDone && !isMeetingActive && (
                         <ScanButton 
                             disabled={false} 
                             onClick={openScanner}
@@ -246,7 +286,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     )}
 
                     {/* Camera Scanner Overlay */}
-                    {gameState.creatorId !== userId && !allQuestsDone && (
+                    {gameState.creatorId !== userId && !allQuestsDone && !isMeetingActive && (
                         <CameraScanner
                             isOpen={isOpen}
                             onClose={closeScanner}
@@ -283,13 +323,24 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     <div className="text-[8px] opacity-40 text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
                         Role: {currentPlayer.role}
                     </div>
-                    {gameState.creatorId !== userId && (
-                        <EliminationButton
-                            onEliminate={handleElimination}
-                            disabled={isEliminating || !currentPlayer.isAlive}
-                            isEliminating={isEliminating}
-                        />
-                    )}
+                    <div className="flex items-center gap-2">
+                        {currentPlayer.role !== "ADMIN" && (
+                            <BuzzerButton
+                                onBuzz={handleBuzz}
+                                disabled={!canUseBuzzer || isTriggeringMeeting}
+                                isBuzzing={isTriggeringMeeting}
+                                hasUsed={hasUsedBuzzer}
+                                meetingActive={isMeetingActive}
+                            />
+                        )}
+                        {gameState.creatorId !== userId && (
+                            <EliminationButton
+                                onEliminate={handleElimination}
+                                disabled={isEliminating || !currentPlayer.isAlive || isMeetingActive}
+                                isEliminating={isEliminating}
+                            />
+                        )}
+                    </div>
                     <div className={`text-[8px] uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)] ${currentPlayer.isAlive ? "opacity-40 text-muted-foreground" : "text-red-500 font-bold"}`}>
                         Status: {currentPlayer.isAlive ? "READY" : "ELIMINÉ"}
                     </div>
@@ -301,7 +352,41 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         {eliminationError}
                     </div>
                 )}
+                {meetingError && (
+                    <div className="mt-2 p-2 border border-destructive/20 bg-destructive/10 text-destructive text-xs text-center">
+                        {meetingError}
+                    </div>
+                )}
             </div>
+
+            {showMeetingPopup && isMeetingActive && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="max-w-md w-full border border-red-500/30 bg-black p-6 space-y-4 shadow-xl">
+                        <h2 className="text-lg font-bold uppercase tracking-wider text-red-300 font-orbitron">
+                            Meeting déclenché
+                        </h2>
+                        <p className="text-sm text-muted-foreground font-rajdhani">
+                            Un buzz a été déclenché. Rejoignez la salle de meeting et rassemblez-vous IRL.
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                type="button"
+                                onClick={dismissMeetingPopup}
+                                className="px-4 py-2 text-sm border border-primary/20 hover:bg-primary/10 transition-colors font-rajdhani uppercase tracking-widest"
+                            >
+                                Plus tard
+                            </button>
+                            <Link
+                                href={`/game/${gameState.id}/meeting`}
+                                onClick={dismissMeetingPopup}
+                                className="px-4 py-2 text-sm bg-red-600 text-white hover:bg-red-500 transition-colors font-rajdhani uppercase tracking-widest"
+                            >
+                                Rejoindre
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }

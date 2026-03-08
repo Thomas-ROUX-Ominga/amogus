@@ -7,6 +7,16 @@ vi.mock("@/lib/redis/actions", () => ({
     joinGame: vi.fn(),
     startGame: vi.fn(),
     selectRole: vi.fn(),
+    completeQuest: vi.fn(),
+    refreshGame: vi.fn(),
+    addFailedQuest: vi.fn(),
+    getPlayerFailedQuests: vi.fn(),
+    eliminatePlayer: vi.fn(),
+    getGameQuests: vi.fn(),
+    triggerMeeting: vi.fn(),
+    getMeetingView: vi.fn(),
+    castMeetingVote: vi.fn(),
+    cancelMeetingVote: vi.fn(),
 }));
 
 describe("GameStore - Role Selection", () => {
