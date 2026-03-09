@@ -241,6 +241,42 @@ describe('Batch Actions', () => {
       expect(result.data?.quests[1].location).toBe('New Location');
     });
 
+    it('should update sabotage locations when batch has sabotage config', async () => {
+      const mockBatch = {
+        id: 'batch-123',
+        questCount: 2,
+        quests: [
+          { id: 'quest-1', type: 'qcm', duration: 'short', location: 'Zone A' },
+        ],
+        sabotages: {
+          communications: { qrId: 'comms-1', location: 'Old Comms' },
+          reactor: [
+            { qrId: 'reactor-a', location: 'Old A' },
+            { qrId: 'reactor-b', location: 'Old B' },
+          ],
+        },
+        createdAt: '2026-02-15T10:00:00.000Z',
+      };
+
+      (redis.get as any).mockResolvedValue(mockBatch);
+      (redis.set as any).mockResolvedValue('OK');
+
+      const result = await updateQuestsLocations(
+        'batch-123',
+        { 'quest-1': 'Zone X' },
+        {
+          communications: 'Salon',
+          reactorA: 'Garage',
+          reactorB: 'Cuisine',
+        },
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.data?.sabotages?.communications.location).toBe('Salon');
+      expect(result.data?.sabotages?.reactor[0].location).toBe('Garage');
+      expect(result.data?.sabotages?.reactor[1].location).toBe('Cuisine');
+    });
+
     it('should fail with invalid batch ID', async () => {
       const result = await updateQuestsLocations('', {});
 

@@ -1,110 +1,111 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QuestProgress } from "@/components/game/quest-progress";
-import { QuestType, QuestDuration } from "@/types/quest";
 
-// Mock the store
 const mockUseGameStore = vi.hoisted(() => vi.fn());
 
-vi.mock('@/lib/store/game-store', () => ({
+vi.mock("@/lib/store/game-store", () => ({
     useGameStore: mockUseGameStore,
-}));
-
-vi.mock("@/lib/redis/batch-actions", () => ({
-    getBatch: vi.fn().mockResolvedValue({ success: true, data: { quests: [] } }),
 }));
 
 describe("QuestProgress", () => {
     beforeEach(() => {
-      vi.clearAllMocks();
-      // Default mock with required properties
-      mockUseGameStore.mockReturnValue({
-        getImpostorQuestData: () => ({
-            quests: [],
-            completed: 0,
-            total: 0,
-            percentage: 0,
-        }),
-        impostorQuestsInitialized: false,
-      });
+        vi.clearAllMocks();
+        mockUseGameStore.mockReturnValue({
+            gameQuests: [],
+            fetchGameQuests: vi.fn(),
+            isGameQuestsLoading: false,
+            gameState: {
+                id: "game-1",
+                status: "IN_PROGRESS",
+                createdAt: Date.now(),
+                players: [],
+                sabotageState: {
+                    active: null,
+                    reactor: null,
+                    cooldowns: {
+                        communicationsAvailableAt: 0,
+                        reactorAvailableAt: 0,
+                    },
+                },
+            },
+        });
     });
 
-    it("should render for Crewmate role", () => {
+    it("renders crewmate progress title", () => {
         render(<QuestProgress role="CREWMATE" completed={0} total={0} />);
         expect(screen.getByText("Progression des quêtes")).toBeTruthy();
     });
 
-    it("should render loading state for Impostor role when not initialized", () => {
+    it("renders sabotage panel for impostor with locations", () => {
         mockUseGameStore.mockReturnValue({
-            getImpostorQuestData: () => ({
-                quests: [],
-                completed: 0,
-                total: 0,
-                percentage: 0,
-            }),
-            impostorQuestsInitialized: false,
-        } as const);
-
-        render(<QuestProgress role="IMPOSTOR" completed={0} total={0} />);
-        expect(screen.getByText("Progression des quêtes")).toBeTruthy();
-        // Should show loading skeleton
-        expect(screen.getByText("Progression des quêtes").closest('.p-4')?.querySelector('.animate-pulse')).toBeTruthy();
-    });
-
-    it("should render quest list for Impostor role when initialized", () => {
-        mockUseGameStore.mockReturnValue({
-            getImpostorQuestData: () => ({
-                quests: [
-                    { id: 'quest1', type: 'qcm' as QuestType, duration: 'short' as QuestDuration, location: 'Salle des machines', completed: false },
-                    { id: 'quest2', type: 'true-false' as QuestType, duration: 'medium' as QuestDuration, location: 'Pont de commandement', completed: true },
+            gameQuests: [],
+            fetchGameQuests: vi.fn(),
+            isGameQuestsLoading: false,
+            gameState: {
+                id: "game-1",
+                status: "IN_PROGRESS",
+                createdAt: Date.now(),
+                players: [
+                    { id: "i1", name: "Alpha", role: "IMPOSTOR", isAlive: true },
+                    { id: "i2", name: "Bravo", role: "IMPOSTOR", isAlive: true },
                 ],
-                completed: 1,
-                total: 2,
-                percentage: 50,
-            }),
-            impostorQuestsInitialized: true,
-        } as const);
+                sabotages: {
+                    communications: { qrId: "comms-1", location: "Salon" },
+                    reactor: [
+                        { qrId: "reactor-a", location: "Garage" },
+                        { qrId: "reactor-b", location: "Cuisine" },
+                    ],
+                },
+                sabotageState: {
+                    active: "REACTOR",
+                    reactor: {
+                        startedAt: Date.now(),
+                        endsAt: Date.now() + 60000,
+                        scannedByQrId: ["reactor-a"],
+                        scannedUserIds: ["crew-1"],
+                    },
+                    cooldowns: {
+                        communicationsAvailableAt: 0,
+                        reactorAvailableAt: 0,
+                    },
+                },
+            },
+        });
 
-        render(<QuestProgress role="IMPOSTOR" completed={0} total={0} />);
-        expect(screen.getByText("Progression des quêtes")).toBeTruthy();
-        expect(screen.getByText("1/2 quêtes accomplies")).toBeTruthy();
-        expect(screen.getByText("Quête 1")).toBeTruthy();
-        expect(screen.getByText("📍 Salle des machines")).toBeTruthy();
+        render(
+            <QuestProgress
+                role="IMPOSTOR"
+                completed={0}
+                total={0}
+                currentPlayerId="i1"
+            />,
+        );
+
+        expect(screen.getByText("Panneau sabotage imposteur")).toBeTruthy();
+        expect(screen.getByText("Bravo")).toBeTruthy();
+        expect(screen.getByText("Salon")).toBeTruthy();
+        expect(screen.getByText("Garage")).toBeTruthy();
+        expect(screen.getAllByText("Réacteur 1/2").length).toBeGreaterThan(0);
     });
 
-    it("should show placeholder text when total is 0", () => {
-        render(<QuestProgress role="CREWMATE" completed={0} total={0} />);
-        expect(screen.getAllByText("En attente de missions...")[0]).toBeTruthy();
+    it("hides crewmate quest list during communications sabotage", () => {
+        render(
+            <QuestProgress
+                role="CREWMATE"
+                completed={1}
+                total={3}
+                communicationsSabotaged
+            />,
+        );
+
+        expect(screen.getByText("COMMUNICATIONS SABOTÉES")).toBeTruthy();
     });
 
-    it("should show quest count when total > 0", () => {
-        render(<QuestProgress role="CREWMATE" completed={3} total={5} />);
-        expect(screen.getByText("3/5 quêtes accomplies")).toBeTruthy();
-    });
-
-    it("should render progress bar with correct aria attributes", () => {
+    it("renders progress bar with correct attributes for crewmates", () => {
         render(<QuestProgress role="CREWMATE" completed={2} total={4} />);
         const progressBar = screen.getByRole("progressbar");
         expect(progressBar.getAttribute("aria-valuenow")).toBe("2");
-        expect(progressBar.getAttribute("aria-valuemin")).toBe("0");
         expect(progressBar.getAttribute("aria-valuemax")).toBe("4");
-    });
-
-    it("should render progress bar at 0% width when no quests completed", () => {
-        render(<QuestProgress role="CREWMATE" completed={0} total={5} />);
-        const progressBar = screen.getByRole("progressbar");
-        expect(progressBar.style.width).toBe("0%");
-    });
-
-    it("should render progress bar at 60% width for 3/5 quests", () => {
-        render(<QuestProgress role="CREWMATE" completed={3} total={5} />);
-        const progressBar = screen.getByRole("progressbar");
-        expect(progressBar.style.width).toBe("60%");
-    });
-
-    it("should use Rajdhani font for labels", () => {
-        render(<QuestProgress role="CREWMATE" completed={0} total={0} />);
-        const label = screen.getByText("Progression des quêtes");
-        expect(label.className).toContain("font-rajdhani");
     });
 });

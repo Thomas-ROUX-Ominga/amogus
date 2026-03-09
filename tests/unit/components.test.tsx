@@ -10,7 +10,7 @@ describe("PulseButton", () => {
 
     it("should show loading state", () => {
         render(<PulseButton isLoading={ true} > Test Button </PulseButton>);
-        expect(screen.getByText("INITIALIZING...")).toBeDefined();
+        expect(screen.getByText("Chargement...")).toBeDefined();
     });
 
     it("should call onClick when clicked", () => {

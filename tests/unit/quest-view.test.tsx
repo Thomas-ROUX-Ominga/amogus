@@ -86,9 +86,9 @@ describe("QuestView", () => {
         expect(screen.getByText("LONG")).toBeTruthy();
     });
 
-    it("should render 'Quest Active' header", () => {
+    it("should render quest active header", () => {
         render(<QuestView quest={mockQuest} gameId="game-123" />);
-        expect(screen.getByText("Quest Active")).toBeTruthy();
+        expect(screen.getByText("Quête active")).toBeTruthy();
     });
 
     it("should render flee button with 'Abandonner' text", () => {
@@ -106,7 +106,7 @@ describe("QuestView", () => {
 
     it("should have flee button with correct aria-label", () => {
         render(<QuestView quest={mockQuest} gameId="game-123" />);
-        const fleeButton = screen.getByLabelText("Abandonner la quête et retourner au Game Home");
+        const fleeButton = screen.getByLabelText("Abandonner la quête et retourner au cockpit");
         expect(fleeButton).toBeTruthy();
     });
 
@@ -118,7 +118,7 @@ describe("QuestView", () => {
 
     it("should render quest ID in footer", () => {
         render(<QuestView quest={mockQuest} gameId="game-123" />);
-        expect(screen.getByText("Quest: s1")).toBeTruthy();
+        expect(screen.getByText("Quête: s1")).toBeTruthy();
     });
 
     it("should render quest type in footer", () => {
@@ -170,7 +170,7 @@ describe("QuestView", () => {
             render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
         });
         expect(screen.getByText("ERREUR DE SAUVEGARDE")).toBeTruthy();
-        expect(screen.getByText("RÉESSAYER")).toBeTruthy();
+        expect(screen.getByText("Réessayer")).toBeTruthy();
     });
 
     it("should call completeQuestAction when retry button is clicked", async () => {
@@ -180,7 +180,7 @@ describe("QuestView", () => {
         await act(async () => {
             render(<QuestView quest={mockQuest} gameId="game-123" userId="user-1" />);
         });
-        const retryButton = screen.getByText("RÉESSAYER").closest("button")!;
+        const retryButton = screen.getByText("Réessayer").closest("button")!;
         await act(async () => {
             fireEvent.click(retryButton);
         });
@@ -279,7 +279,7 @@ describe("QuestView", () => {
         mockCompleteQuestAction.mockResolvedValue(true);
 
         // Click Retry
-        const retryButton = screen.getByText("RÉESSAYER").closest("button")!;
+        const retryButton = screen.getByText("Réessayer").closest("button")!;
         fireEvent.click(retryButton);
 
         // Wait for retry promise to resolve

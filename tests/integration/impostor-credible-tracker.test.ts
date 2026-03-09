@@ -1,183 +1,114 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import React from 'react';
-import { render, screen, waitFor, renderHook, act } from '@testing-library/react';
-import { GameHome } from '@/components/game/game-home';
-import { GameState, Player, PlayerRole } from '@/types/game';
-import { Quest, QuestType, QuestDuration } from '@/types/quest';
-import { useGameStore } from '@/lib/store/game-store';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import React from "react";
+import { render, screen } from "@testing-library/react";
+import { GameHome } from "@/components/game/game-home";
+import { GameState, Player } from "@/types/game";
+import { useGameStore } from "@/lib/store/game-store";
 
-// Mock dependencies
-vi.mock('@/lib/redis/batch-actions', () => ({
-  getBatch: vi.fn(),
+vi.mock("@/hooks/use-camera-scanner", () => ({
+    useCameraScanner: () => ({
+        isOpen: false,
+        isLoading: false,
+        openScanner: vi.fn(),
+        closeScanner: vi.fn(),
+        handleScan: vi.fn(),
+    }),
 }));
 
-vi.mock('@/hooks/use-camera-scanner', () => ({
-  useCameraScanner: () => ({
-    isOpen: false,
-    isLoading: false,
-    openScanner: vi.fn(),
-    closeScanner: vi.fn(),
-    handleScan: vi.fn(),
-  }),
+vi.mock("@/lib/redis/actions", () => ({
+    scanSabotage: vi.fn().mockResolvedValue({ success: true, data: { handled: false } }),
 }));
 
-describe('Impostor Credible Tracker Integration', () => {
-  let mockGameState: GameState;
-  let mockImpostorPlayer: Player;
-  let mockBatchQuests: Quest[];
+describe("Impostor Sabotage Panel Integration", () => {
+    let mockGameState: GameState;
+    let mockImpostorPlayer: Player;
 
-  beforeEach(async () => {
-    // Reset store before each test
-    const { reset } = useGameStore.getState();
-    reset();
+    beforeEach(() => {
+        const { reset } = useGameStore.getState();
+        reset();
 
-    // Mock game state
-    mockGameState = {
-      id: 'test-game',
-      status: 'IN_PROGRESS',
-      players: [],
-      createdAt: Date.now(),
-      batchId: 'test-batch',
-      questsTotal: 3,
-      questsPerPlayer: { short: 1, medium: 1, long: 1 },
-    };
+        mockGameState = {
+            id: "test-game",
+            status: "IN_PROGRESS",
+            players: [
+                { id: "impostor-1", name: "Alpha", role: "IMPOSTOR", isAlive: true },
+                { id: "impostor-2", name: "Bravo", role: "IMPOSTOR", isAlive: true },
+                { id: "crew-1", name: "Charlie", role: "CREWMATE", isAlive: true },
+            ],
+            createdAt: Date.now(),
+            questsTotal: 3,
+            questsPerPlayer: { short: 1, medium: 1, long: 1 },
+            sabotages: {
+                communications: { qrId: "comms-qr", location: "Hall" },
+                reactor: [
+                    { qrId: "reactor-a", location: "Garage" },
+                    { qrId: "reactor-b", location: "Kitchen" },
+                ],
+            },
+            sabotageState: {
+                active: null,
+                reactor: null,
+                cooldowns: {
+                    communicationsAvailableAt: 0,
+                    reactorAvailableAt: 0,
+                },
+            },
+        };
 
-    // Mock impostor player
-    mockImpostorPlayer = {
-      id: 'impostor-1',
-      name: 'Test Impostor',
-      role: 'IMPOSTOR' as PlayerRole,
-      completedQuests: [],
-      isAlive: true,
-    };
+        mockImpostorPlayer = {
+            id: "impostor-1",
+            name: "Alpha",
+            role: "IMPOSTOR",
+            completedQuests: [],
+            isAlive: true,
+        };
 
-    // Mock batch quests
-    mockBatchQuests = [
-      { id: 'quest1', type: 'qcm' as QuestType, duration: 'short' as QuestDuration },
-      { id: 'quest2', type: 'true-false' as QuestType, duration: 'medium' as QuestDuration },
-      { id: 'quest3', type: 'form' as QuestType, duration: 'long' as QuestDuration },
-    ];
-
-    // Mock getBatch to return our test data
-    const { getBatch } = await import('@/lib/redis/batch-actions');
-    vi.mocked(getBatch).mockResolvedValue({
-      success: true,
-      data: {
-        id: 'test-batch',
-        questCount: 3,
-        quests: mockBatchQuests,
-        createdAt: new Date().toISOString(),
-      },
-    });
-  });
-
-  it('should initialize and display fake quest list for impostors', async () => {
-    render(
-      React.createElement(GameHome, {
-        gameState: mockGameState,
-        currentPlayer: mockImpostorPlayer,
-        userId: 'impostor-1',
-      })
-    );
-
-    // Wait for quest initialization
-    await waitFor(() => {
-      expect(screen.getByText('Progression des quêtes')).toBeInTheDocument();
+        useGameStore.setState({
+            gameState: mockGameState,
+            questsCompleted: 0,
+            questsTotal: 3,
+        });
     });
 
-    // Should show quest list items
-    await waitFor(() => {
-      expect(screen.getByText('Quête 1')).toBeInTheDocument();
-      expect(screen.getByText('Quête 2')).toBeInTheDocument();
-      expect(screen.getByText('Quête 3')).toBeInTheDocument();
+    it("displays impostor teammates and sabotage locations", () => {
+        render(
+            React.createElement(GameHome, {
+                gameState: mockGameState,
+                currentPlayer: mockImpostorPlayer,
+                userId: "impostor-1",
+            }),
+        );
+
+        expect(screen.getByText("Panneau sabotage imposteur")).toBeInTheDocument();
+        expect(screen.getByText("Bravo")).toBeInTheDocument();
+        expect(screen.getByText("Hall")).toBeInTheDocument();
+        expect(screen.getByText("Garage")).toBeInTheDocument();
+        expect(screen.getByText("Kitchen")).toBeInTheDocument();
     });
 
-    // Should show progress
-    expect(screen.getByText('0/3 quêtes accomplies')).toBeInTheDocument();
-    
-    // Should NOT show location labels initially (they're set during scanning)
-    expect(screen.queryByText('📍 Salle des machines')).not.toBeInTheDocument();
-    expect(screen.queryByText('📍 Pont de commandement')).not.toBeInTheDocument();
-    expect(screen.queryByText('📍 Secteur médical')).not.toBeInTheDocument();
-  });
+    it("shows reactor progress state when reactor sabotage is active", () => {
+        mockGameState.sabotageState = {
+            active: "REACTOR",
+            reactor: {
+                startedAt: Date.now() - 5000,
+                endsAt: Date.now() + 60000,
+                scannedByQrId: ["reactor-a"],
+                scannedUserIds: ["crew-1"],
+            },
+            cooldowns: {
+                communicationsAvailableAt: 0,
+                reactorAvailableAt: 0,
+            },
+        };
 
-  it('should show visual parity with crewmate display', async () => {
-    render(
-      React.createElement(GameHome, {
-        gameState: mockGameState,
-        currentPlayer: mockImpostorPlayer,
-        userId: 'impostor-1',
-      })
-    );
+        render(
+            React.createElement(GameHome, {
+                gameState: mockGameState,
+                currentPlayer: mockImpostorPlayer,
+                userId: "impostor-1",
+            }),
+        );
 
-    await waitFor(() => {
-      // Should have same structure as crewmate view
-      const progressSection = screen.getByText('Progression des quêtes');
-      expect(progressSection).toBeInTheDocument();
-      
-      // Should have progress bar
-      const progressBar = screen.getByRole('progressbar');
-      expect(progressBar).toBeInTheDocument();
-      expect(progressBar).toHaveAttribute('aria-valuenow', '0');
-      expect(progressBar).toHaveAttribute('aria-valuemax', '3');
+        expect(screen.getAllByText("Réacteur 1/2").length).toBeGreaterThan(0);
     });
-  });
-
-  it('should update progress when impostor scans QR codes', async () => {
-    const { result } = renderHook(() => useGameStore());
-    
-    render(
-      React.createElement(GameHome, {
-        gameState: mockGameState,
-        currentPlayer: mockImpostorPlayer,
-        userId: 'impostor-1',
-      })
-    );
-
-    // Wait for initialization
-    await waitFor(() => {
-      expect(screen.getByText('0/3 quêtes accomplies')).toBeInTheDocument();
-    });
-
-    // Simulate quest completion
-    act(() => {
-      result.current.completeImpostorQuest('quest1');
-    });
-
-    // Should update progress
-    await waitFor(() => {
-      expect(screen.getByText('1/3 quêtes accomplies')).toBeInTheDocument();
-    });
-
-    // Should show completed checkmark
-    const questItems = screen.getAllByText(/Quête \d+/);
-    expect(questItems[0]).toBeInTheDocument(); // First quest should now be completed
-  });
-
-  it('should not affect crewmate gameplay', async () => {
-    const mockCrewmatePlayer: Player = {
-      ...mockImpostorPlayer,
-      role: 'CREWMATE' as PlayerRole,
-    };
-
-    render(
-      React.createElement(GameHome, {
-        gameState: mockGameState,
-        currentPlayer: mockCrewmatePlayer,
-        userId: 'crewmate-1',
-      })
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Progression des quêtes')).toBeInTheDocument();
-    });
-
-    // Should show normal crewmate progress (no quest list)
-    // For crewmates with no quests, both QuestProgress and QuestList show "En attente de missions..."
-    expect(screen.getAllByText('En attente de missions...')).toHaveLength(2);
-    
-    // Should NOT show quest list items for crewmates
-    expect(screen.queryByText('Quête 1')).not.toBeInTheDocument();
-    expect(screen.queryByText('📍 Salle des machines')).not.toBeInTheDocument();
-  });
 });

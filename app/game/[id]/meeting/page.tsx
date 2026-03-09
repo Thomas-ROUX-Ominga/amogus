@@ -9,6 +9,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/use-auth";
 import { useGameStore } from "@/lib/store/game-store";
 import { ErrorView } from "@/components/game/error-view";
+import { ReactorSabotageAlert } from "@/components/game/reactor-sabotage-alert";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 function formatRemaining(ms: number): string {
@@ -142,6 +143,8 @@ export default function MeetingPage() {
     return (
         <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
             <div className="max-w-4xl w-full border-2 border-primary/20 p-6 md:p-8 space-y-6 bg-black/50 backdrop-blur-sm">
+                {gameState && <ReactorSabotageAlert gameState={gameState} />}
+
                 <div className="flex items-center justify-between border-b border-primary/20 pb-4">
                     <h1 className="text-lg md:text-xl font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
                         {t("game.meeting.roomTitle")}

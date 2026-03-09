@@ -88,6 +88,25 @@ describe("meeting actions", () => {
         });
     });
 
+    it("blocks crewmate buzzer when communications sabotage is active", async () => {
+        const state = await redis.get<GameState>(stateKey);
+        await redis.set(stateKey, {
+            ...state!,
+            sabotageState: {
+                active: "COMMUNICATIONS",
+                reactor: null,
+                cooldowns: {
+                    communicationsAvailableAt: 0,
+                    reactorAvailableAt: 0,
+                },
+            },
+        });
+
+        const result = await triggerMeeting(gameId, "u1");
+        expect(result.success).toBe(false);
+        expect(result.code).toBe(ERROR_CODES.ERR_SABOTAGE_COMMUNICATIONS_ACTIVE);
+    });
+
     it("rejects self-vote", async () => {
         await triggerMeeting(gameId, "u1");
 

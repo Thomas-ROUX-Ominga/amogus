@@ -11,6 +11,9 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/redis/batch-actions", () => ({
     getBatch: vi.fn().mockResolvedValue({ success: true, data: { quests: [] } }),
 }));
+vi.mock("@/lib/redis/actions", () => ({
+    scanSabotage: vi.fn().mockResolvedValue({ success: true, data: { handled: false } }),
+}));
 vi.mock("@/hooks/use-camera-scanner", () => ({
     useCameraScanner: vi.fn().mockReturnValue({
         isOpen: false,
@@ -18,6 +21,30 @@ vi.mock("@/hooks/use-camera-scanner", () => ({
         closeScanner: vi.fn(),
         handleScan: vi.fn(),
     }),
+}));
+vi.mock("@/components/game/camera-scanner", () => ({
+    CameraScanner: () => null,
+}));
+vi.mock("@/components/game/reactor-sabotage-alert", () => ({
+    ReactorSabotageAlert: () => null,
+}));
+vi.mock("@/components/game/quest-progress", () => ({
+    QuestProgress: ({
+        role,
+        communicationsSabotaged,
+    }: {
+        role: "CREWMATE" | "IMPOSTOR" | "ADMIN";
+        communicationsSabotaged?: boolean;
+    }) => (
+        <div>
+            <span>
+                {role === "IMPOSTOR"
+                    ? "Panneau sabotage imposteur"
+                    : "Progression des quêtes"}
+            </span>
+            {communicationsSabotaged ? <span>COMMUNICATIONS SABOTÉES</span> : null}
+        </div>
+    ),
 }));
 
 const mockGameState: GameState = {
@@ -55,10 +82,9 @@ describe("GameHome", () => {
             launchError: null,
             roleError: null,
             selectedRole: null,
-            impostorQuestsInitialized: false,
             isEliminating: false,
             eliminationError: null,
-            getImpostorQuestData: vi.fn().mockReturnValue({ quests: [], completed: 0, total: 0, percentage: 0 }),
+            refreshGameData: vi.fn(),
             initializeImpostorQuests: vi.fn(),
             generateImpostorQuestAssignments: vi.fn(),
             completeImpostorQuest: vi.fn(),
@@ -134,7 +160,7 @@ describe("GameHome", () => {
 
     it("should render quest progress for Impostor", () => {
         render(<GameHome gameState={mockGameState} currentPlayer={impostorPlayer} userId="user-2" />);
-        expect(screen.getByText("Progression des quêtes")).toBeTruthy();
+        expect(screen.getByText("Panneau sabotage imposteur")).toBeTruthy();
     });
 
     it("should render 'Retour à l'accueil' link", () => {
@@ -159,27 +185,42 @@ describe("GameHome", () => {
         expect(screen.getByText("La partie est active")).toBeTruthy();
     });
 
+    it("should disable crewmate buzzer during communications sabotage", () => {
+        const sabotagedState: GameState = {
+            ...mockGameState,
+            sabotageState: {
+                active: "COMMUNICATIONS",
+                reactor: null,
+                cooldowns: { communicationsAvailableAt: 0, reactorAvailableAt: 0 },
+            },
+        };
+
+        render(<GameHome gameState={sabotagedState} currentPlayer={crewmatePlayer} userId="user-1" />);
+        const buzzerButton = screen.getByRole("button", { name: /buzzer/i });
+        expect(buzzerButton).toBeDisabled();
+        expect(screen.getByText("COMMUNICATIONS SABOTÉES")).toBeTruthy();
+    });
+
     it("should hide SCAN button for Crewmate when all quests are completed", () => {
         vi.mocked(useGameStore).mockReturnValue({
             questsCompleted: 5,
             questsTotal: 5,
-            getImpostorQuestData: vi.fn().mockReturnValue({ quests: [], completed: 0, total: 0, percentage: 0 }),
+            refreshGameData: vi.fn(),
         } as Partial<ReturnType<typeof useGameStore>>);
 
         render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
         expect(screen.queryByText("SCANNER")).toBeNull();
     });
 
-    it("should hide SCAN button for Impostor when all fake quests are completed", () => {
+    it("should keep SCAN button visible for Impostor sabotage actions", () => {
         vi.mocked(useGameStore).mockReturnValue({
             questsCompleted: 0,
             questsTotal: 0,
-            impostorQuestsInitialized: true,
-            getImpostorQuestData: vi.fn().mockReturnValue({ quests: [], completed: 3, total: 3, percentage: 100 }),
+            refreshGameData: vi.fn(),
         } as Partial<ReturnType<typeof useGameStore>>);
 
         render(<GameHome gameState={mockGameState} currentPlayer={impostorPlayer} userId="user-2" />);
-        expect(screen.queryByText("SCANNER")).toBeNull();
+        expect(screen.getByText("SCANNER")).toBeTruthy();
     });
 
     it("should show 'MORT' status when player is dead", () => {
@@ -191,7 +232,7 @@ describe("GameHome", () => {
     it("should disable elimination button when player is dead", () => {
         const deadPlayer: Player = { ...crewmatePlayer, isAlive: false };
         render(<GameHome gameState={mockGameState} currentPlayer={deadPlayer} userId="user-1" />);
-        const button = screen.getByRole("button", { name: /Already eliminated/i });
+        const button = screen.getByRole("button", { name: /(Already eliminated|Déjà éliminé)/i });
         expect(button).toBeDisabled();
     });
 

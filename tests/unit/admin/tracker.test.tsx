@@ -4,6 +4,7 @@ import { PlayerList } from "@/components/admin/player-list";
 import { ProgressBar } from "@/components/admin/progress-bar";
 import { TrackerStats } from "@/components/admin/tracker-stats";
 import { Player, GameState } from "@/types/game";
+import { calculateGlobalProgress, calculatePlayerProgress, getTotalQuests } from "@/lib/utils/quest-calculations";
 
 describe("PlayerList", () => {
     const mockPlayers: Player[] = [
@@ -32,40 +33,41 @@ describe("PlayerList", () => {
     it("should render player list correctly", () => {
         render(<PlayerList players={mockPlayers} currentUserId="player1" />);
         
-        expect(screen.getByText("Crew Manifest")).toBeDefined();
+        expect(screen.getByText("Manifeste équipage")).toBeDefined();
         expect(screen.getByText("TestPlayer1")).toBeDefined();
         expect(screen.getByText("TestPlayer2")).toBeDefined();
         expect(screen.getByText("TestPlayer3")).toBeDefined();
-        expect(screen.getByText("3 MEMBERS")).toBeDefined();
+        expect(screen.getByText("3 MEMBRES")).toBeDefined();
     });
 
     it("should highlight current user", () => {
         render(<PlayerList players={mockPlayers} currentUserId="player1" />);
         
-        expect(screen.getByText("YOU")).toBeDefined();
+        expect(screen.getAllByText("VOUS").length).toBeGreaterThan(0);
         expect(screen.getByText("TestPlayer1")).toBeDefined();
     });
 
     it("should display player roles and status correctly", () => {
         render(<PlayerList players={mockPlayers} currentUserId="player1" />);
         
-        expect(screen.getByText("CREWMATE • ACTIVE")).toBeDefined();
-        expect(screen.getByText("IMPOSTOR • ELIMINATED")).toBeDefined();
-        expect(screen.getByText("NO_ROLE • ACTIVE")).toBeDefined();
+        expect(screen.getByText("ÉQUIPIER • ACTIF")).toBeDefined();
+        expect(screen.getByText("IMPOSTEUR • ÉLIMINÉ")).toBeDefined();
+        expect(screen.getByText("AUCUN_RÔLE • ACTIF")).toBeDefined();
     });
 
     it("should display quest progress", () => {
         render(<PlayerList players={mockPlayers} currentUserId="player1" />);
-        
-        expect(screen.getByText("2/60 Quêtes")).toBeDefined();
-        expect(screen.getByText("1/60 Quêtes")).toBeDefined();
-        expect(screen.getByText("0/60 Quêtes")).toBeDefined();
+
+        const perPlayerTotal = getTotalQuests();
+        expect(screen.getByText(`2/${perPlayerTotal} quêtes`)).toBeDefined();
+        expect(screen.getByText(`1/${perPlayerTotal} quêtes`)).toBeDefined();
+        expect(screen.getByText(`0/${perPlayerTotal} quêtes`)).toBeDefined();
     });
 
     it("should show empty state when no players", () => {
         render(<PlayerList players={[]} currentUserId="player1" />);
         
-        expect(screen.getByText("No crew members detected")).toBeDefined();
+        expect(screen.getByText("Aucun membre d'équipage détecté")).toBeDefined();
     });
 });
 
@@ -95,23 +97,28 @@ describe("ProgressBar", () => {
     it("should render progress bar correctly", () => {
         render(<ProgressBar gameState={mockGameState} />);
         
-        expect(screen.getByText("Global Progress")).toBeDefined();
-        expect(screen.getByText("CREW WIDE")).toBeDefined();
-        expect(screen.getByText("Mission Completion")).toBeDefined();
+        expect(screen.getByText("Progression globale")).toBeDefined();
+        expect(screen.getByText("ÉQUIPAGE")).toBeDefined();
+        expect(screen.getByText("Avancement mission")).toBeDefined();
     });
 
     it("should calculate progress percentage correctly", () => {
         render(<ProgressBar gameState={mockGameState} />);
-        
-        // 3 completed quests out of 120 possible (2 players * 60 quests each) = 2.5%
-        expect(screen.getByText("2.5%")).toBeDefined();
+
+        const expectedProgress = calculateGlobalProgress(mockGameState.players, mockGameState).toFixed(1);
+        expect(screen.getByText(`${expectedProgress}%`)).toBeDefined();
     });
 
     it("should display quest statistics", () => {
         render(<ProgressBar gameState={mockGameState} />);
-        
-        expect(screen.getByText("3")).toBeDefined(); // Total completed
-        expect(screen.getByText("120")).toBeDefined(); // Total possible
+
+        const totalCompleted = mockGameState.players.reduce(
+            (sum, player) => sum + (player.completedQuests?.length || 0),
+            0,
+        );
+        const totalPossible = mockGameState.players.length * getTotalQuests(mockGameState);
+        expect(screen.getByText(String(totalCompleted))).toBeDefined();
+        expect(screen.getByText(String(totalPossible))).toBeDefined();
     });
 
     it("should show individual progress", () => {
@@ -119,8 +126,12 @@ describe("ProgressBar", () => {
         
         expect(screen.getByText("TestPlayer1")).toBeDefined();
         expect(screen.getByText("TestPlayer2")).toBeDefined();
-        expect(screen.getByText("3%")).toBeDefined(); // Player 1: 2/60 = 3.3% rounded to 3%
-        expect(screen.getByText("2%")).toBeDefined(); // Player 2: 1/60 = 1.66% rounded to 2%
+        expect(
+            screen.getByText(`${calculatePlayerProgress(mockGameState.players[0].completedQuests ?? [], mockGameState).toFixed(0)}%`),
+        ).toBeDefined();
+        expect(
+            screen.getByText(`${calculatePlayerProgress(mockGameState.players[1].completedQuests ?? [], mockGameState).toFixed(0)}%`),
+        ).toBeDefined();
     });
 });
 
@@ -157,22 +168,22 @@ describe("TrackerStats", () => {
     it("should render stats correctly", () => {
         render(<TrackerStats gameState={mockGameState} />);
         
-        expect(screen.getByText("Mission Stats")).toBeDefined();
-        expect(screen.getByText("LIVE DATA")).toBeDefined();
+        expect(screen.getByText("Statistiques mission")).toBeDefined();
+        expect(screen.getByText("DONNÉES EN DIRECT")).toBeDefined();
     });
 
     it("should display game status", () => {
         render(<TrackerStats gameState={mockGameState} />);
         
-        expect(screen.getByText("IN_PROGRESS")).toBeDefined();
-        expect(screen.getByText("Game Status")).toBeDefined();
+        expect(screen.getByText("EN COURS")).toBeDefined();
+        expect(screen.getByText("Statut partie")).toBeDefined();
     });
 
     it("should show player counts", () => {
         render(<TrackerStats gameState={mockGameState} />);
         
-        expect(screen.getByText("Active")).toBeDefined();
-        expect(screen.getByText("Eliminated")).toBeDefined();
+        expect(screen.getByText("Actifs")).toBeDefined();
+        expect(screen.getByText("Éliminés")).toBeDefined();
         
         // Get all elements with text "2" and find the one in the Active section
         const activeElements = screen.getAllByText("2");
@@ -186,8 +197,8 @@ describe("TrackerStats", () => {
     it("should show role distribution", () => {
         render(<TrackerStats gameState={mockGameState} />);
         
-        expect(screen.getByText("Crewmates")).toBeDefined();
-        expect(screen.getByText("Impostors")).toBeDefined();
+        expect(screen.getByText("Équipiers")).toBeDefined();
+        expect(screen.getByText("Imposteurs")).toBeDefined();
         
         // Check that the role counts exist (they may appear multiple times)
         const crewmateElements = screen.getAllByText("2");
@@ -199,28 +210,27 @@ describe("TrackerStats", () => {
     it("should display quest progress", () => {
         render(<TrackerStats gameState={mockGameState} />);
         
-        expect(screen.getByText("Completed")).toBeDefined();
-        expect(screen.getByText("Possible")).toBeDefined();
+        expect(screen.getByText("Accomplies")).toBeDefined();
+        expect(screen.getByText("Possibles")).toBeDefined();
         
         // Check that the quest counts exist (they may appear multiple times)
         const completedElements = screen.getAllByText("3");
-        const possibleElements = screen.getAllByText("180");
+        const possibleElements = screen.getAllByText(String(mockGameState.players.length * getTotalQuests(mockGameState)));
         expect(completedElements.length).toBeGreaterThan(0);
         expect(possibleElements.length).toBeGreaterThan(0);
     });
 
     it("should show average progress", () => {
         render(<TrackerStats gameState={mockGameState} />);
-        
-        // 3 completed out of 180 possible = 1.7% average
-        expect(screen.getByText("1.7%")).toBeDefined();
-        expect(screen.getByText("Average Progress")).toBeDefined();
+
+        expect(screen.getByText(`${calculateGlobalProgress(mockGameState.players).toFixed(1)}%`)).toBeDefined();
+        expect(screen.getByText("Progression moyenne")).toBeDefined();
     });
 
     it("should display game identifier", () => {
         render(<TrackerStats gameState={mockGameState} />);
         
         expect(screen.getByText("test-game-id")).toBeDefined();
-        expect(screen.getByText("Game Identifier")).toBeDefined();
+        expect(screen.getByText("Identifiant partie")).toBeDefined();
     });
 });

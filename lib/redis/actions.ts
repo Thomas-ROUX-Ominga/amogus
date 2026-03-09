@@ -8,18 +8,47 @@ import {
     MeetingSnapshot,
     MeetingState,
     MeetingView,
+    SabotageState,
+    ReactorSabotageState,
 } from "@/types/game";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { getBatchData } from "./batch-actions";
 import { getTotalQuestGamesCount } from "@/lib/constants/quest-pool";
 import { generateShortCode } from "@/lib/utils/short-code.server";
-import { Quest } from "@/types/quest";
+import { Quest, BatchSabotages } from "@/types/quest";
 import { assignQuestsFromBatch } from "@/lib/quests/quest-assignment";
 
 import { verifySession, createPlayerSession, verifyPlayerSession } from "./auth-utils";
 import { getGlobalQuestStats } from "@/lib/utils/quest-calculations";
 
 const MEETING_DURATION_MS = 5 * 60 * 1000;
+const REACTOR_SABOTAGE_DURATION_MS = 90 * 1000;
+const SABOTAGE_COOLDOWN_MS = 120 * 1000;
+
+function getDefaultSabotageState(): SabotageState {
+    return {
+        active: null,
+        reactor: null,
+        cooldowns: {
+            communicationsAvailableAt: 0,
+            reactorAvailableAt: 0,
+        },
+    };
+}
+
+function getNormalizedSabotageState(state: GameState): SabotageState {
+    const current = state.sabotageState;
+    if (!current) return getDefaultSabotageState();
+
+    return {
+        active: current.active ?? null,
+        reactor: current.reactor ?? null,
+        cooldowns: {
+            communicationsAvailableAt: current.cooldowns?.communicationsAvailableAt ?? 0,
+            reactorAvailableAt: current.cooldowns?.reactorAvailableAt ?? 0,
+        },
+    };
+}
 
 function createMeetingVoteKey(gameId: string, meetingId: string, voterId: string): string {
     return `game:${gameId}:meeting:${meetingId}:vote:${voterId}`;
@@ -147,6 +176,32 @@ function resolveMeetingIfExpired(state: GameState, now: number): GameState {
     return resolveMeetingState(state, "TIMEOUT", now);
 }
 
+function resolveSabotageIfExpired(state: GameState, now: number): GameState {
+    if (state.status !== "IN_PROGRESS") {
+        return state;
+    }
+
+    const sabotageState = getNormalizedSabotageState(state);
+    if (sabotageState.active !== "REACTOR" || !sabotageState.reactor) {
+        return state;
+    }
+
+    if (now < sabotageState.reactor.endsAt) {
+        return state;
+    }
+
+    return {
+        ...state,
+        status: "FINISHED",
+        winner: "IMPOSTOR",
+        sabotageState: {
+            ...sabotageState,
+            active: null,
+            reactor: null,
+        },
+    };
+}
+
 async function buildMeetingViewData(gameId: string, userId: string, state: GameState): Promise<MeetingView> {
     const meeting = state.meeting ?? null;
     if (!meeting || meeting.status !== "ACTIVE" || !meeting.eligibleVoterIds.includes(userId)) {
@@ -229,24 +284,8 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
             };
         }
 
-        // Validate quests per player if batch is provided
-        if (batchId) {
-            const batchResponse = await getBatchData(batchId);
-            if (batchResponse.success && batchResponse.data) {
-                const totalRequested = questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long;
-                const availableQuests = batchResponse.data.quests.length;
-
-                if (totalRequested > availableQuests) {
-                    return {
-                        success: false,
-                        error: `Requested ${totalRequested} quests per player, but only ${availableQuests} available in batch.`,
-                        code: ERROR_CODES.ERR_INVALID_INPUT,
-                    };
-                }
-            }
-        }
-
         let questsTotal = getTotalQuestGamesCount(); // Default total from pool
+        let batchSabotages: BatchSabotages | undefined;
         if (batchId) {
             const batchResponse = await getBatchData(batchId);
             if (!batchResponse.success || !batchResponse.data) {
@@ -256,7 +295,18 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
                     code: ERROR_CODES.ERR_INVALID_INPUT,
                 };
             }
-            questsTotal = batchResponse.data.quests.length;
+
+            const availableQuests = batchResponse.data.quests.length;
+            if (totalRequested > availableQuests) {
+                return {
+                    success: false,
+                    error: `Requested ${totalRequested} quests per player, but only ${availableQuests} available in batch.`,
+                    code: ERROR_CODES.ERR_INVALID_INPUT,
+                };
+            }
+
+            questsTotal = availableQuests;
+            batchSabotages = batchResponse.data.sabotages;
         }
 
         // Get admin session info to add admin as first player
@@ -285,6 +335,8 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
             batchId,
             questsTotal,
             questsPerPlayer,
+            sabotages: batchSabotages,
+            sabotageState: getDefaultSabotageState(),
         };
 
         // Store game state in Redis with 24h TTL using short code key pattern
@@ -552,7 +604,8 @@ export async function completeQuest(
             }
 
             const now = Date.now();
-            const workingState = resolveMeetingIfExpired(state, now);
+            let workingState = resolveMeetingIfExpired(state, now);
+            workingState = resolveSabotageIfExpired(workingState, now);
 
             if (workingState.meeting?.status === "ACTIVE") {
                 validationError = {
@@ -687,7 +740,9 @@ export async function refreshGame(
             }
 
             const now = Date.now();
-            return resolveMeetingIfExpired(state, now);
+            let workingState = resolveMeetingIfExpired(state, now);
+            workingState = resolveSabotageIfExpired(workingState, now);
+            return workingState;
         }, GAME_TTL_SECONDS);
 
         if (validationError) {
@@ -703,6 +758,343 @@ export async function refreshGame(
         return {
             success: false,
             error: "Failed to refresh game data.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
+}
+
+export interface ScanSabotageResult {
+    handled: boolean;
+    event?:
+        | "COMMUNICATIONS_ACTIVATED"
+        | "COMMUNICATIONS_REPAIRED"
+        | "REACTOR_ACTIVATED"
+        | "REACTOR_PROGRESS"
+        | "REACTOR_REPAIRED"
+        | "REACTOR_ALREADY_SCANNED"
+        | "REACTOR_DISTINCT_CREWMATE_REQUIRED";
+    reactorProgress?: {
+        scanned: number;
+        total: number;
+        remainingMs: number;
+    };
+    gameState?: GameState;
+}
+
+export async function scanSabotage(
+    gameId: string,
+    userId: string,
+    qrId: string
+): Promise<ActionResponse<ScanSabotageResult>> {
+    try {
+        const sessionCheck = await verifyPlayerSession(userId, gameId);
+        if (!sessionCheck.success) {
+            return {
+                success: false,
+                error: sessionCheck.error || "Session verification failed",
+                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+            };
+        }
+
+        const stateKey = `game:${gameId}:state`;
+        let validationError: ActionResponse<ScanSabotageResult> | null = null;
+        let scanResult: ScanSabotageResult | null = null;
+        const now = Date.now();
+
+        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
+            if (!state) {
+                validationError = {
+                    success: false,
+                    error: "Game session not found.",
+                    code: ERROR_CODES.GAME_NOT_FOUND,
+                };
+                return null;
+            }
+
+            let workingState = resolveMeetingIfExpired(state, now);
+            workingState = resolveSabotageIfExpired(workingState, now);
+
+            const sabotages = workingState.sabotages;
+            const isCommsQr = sabotages?.communications.qrId === qrId;
+            const reactorIndex = sabotages?.reactor.findIndex((entry) => entry.qrId === qrId) ?? -1;
+            const isReactorQr = reactorIndex >= 0;
+            const isSabotageQr = isCommsQr || isReactorQr;
+
+            if (!isSabotageQr) {
+                validationError = {
+                    success: true,
+                    data: { handled: false },
+                };
+                return null;
+            }
+
+            if (workingState.status !== "IN_PROGRESS") {
+                validationError = {
+                    success: false,
+                    error: "Cannot scan sabotage: game is not in progress.",
+                    code: ERROR_CODES.ERR_INVALID_STATE,
+                    data: { handled: true },
+                };
+                return null;
+            }
+
+            const player = workingState.players.find((entry) => entry.id === userId);
+            if (!player) {
+                validationError = {
+                    success: false,
+                    error: "Player not found in game.",
+                    code: ERROR_CODES.ERR_INVALID_SIGNATURE,
+                    data: { handled: true },
+                };
+                return null;
+            }
+
+            if (!player.isAlive || player.role === "ADMIN" || !player.role) {
+                validationError = {
+                    success: false,
+                    error: "You are not allowed to use sabotage systems.",
+                    code: ERROR_CODES.ERR_SABOTAGE_FORBIDDEN,
+                    data: { handled: true },
+                };
+                return null;
+            }
+
+            const sabotageState = getNormalizedSabotageState(workingState);
+
+            if (isCommsQr) {
+                if (player.role === "IMPOSTOR") {
+                    if (sabotageState.active) {
+                        validationError = {
+                            success: false,
+                            error: "A sabotage is already active.",
+                            code: ERROR_CODES.ERR_SABOTAGE_ALREADY_ACTIVE,
+                            data: { handled: true },
+                        };
+                        return null;
+                    }
+
+                    if (now < sabotageState.cooldowns.communicationsAvailableAt) {
+                        validationError = {
+                            success: false,
+                            error: "Communications sabotage is on cooldown.",
+                            code: ERROR_CODES.ERR_SABOTAGE_COOLDOWN,
+                            data: { handled: true },
+                        };
+                        return null;
+                    }
+
+                    const updatedState: GameState = {
+                        ...workingState,
+                        sabotageState: {
+                            ...sabotageState,
+                            active: "COMMUNICATIONS",
+                        },
+                    };
+
+                    scanResult = {
+                        handled: true,
+                        event: "COMMUNICATIONS_ACTIVATED",
+                        gameState: updatedState,
+                    };
+                    return updatedState;
+                }
+
+                if (player.role === "CREWMATE") {
+                    if (sabotageState.active !== "COMMUNICATIONS") {
+                        validationError = {
+                            success: false,
+                            error: "Communications sabotage is not active.",
+                            code: ERROR_CODES.ERR_SABOTAGE_NOT_ACTIVE,
+                            data: { handled: true },
+                        };
+                        return null;
+                    }
+
+                    const updatedState: GameState = {
+                        ...workingState,
+                        sabotageState: {
+                            ...sabotageState,
+                            active: null,
+                            cooldowns: {
+                                ...sabotageState.cooldowns,
+                                communicationsAvailableAt: now + SABOTAGE_COOLDOWN_MS,
+                            },
+                        },
+                    };
+
+                    scanResult = {
+                        handled: true,
+                        event: "COMMUNICATIONS_REPAIRED",
+                        gameState: updatedState,
+                    };
+                    return updatedState;
+                }
+
+                validationError = {
+                    success: false,
+                    error: "You are not allowed to use communications sabotage.",
+                    code: ERROR_CODES.ERR_SABOTAGE_FORBIDDEN,
+                    data: { handled: true },
+                };
+                return null;
+            }
+
+            if (isReactorQr) {
+                if (player.role === "IMPOSTOR") {
+                    if (sabotageState.active) {
+                        validationError = {
+                            success: false,
+                            error: "A sabotage is already active.",
+                            code: ERROR_CODES.ERR_SABOTAGE_ALREADY_ACTIVE,
+                            data: { handled: true },
+                        };
+                        return null;
+                    }
+
+                    if (now < sabotageState.cooldowns.reactorAvailableAt) {
+                        validationError = {
+                            success: false,
+                            error: "Reactor sabotage is on cooldown.",
+                            code: ERROR_CODES.ERR_SABOTAGE_COOLDOWN,
+                            data: { handled: true },
+                        };
+                        return null;
+                    }
+
+                    const updatedState: GameState = {
+                        ...workingState,
+                        sabotageState: {
+                            ...sabotageState,
+                            active: "REACTOR",
+                            reactor: {
+                                startedAt: now,
+                                endsAt: now + REACTOR_SABOTAGE_DURATION_MS,
+                                scannedByQrId: [],
+                                scannedUserIds: [],
+                            },
+                        },
+                    };
+
+                    scanResult = {
+                        handled: true,
+                        event: "REACTOR_ACTIVATED",
+                        reactorProgress: {
+                            scanned: 0,
+                            total: 2,
+                            remainingMs: REACTOR_SABOTAGE_DURATION_MS,
+                        },
+                        gameState: updatedState,
+                    };
+                    return updatedState;
+                }
+
+                if (player.role === "CREWMATE") {
+                    if (sabotageState.active !== "REACTOR" || !sabotageState.reactor) {
+                        validationError = {
+                            success: false,
+                            error: "Reactor sabotage is not active.",
+                            code: ERROR_CODES.ERR_SABOTAGE_NOT_ACTIVE,
+                            data: { handled: true },
+                        };
+                        return null;
+                    }
+
+                    const currentReactor = sabotageState.reactor as ReactorSabotageState;
+                    if (currentReactor.scannedByQrId.includes(qrId)) {
+                        scanResult = {
+                            handled: true,
+                            event: "REACTOR_ALREADY_SCANNED",
+                            reactorProgress: {
+                                scanned: currentReactor.scannedByQrId.length,
+                                total: 2,
+                                remainingMs: Math.max(0, currentReactor.endsAt - now),
+                            },
+                            gameState: workingState,
+                        };
+                        return workingState;
+                    }
+
+                    if (currentReactor.scannedUserIds.includes(userId)) {
+                        scanResult = {
+                            handled: true,
+                            event: "REACTOR_DISTINCT_CREWMATE_REQUIRED",
+                            reactorProgress: {
+                                scanned: currentReactor.scannedByQrId.length,
+                                total: 2,
+                                remainingMs: Math.max(0, currentReactor.endsAt - now),
+                            },
+                            gameState: workingState,
+                        };
+                        return workingState;
+                    }
+
+                    const scannedByQrId = [...currentReactor.scannedByQrId, qrId];
+                    const scannedUserIds = [...currentReactor.scannedUserIds, userId];
+                    const repaired = scannedByQrId.length >= 2;
+
+                    const updatedState: GameState = {
+                        ...workingState,
+                        sabotageState: {
+                            ...sabotageState,
+                            active: repaired ? null : "REACTOR",
+                            reactor: repaired
+                                ? null
+                                : {
+                                      ...currentReactor,
+                                      scannedByQrId,
+                                      scannedUserIds,
+                                  },
+                            cooldowns: {
+                                ...sabotageState.cooldowns,
+                                reactorAvailableAt: repaired
+                                    ? now + SABOTAGE_COOLDOWN_MS
+                                    : sabotageState.cooldowns.reactorAvailableAt,
+                            },
+                        },
+                    };
+
+                    scanResult = {
+                        handled: true,
+                        event: repaired ? "REACTOR_REPAIRED" : "REACTOR_PROGRESS",
+                        reactorProgress: {
+                            scanned: scannedByQrId.length,
+                            total: 2,
+                            remainingMs: repaired ? 0 : Math.max(0, currentReactor.endsAt - now),
+                        },
+                        gameState: updatedState,
+                    };
+                    return updatedState;
+                }
+
+                validationError = {
+                    success: false,
+                    error: "You are not allowed to use reactor sabotage.",
+                    code: ERROR_CODES.ERR_SABOTAGE_FORBIDDEN,
+                    data: { handled: true },
+                };
+                return null;
+            }
+
+            validationError = {
+                success: true,
+                data: { handled: false },
+            };
+            return null;
+        }, GAME_TTL_SECONDS);
+
+        if (validationError) {
+            return validationError;
+        }
+
+        return {
+            success: true,
+            data: scanResult ?? { handled: false, gameState: result ?? undefined },
+        };
+    } catch (error) {
+        console.error("Failed to scan sabotage:", error);
+        return {
+            success: false,
+            error: "Failed to process sabotage scan.",
             code: ERROR_CODES.ERR_SIGNAL_LOST,
         };
     }
@@ -736,7 +1128,9 @@ export async function getMeetingView(
             }
 
             const now = Date.now();
-            return resolveMeetingIfExpired(currentState, now);
+            let workingState = resolveMeetingIfExpired(currentState, now);
+            workingState = resolveSabotageIfExpired(workingState, now);
+            return workingState;
         }, GAME_TTL_SECONDS);
 
         if (validationError) {
@@ -786,7 +1180,8 @@ export async function triggerMeeting(
                 return null;
             }
 
-            const workingState = resolveMeetingIfExpired(state, now);
+            let workingState = resolveMeetingIfExpired(state, now);
+            workingState = resolveSabotageIfExpired(workingState, now);
 
             if (workingState.status !== "IN_PROGRESS") {
                 validationError = {
@@ -823,6 +1218,15 @@ export async function triggerMeeting(
                     success: false,
                     error: "You are not allowed to trigger meetings.",
                     code: ERROR_CODES.ERR_MEETING_FORBIDDEN,
+                };
+                return null;
+            }
+
+            if (player.role === "CREWMATE" && workingState.sabotageState?.active === "COMMUNICATIONS") {
+                validationError = {
+                    success: false,
+                    error: "Communications sabotage is active. Crewmates cannot trigger meetings.",
+                    code: ERROR_CODES.ERR_SABOTAGE_COMMUNICATIONS_ACTIVE,
                 };
                 return null;
             }
@@ -947,7 +1351,8 @@ export async function castMeetingVote(
             }
 
             const now = Date.now();
-            const workingState = resolveMeetingIfExpired(state, now);
+            let workingState = resolveMeetingIfExpired(state, now);
+            workingState = resolveSabotageIfExpired(workingState, now);
             const meeting = workingState.meeting;
 
             if (!meeting || meeting.status !== "ACTIVE") {
@@ -1098,7 +1503,8 @@ export async function cancelMeetingVote(
             }
 
             const now = Date.now();
-            const workingState = resolveMeetingIfExpired(state, now);
+            let workingState = resolveMeetingIfExpired(state, now);
+            workingState = resolveSabotageIfExpired(workingState, now);
             const meeting = workingState.meeting;
 
             if (!meeting || meeting.status !== "ACTIVE") {
@@ -1205,7 +1611,11 @@ export async function selectRole(
                 return null;
             }
 
-            if (state.status !== "IN_PROGRESS") {
+            const now = Date.now();
+            let workingState = resolveMeetingIfExpired(state, now);
+            workingState = resolveSabotageIfExpired(workingState, now);
+
+            if (workingState.status !== "IN_PROGRESS") {
                 validationError = {
                     success: false,
                     error: "Cannot select role: game is not in progress.",
@@ -1214,7 +1624,7 @@ export async function selectRole(
                 return null;
             }
 
-            const playerIndex = state.players.findIndex((p) => p.id === userId);
+            const playerIndex = workingState.players.findIndex((p) => p.id === userId);
             if (playerIndex === -1) {
                 validationError = {
                     success: false,
@@ -1224,14 +1634,14 @@ export async function selectRole(
                 return null;
             }
 
-            const updatedPlayers = [...state.players];
+            const updatedPlayers = [...workingState.players];
             updatedPlayers[playerIndex] = {
                 ...updatedPlayers[playerIndex],
                 role,
             };
 
             return {
-                ...state,
+                ...workingState,
                 players: updatedPlayers,
             };
         }, GAME_TTL_SECONDS);
@@ -1375,7 +1785,8 @@ export async function eliminatePlayer(
             }
 
             const now = Date.now();
-            const workingState = resolveMeetingIfExpired(state, now);
+            let workingState = resolveMeetingIfExpired(state, now);
+            workingState = resolveSabotageIfExpired(workingState, now);
 
             if (workingState.meeting?.status === "ACTIVE") {
                 validationError = {

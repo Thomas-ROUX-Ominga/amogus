@@ -1,4 +1,4 @@
-import { Batch, BatchCreateInput, Quest, QuestDuration, QuestType } from '@/types/quest';
+import { Batch, BatchCreateInput, BatchSabotages, Quest, QuestDuration, QuestType } from '@/types/quest';
 
 // Classic quest types — mini-game is never randomly assigned here
 const AVAILABLE_QUEST_TYPES: QuestType[] = ['true-false', 'qcm', 'single-input', 'number-input', 'intrus'];
@@ -76,11 +76,23 @@ export function generateBatch(input: BatchCreateInput): Batch {
     quests.splice(insertAt, 0, miniGame);
   });
 
+  const sabotages: BatchSabotages = {
+    communications: {
+      qrId: globalThis.crypto.randomUUID(),
+      location: "",
+    },
+    reactor: [
+      { qrId: globalThis.crypto.randomUUID(), location: "" },
+      { qrId: globalThis.crypto.randomUUID(), location: "" },
+    ],
+  };
+
 
   return {
     id: globalThis.crypto.randomUUID(),
     questCount: totalQuests,
     quests,
+    sabotages,
     createdAt: new Date().toISOString(),
   };
 }

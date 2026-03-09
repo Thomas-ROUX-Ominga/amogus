@@ -5,7 +5,7 @@ import { RoleBadge } from "@/components/game/role-badge";
 describe("RoleBadge", () => {
     it("should render Crewmate role with green color", () => {
         render(<RoleBadge role="CREWMATE" />);
-        expect(screen.getByText(/Crew/i)).toBeTruthy();
+        expect(screen.getByText(/ÉQUIPIER/i)).toBeTruthy();
         expect(screen.getByText(/Votre rôle/i)).toBeTruthy();
     });
 
@@ -17,7 +17,7 @@ describe("RoleBadge", () => {
 
     it("should render Crewmate icon with correct color in full variant", () => {
         render(<RoleBadge role="CREWMATE" variant="full" />);
-        const roleText = screen.getByText(/Crew/i);
+        const roleText = screen.getByText(/ÉQUIPIER/i);
         expect(roleText.style.color).toBe("rgb(45, 164, 78)");
     });
 
@@ -29,19 +29,19 @@ describe("RoleBadge", () => {
 
     it("should render compact variant with smaller text", () => {
         render(<RoleBadge role="CREWMATE" variant="compact" />);
-        const roleText = screen.getByText(/Crew/i);
+        const roleText = screen.getByText(/ÉQUIPIER/i);
         expect(roleText.className).toContain("text-xs");
     });
 
     it("should render full variant by default", () => {
         render(<RoleBadge role="CREWMATE" />);
-        const roleText = screen.getByText(/Crew/i);
+        const roleText = screen.getByText(/ÉQUIPIER/i);
         expect(roleText.className).toContain("text-3xl");
     });
 
     it("should use Orbitron font for role name", () => {
         render(<RoleBadge role="CREWMATE" />);
-        const roleText = screen.getByText(/Crew/i);
+        const roleText = screen.getByText(/ÉQUIPIER/i);
         expect(roleText.className).toContain("font-orbitron");
     });
 

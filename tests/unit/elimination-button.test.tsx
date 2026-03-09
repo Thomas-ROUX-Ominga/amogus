@@ -18,36 +18,36 @@ describe('EliminationButton', () => {
     it('renders button in default state', () => {
         render(<EliminationButton onEliminate={mockOnEliminate} />);
         
-        const button = screen.getByRole('button', { name: /signal elimination/i });
+        const button = screen.getByRole('button', { name: /signaler l'élimination/i });
         expect(button).toBeInTheDocument();
         expect(button).not.toBeDisabled();
-        expect(screen.getByText('SIGNAL ELIMINATION')).toBeInTheDocument();
+        expect(screen.getByText('Signaler mon élimination')).toBeInTheDocument();
     });
 
     it('shows loading state when eliminating', () => {
         render(<EliminationButton onEliminate={mockOnEliminate} isEliminating={true} />);
         
-        const button = screen.getByRole('button', { name: /signaling elimination/i });
+        const button = screen.getByRole('button', { name: /signalement d'élimination/i });
         expect(button).toBeDisabled();
-        expect(screen.getByText('SIGNALING...')).toBeInTheDocument();
+        expect(screen.getByText('SIGNALEMENT...')).toBeInTheDocument();
     });
 
     it('is disabled when disabled prop is true', () => {
         render(<EliminationButton onEliminate={mockOnEliminate} disabled={true} />);
         
-        const button = screen.getByRole('button', { name: /already eliminated/i });
+        const button = screen.getByRole('button', { name: /déjà éliminé/i });
         expect(button).toBeDisabled();
     });
 
     it('opens confirmation dialog when clicked', async () => {
         render(<EliminationButton onEliminate={mockOnEliminate} />);
         
-        const button = screen.getByRole('button', { name: /signal elimination/i });
+        const button = screen.getByRole('button', { name: /signaler l'élimination/i });
         fireEvent.click(button);
         
         // The dialog should appear immediately after click
-        expect(screen.getAllByText('Signal Elimination')).toHaveLength(2); // Button + Dialog title
-        expect(screen.getByText(/Are you sure you want to signal that you have been eliminated?/)).toBeInTheDocument();
+        expect(screen.getByText('Signaler l\'élimination')).toBeInTheDocument();
+        expect(screen.getByText(/Confirmez-vous le signalement de votre élimination/i)).toBeInTheDocument();
     });
 
     it('calls onEliminate when confirmation is confirmed', async () => {
@@ -56,15 +56,16 @@ describe('EliminationButton', () => {
         
         render(<EliminationButton onEliminate={mockOnEliminate} />);
         
-        const button = screen.getByRole('button', { name: /signal elimination/i });
+        const button = screen.getByRole('button', { name: /signaler l'élimination/i });
         fireEvent.click(button);
         
         // The dialog should appear immediately
-        expect(screen.getAllByText('Signal Elimination')).toHaveLength(2); // Button + Dialog title
+        expect(screen.getByText('Signaler l\'élimination')).toBeInTheDocument();
         
-        // Get the confirm button from the dialog (the second button with this text)
-        const confirmButtons = screen.getAllByRole('button', { name: /signal elimination/i });
-        const confirmButton = confirmButtons[1]; // The dialog button
+        // Get the confirm button from the dialog
+        const confirmButtons = screen.getAllByRole('button', { name: /signaler mon élimination/i });
+        expect(confirmButtons.length).toBeGreaterThan(0);
+        const confirmButton = confirmButtons[0];
         fireEvent.click(confirmButton);
         
         expect(mockOnEliminate).toHaveBeenCalledTimes(1);
@@ -73,18 +74,18 @@ describe('EliminationButton', () => {
     it('closes dialog when cancelled', async () => {
         render(<EliminationButton onEliminate={mockOnEliminate} />);
         
-        const button = screen.getByRole('button', { name: /signal elimination/i });
+        const button = screen.getByRole('button', { name: /signaler l'élimination/i });
         fireEvent.click(button);
         
         // The dialog should appear immediately
-        expect(screen.getAllByText('Signal Elimination')).toHaveLength(2); // Button + Dialog title
+        expect(screen.getByText('Signaler l\'élimination')).toBeInTheDocument();
         
-        const cancelButton = screen.getByRole('button', { name: /cancel/i });
+        const cancelButton = screen.getByRole('button', { name: /annuler/i });
         fireEvent.click(cancelButton);
         
         // The dialog should disappear immediately, leaving only the button
         // Check that the dialog title is gone (only the button text remains)
-        expect(screen.queryByText('Signal Elimination', { selector: 'h2' })).not.toBeInTheDocument();
+        expect(screen.queryByText('Signaler l\'élimination', { selector: 'h2' })).not.toBeInTheDocument();
         
         expect(mockOnEliminate).not.toHaveBeenCalled();
     });
@@ -92,7 +93,7 @@ describe('EliminationButton', () => {
     it('provides haptic feedback when clicked', () => {
         render(<EliminationButton onEliminate={mockOnEliminate} />);
         
-        const button = screen.getByRole('button', { name: /signal elimination/i });
+        const button = screen.getByRole('button', { name: /signaler l'élimination/i });
         fireEvent.click(button);
         
         expect(navigator.vibrate).toHaveBeenCalledWith([50]);
@@ -101,7 +102,7 @@ describe('EliminationButton', () => {
     it('provides error haptic feedback when disabled', () => {
         render(<EliminationButton onEliminate={mockOnEliminate} disabled={true} />);
         
-        const button = screen.getByRole('button', { name: /already eliminated/i });
+        const button = screen.getByRole('button', { name: /déjà éliminé/i });
         // Target the wrapper div which captures mouse events for disabled buttons
         fireEvent.mouseDown(button.parentElement!);
         
@@ -111,7 +112,7 @@ describe('EliminationButton', () => {
     it('provides error haptic feedback when eliminating', () => {
         render(<EliminationButton onEliminate={mockOnEliminate} isEliminating={true} />);
         
-        const button = screen.getByRole('button', { name: /signaling elimination/i });
+        const button = screen.getByRole('button', { name: /signalement d'élimination/i });
         // Target the wrapper div which captures mouse events for disabled buttons
         fireEvent.mouseDown(button.parentElement!);
         

@@ -17,6 +17,17 @@ describe('Batch Generator', () => {
       expect(durations).toContain('long');
     });
 
+    it('should generate default sabotage QR entries', () => {
+      const input: BatchCreateInput = { totalQuests: 10 };
+      const batch = generateBatch(input);
+
+      expect(batch.sabotages).toBeDefined();
+      expect(batch.sabotages?.communications.qrId).toBeTruthy();
+      expect(batch.sabotages?.reactor).toHaveLength(2);
+      expect(batch.sabotages?.reactor[0].qrId).toBeTruthy();
+      expect(batch.sabotages?.reactor[1].qrId).toBeTruthy();
+    });
+
     it('should generate exact count with 3 mini-games + 27 classic quests for 30', () => {
       const input: BatchCreateInput = { totalQuests: 30 };
       const batch = generateBatch(input);

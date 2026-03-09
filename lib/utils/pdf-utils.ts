@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
-import { Quest } from '@/types/quest';
+import { BatchSabotages, Quest } from '@/types/quest';
 
 // PDF Layout Constants
 const PAGE_MARGIN_TOP = 40;
@@ -11,12 +11,12 @@ const MAX_TEXT_WIDTH = 80; // Maximum width in mm for location text (centered in
 const QUESTS_PER_PAGE = 6;
 
 /**
- * Generate a PDF containing QR codes for quests (6 per page in 2x3 grid)
+ * Generate a PDF containing QR codes (6 per page in 2x3 grid)
  * Each page contains 6 quests with:
  * - QR code pointing to /quest/{questId}
  * - Location value
  */
-export async function generateQuestPDF(quests: Quest[]): Promise<Blob> {
+export async function generateQuestPDF(quests: Quest[], sabotages?: BatchSabotages): Promise<Blob> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -24,9 +24,37 @@ export async function generateQuestPDF(quests: Quest[]): Promise<Blob> {
   });
 
   const pageWidth = doc.internal.pageSize.getWidth();
+  const printables: Array<{
+    qrId: string;
+    location?: string;
+    label?: string;
+  }> = quests.map((quest) => ({
+    qrId: quest.id,
+    location: quest.location,
+  }));
+
+  if (sabotages) {
+    printables.push(
+      {
+        qrId: sabotages.communications.qrId,
+        location: sabotages.communications.location,
+        label: "SABOTAGE • COMMUNICATIONS",
+      },
+      {
+        qrId: sabotages.reactor[0].qrId,
+        location: sabotages.reactor[0].location,
+        label: "SABOTAGE • REACTOR A",
+      },
+      {
+        qrId: sabotages.reactor[1].qrId,
+        location: sabotages.reactor[1].location,
+        label: "SABOTAGE • REACTOR B",
+      }
+    );
+  }
   
-  for (let i = 0; i < quests.length; i++) {
-    const quest = quests[i];
+  for (let i = 0; i < printables.length; i++) {
+    const printable = printables[i];
     const positionOnPage = i % QUESTS_PER_PAGE;
     
     // Add new page when needed
@@ -36,7 +64,7 @@ export async function generateQuestPDF(quests: Quest[]): Promise<Blob> {
 
     try {
       // Generate QR code as data URL
-      const qrCodeUrl = `${quest.id}`;
+      const qrCodeUrl = `${printable.qrId}`;
       const qrDataUrl = await QRCode.toDataURL(qrCodeUrl, {
         width: 250,
         margin: 1,
@@ -57,21 +85,24 @@ export async function generateQuestPDF(quests: Quest[]): Promise<Blob> {
       // Add QR code image
       doc.addImage(qrDataUrl, 'PNG', qrX, qrY, QR_SIZE, QR_SIZE);
 
-      // Add location value if provided
-      if (quest.location) {
+      // Add location value if provided (with sabotage label when relevant)
+      if (printable.location || printable.label) {
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         const locationY = qrY + QR_SIZE + TEXT_SPACING_TOP;
+        const text = printable.label && printable.location
+          ? `${printable.label} — ${printable.location}`
+          : printable.label || printable.location || "";
         
         // Wrap text to fit width instead of truncating
-        const wrappedText = doc.splitTextToSize(quest.location, MAX_TEXT_WIDTH);
+        const wrappedText = doc.splitTextToSize(text, MAX_TEXT_WIDTH);
         
         doc.text(wrappedText, columnX, locationY, {
           align: 'center',
         });
       }
     } catch (error) {
-      console.error(`Failed to generate QR code for quest ${quest.id}:`, error);
+      console.error(`Failed to generate QR code for entry ${printable.qrId}:`, error);
       // We continue with other quests even if one fails
     }
   }

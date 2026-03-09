@@ -28,6 +28,11 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
       return acc;
     }, {} as Record<string, string>)
   );
+  const [sabotageLocations, setSabotageLocations] = useState({
+    communications: batch.sabotages?.communications.location || "",
+    reactorA: batch.sabotages?.reactor[0]?.location || "",
+    reactorB: batch.sabotages?.reactor[1]?.location || "",
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
@@ -70,7 +75,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
     setSuccessMessage("");
 
     try {
-      const result = await updateQuestsLocations(batch.id, locations);
+      const result = await updateQuestsLocations(batch.id, locations, sabotageLocations);
 
       if (!result.success) {
         setError(
@@ -98,7 +103,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
     setError("");
 
     try {
-      const pdfBlob = await generateQuestPDF(batch.quests);
+      const pdfBlob = await generateQuestPDF(batch.quests, batch.sabotages);
       downloadPDF(pdfBlob, `batch-${batch.id.slice(-8)}-quests.pdf`);
     } catch {
       setError(getLocalizedErrorMessage({ t, code: "ERR_SIGNAL_LOST" }));
@@ -420,6 +425,70 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
           ))}
         </div>
       </div>
+
+      {batch.sabotages && (
+        <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
+          <h2 className="text-lg font-bold uppercase tracking-wider text-primary mb-6">
+            {t("admin.batchDetail.sabotageLocations")}
+          </h2>
+
+          <div className="space-y-3">
+            <div className="p-4 border border-primary/10 bg-black/30">
+              <div className="text-[10px] text-primary uppercase tracking-widest mb-2">
+                {t("admin.batchDetail.sabotageCommunications")}
+              </div>
+              <div className="text-[8px] text-muted-foreground uppercase tracking-widest mb-3 font-mono">
+                {batch.sabotages.communications.qrId}
+              </div>
+              <input
+                type="text"
+                value={sabotageLocations.communications}
+                onChange={(e) =>
+                  setSabotageLocations((prev) => ({ ...prev, communications: e.target.value }))
+                }
+                placeholder={t("admin.batchDetail.enterLocation")}
+                className="w-full bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
+              />
+            </div>
+
+            <div className="p-4 border border-primary/10 bg-black/30">
+              <div className="text-[10px] text-primary uppercase tracking-widest mb-2">
+                {t("admin.batchDetail.sabotageReactorA")}
+              </div>
+              <div className="text-[8px] text-muted-foreground uppercase tracking-widest mb-3 font-mono">
+                {batch.sabotages.reactor[0].qrId}
+              </div>
+              <input
+                type="text"
+                value={sabotageLocations.reactorA}
+                onChange={(e) =>
+                  setSabotageLocations((prev) => ({ ...prev, reactorA: e.target.value }))
+                }
+                placeholder={t("admin.batchDetail.enterLocation")}
+                className="w-full bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
+              />
+            </div>
+
+            <div className="p-4 border border-primary/10 bg-black/30">
+              <div className="text-[10px] text-primary uppercase tracking-widest mb-2">
+                {t("admin.batchDetail.sabotageReactorB")}
+              </div>
+              <div className="text-[8px] text-muted-foreground uppercase tracking-widest mb-3 font-mono">
+                {batch.sabotages.reactor[1].qrId}
+              </div>
+              <input
+                type="text"
+                value={sabotageLocations.reactorB}
+                onChange={(e) =>
+                  setSabotageLocations((prev) => ({ ...prev, reactorB: e.target.value }))
+                }
+                placeholder={t("admin.batchDetail.enterLocation")}
+                className="w-full bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

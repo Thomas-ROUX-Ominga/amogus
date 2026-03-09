@@ -24,7 +24,7 @@ describe('PlayerQuestProgress', () => {
   it('should render quest progress overview', () => {
     render(<PlayerQuestProgress player={mockPlayer} />);
     
-    expect(screen.getByText('3/10 Quêtes')).toBeDefined();
+    expect(screen.getByText('3/10 quêtes')).toBeDefined();
     expect(screen.getByText('30%')).toBeDefined();
   });
 
@@ -65,7 +65,7 @@ describe('PlayerQuestProgress', () => {
 
     render(<PlayerQuestProgress player={playerWithNoQuests} />);
     
-    expect(screen.getByText('0/10 Quêtes')).toBeDefined();
+    expect(screen.getByText('0/10 quêtes')).toBeDefined();
     expect(screen.getByText('0%')).toBeDefined();
   });
 

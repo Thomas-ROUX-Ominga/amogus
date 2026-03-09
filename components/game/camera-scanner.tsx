@@ -207,7 +207,7 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                         <div className="flex-1 relative flex items-center justify-center p-4">
                             {/* Eliminated Player Overlay - Only block Impostors, allow Crewmates in Ghost Mode */}
                             {isPlayerEliminated && playerRole === "IMPOSTOR" && (
-                                <EliminatedScreen onDismiss={onClose} />
+                                <EliminatedScreen onDismiss={onClose} playerRole={playerRole} />
                             )}
 
                             {/* Ghost Mode Overlay for Eliminated Crewmates */}

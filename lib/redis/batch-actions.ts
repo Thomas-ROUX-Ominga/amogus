@@ -244,7 +244,12 @@ export async function getBatch(batchId: string): Promise<ActionResponse<Batch>> 
 
 export async function updateQuestsLocations(
   batchId: string,
-  locations: Record<string, string>
+  locations: Record<string, string>,
+  sabotageLocations?: {
+    communications?: string;
+    reactorA?: string;
+    reactorB?: string;
+  }
 ): Promise<ActionResponse<Batch>> {
   try {
     // Verify admin session
@@ -296,6 +301,24 @@ export async function updateQuestsLocations(
     const updatedBatch: Batch = {
       ...batch,
       quests: updatedQuests,
+      sabotages: batch.sabotages
+        ? {
+            communications: {
+              ...batch.sabotages.communications,
+              location: sabotageLocations?.communications ?? batch.sabotages.communications.location,
+            },
+            reactor: [
+              {
+                ...batch.sabotages.reactor[0],
+                location: sabotageLocations?.reactorA ?? batch.sabotages.reactor[0].location,
+              },
+              {
+                ...batch.sabotages.reactor[1],
+                location: sabotageLocations?.reactorB ?? batch.sabotages.reactor[1].location,
+              },
+            ],
+          }
+        : undefined,
     };
 
     // Save updated batch
@@ -314,4 +337,3 @@ export async function updateQuestsLocations(
     };
   }
 }
-

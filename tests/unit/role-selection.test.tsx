@@ -81,7 +81,7 @@ describe("RoleSelection Component", () => {
             <RoleSelection gameId="game-123" />
           </CreateWrapper>
         );
-        expect(screen.getByText(/Crew/i)).toBeTruthy();
+        expect(screen.getByText(/ÉQUIPIER/i)).toBeTruthy();
         expect(screen.getByText(/Imp/i)).toBeTruthy();
     });
 
@@ -94,7 +94,7 @@ describe("RoleSelection Component", () => {
           </CreateWrapper>
         );
         
-        const crewmateButton = screen.getByText(/Crew/i).closest("button");
+        const crewmateButton = screen.getByText(/ÉQUIPIER/i).closest("button");
         fireEvent.click(crewmateButton!);
 
         await waitFor(() => {
@@ -129,7 +129,7 @@ describe("RoleSelection Component", () => {
         
         render(<RoleSelection gameId="game-123" />);
         
-        const crewmateButton = screen.getByText(/Crew/i).closest("button");
+        const crewmateButton = screen.getByText(/ÉQUIPIER/i).closest("button");
         fireEvent.click(crewmateButton!);
 
         await waitFor(() => {
@@ -142,7 +142,7 @@ describe("RoleSelection Component", () => {
         
         render(<RoleSelection gameId="game-123" onRoleSelected={mockOnRoleSelected} />);
         
-        const crewmateButton = screen.getByText(/Crew/i).closest("button");
+        const crewmateButton = screen.getByText(/ÉQUIPIER/i).closest("button");
         fireEvent.click(crewmateButton!);
 
         await waitFor(() => {
@@ -155,7 +155,7 @@ describe("RoleSelection Component", () => {
         
         render(<RoleSelection gameId="game-123" onRoleSelected={mockOnRoleSelected} />);
         
-        const crewmateButton = screen.getByText(/Crew/i).closest("button");
+        const crewmateButton = screen.getByText(/ÉQUIPIER/i).closest("button");
         fireEvent.click(crewmateButton!);
 
         await waitFor(() => {
@@ -187,7 +187,7 @@ describe("RoleSelection Component", () => {
 
         render(<RoleSelection gameId="game-123" />);
         
-        const crewmateButton = screen.getByText(/Crew/i).closest("button");
+        const crewmateButton = screen.getByText(/ÉQUIPIER/i).closest("button");
         const impostorButton = screen.getByText(/Imp/i).closest("button");
 
         expect(crewmateButton?.hasAttribute("disabled")).toBe(true);
@@ -248,7 +248,7 @@ describe("RoleSelection Component", () => {
     it("should have minimum 44px touch targets for buttons", () => {
         render(<RoleSelection gameId="game-123" />);
         
-        const crewmateButton = screen.getByText(/Crew/i).closest("button");
+        const crewmateButton = screen.getByText(/ÉQUIPIER/i).closest("button");
         const impostorButton = screen.getByText(/Imp/i).closest("button");
 
         expect(crewmateButton?.style.minWidth).toBe('44px');

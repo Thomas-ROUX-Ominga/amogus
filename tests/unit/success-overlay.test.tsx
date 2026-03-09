@@ -35,7 +35,7 @@ describe('SuccessOverlay', () => {
              content.includes('ACCOMPLIE');
     })).toBeDefined();
     
-    expect(screen.getByText('Retour au Cockpit')).toBeDefined();
+    expect(screen.getByText('Retour au cockpit')).toBeDefined();
   });
 
   it('triggers haptic feedback on mount', () => {
@@ -47,7 +47,7 @@ describe('SuccessOverlay', () => {
   it('calls onManualExit when button is clicked', () => {
     render(<SuccessOverlay onManualExit={mockOnManualExit} />);
     
-    const button = screen.getByText('Retour au Cockpit');
+    const button = screen.getByText('Retour au cockpit');
     fireEvent.click(button);
     
     expect(mockOnManualExit).toHaveBeenCalledTimes(1);

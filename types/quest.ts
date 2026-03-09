@@ -1,6 +1,17 @@
 export type QuestType = "true-false" | "qcm" | "single-input" | "number-input" | "intrus" | "mini-game";
 
 export type QuestDuration = "short" | "medium" | "long";
+export type SabotageType = "COMMUNICATIONS" | "REACTOR";
+
+export interface SabotageLocation {
+    qrId: string;
+    location?: string;
+}
+
+export interface BatchSabotages {
+    communications: SabotageLocation;
+    reactor: [SabotageLocation, SabotageLocation];
+}
 
 // Quest metadata assigned to players
 export interface Quest {
@@ -43,6 +54,7 @@ export interface Batch {
     id: string;
     questCount: number;
     quests: Quest[];
+    sabotages?: BatchSabotages;
     createdAt: string;
 }
 

@@ -11,6 +11,7 @@ import { getRandomQuestGame } from "@/lib/constants/quest-pool";
 import { QuestRenderer } from "@/components/game/quest-renderer";
 import { SuccessOverlay } from "@/components/game/success-overlay";
 import { FailedOverlay } from "@/components/game/failed-overlay";
+import { ReactorSabotageAlert } from "@/components/game/reactor-sabotage-alert";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 
 interface QuestViewProps {
@@ -195,6 +196,8 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
             className="flex flex-col min-h-screen bg-background text-foreground p-4"
             data-quest-id={quest.id}
         >
+            {gameState && <ReactorSabotageAlert gameState={gameState} />}
+
             {/* Header */}
             <div className="flex items-center justify-between border-b border-primary/20 pb-4 mb-6">
                 <h1 className="text-sm font-bold uppercase tracking-[0.3em] text-primary font-orbitron">

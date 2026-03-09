@@ -51,8 +51,8 @@ describe('CameraScanner', () => {
       />
     );
 
-    expect(screen.getByText('QR SCANNER')).toBeInTheDocument();
-    expect(screen.getByText('Position QR code within the frame to scan')).toBeInTheDocument();
+    expect(screen.getByText('SCANNER QR')).toBeInTheDocument();
+    expect(screen.getByText('Positionnez le QR code dans le cadre pour scanner')).toBeInTheDocument();
   });
 
   it('does not render scanner when isOpen is false', () => {
@@ -64,7 +64,7 @@ describe('CameraScanner', () => {
       />
     );
 
-    expect(screen.queryByText('QR SCANNER')).not.toBeInTheDocument();
+    expect(screen.queryByText('SCANNER QR')).not.toBeInTheDocument();
   });
 
   it('initializes and starts scanning with environment mode on open', async () => {
@@ -147,7 +147,7 @@ describe('CameraScanner', () => {
       />
     );
 
-    const closeButton = screen.getByLabelText('Close scanner');
+    const closeButton = screen.getByLabelText('Fermer le scanner');
     fireEvent.click(closeButton);
 
     expect(mockOnClose).toHaveBeenCalled();
@@ -164,8 +164,8 @@ describe('CameraScanner', () => {
       />
     );
 
-    expect(screen.getByText('ELIMINATED')).toBeInTheDocument();
-    expect(screen.getByText('YOU HAVE BEEN ELIMINATED')).toBeInTheDocument();
+    expect(screen.getByText('MISSION TERMINÉE')).toBeInTheDocument();
+    expect(screen.getByText('VOUS AVEZ ÉTÉ DÉSACTIVÉ')).toBeInTheDocument();
   });
 
   it('shows Ghost Mode overlay when eliminated Crewmate tries to scan', () => {
@@ -179,8 +179,10 @@ describe('CameraScanner', () => {
       />
     );
 
-    expect(screen.getByText('Ghost Mode Active')).toBeInTheDocument();
-    expect(screen.getByText('You can continue scanning QR codes to complete your remaining quests.')).toBeInTheDocument();
+    expect(screen.getByText('Mode fantôme actif')).toBeInTheDocument();
+    expect(
+      screen.getByText('Vous pouvez continuer à scanner des QR codes pour terminer vos quêtes restantes.'),
+    ).toBeInTheDocument();
   });
 
   it('handles camera initialization errors', async () => {
@@ -197,8 +199,8 @@ describe('CameraScanner', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Camera Error')).toBeInTheDocument();
-      expect(screen.getByText(/No camera found/)).toBeInTheDocument();
+      expect(screen.getByText('Erreur caméra')).toBeInTheDocument();
+      expect(screen.getByText(/Aucune caméra détectée/i)).toBeInTheDocument();
     }, { timeout: 5000 });
   });
 
@@ -216,9 +218,9 @@ describe('CameraScanner', () => {
     );
 
     // Wait for error state
-    await waitFor(() => expect(screen.getByText('Retry')).toBeInTheDocument(), { timeout: 5000 });
+    await waitFor(() => expect(screen.getByText('Réessayer')).toBeInTheDocument(), { timeout: 5000 });
     
-    const retryButton = screen.getByText('Retry');
+    const retryButton = screen.getByText('Réessayer');
     fireEvent.click(retryButton);
 
     // Successful initialization after retry

@@ -14,8 +14,9 @@ import { CameraScanner } from "@/components/game/camera-scanner";
 import { EliminationButton } from "@/components/game/elimination-button";
 import { EliminatedScreen } from "@/components/game/eliminated-screen";
 import { GameOverScreen } from "@/components/game/game-over-screen";
+import { ReactorSabotageAlert } from "@/components/game/reactor-sabotage-alert";
 import { useCameraScanner } from "@/hooks/use-camera-scanner";
-import { getBatch } from "@/lib/redis/batch-actions";
+import { scanSabotage } from "@/lib/redis/actions";
 import { getGlobalQuestStats } from "@/lib/utils/quest-calculations";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
@@ -41,16 +42,12 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         return true;
     });
     const [showMeetingPopup, setShowMeetingPopup] = React.useState(false);
+    const [scanFeedback, setScanFeedback] = React.useState<string | null>(null);
     const { 
         questsCompleted, 
         questsTotal, 
         isLoading,
-        impostorQuestsInitialized,
-        initializeImpostorQuests,
-        generateImpostorQuestAssignments,
-        completeImpostorQuest,
-        setImpostorQuestLocation,
-        getImpostorQuestData,
+        refreshGameData,
         isEliminating,
         eliminationError,
         eliminationErrorCode,
@@ -60,12 +57,9 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         meetingErrorCode = null,
         triggerMeetingAction = async () => false,
     } = useGameStore();
-    
+
     // Story 12.0: Check if all quests are finished to hide the scan button
-    const impostorData = getImpostorQuestData();
-    const allQuestsDone = currentPlayer.role === "IMPOSTOR"
-        ? impostorQuestsInitialized && impostorData.total > 0 && impostorData.completed >= impostorData.total
-        : questsTotal > 0 && questsCompleted >= questsTotal;
+    const allQuestsDone = questsTotal > 0 && questsCompleted >= questsTotal;
 
     // Sync local overlay state with player alive status
     useEffect(() => {
@@ -92,49 +86,83 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         gameId: gameState.id,
     });
 
-    // Wrapper for handleScan to also complete impostor quests
-    const handleScan = async (questId: string) => {
-        // For impostors, also mark quest as completed in their fake quest list
-        if (currentPlayer.role === "IMPOSTOR") {
-            const { getImpostorQuestData: getImpostorData } = useGameStore.getState();
-            const impostorQuestData = getImpostorData();
-            
-            // Find the next uncompleted quest and mark it as complete
-            const nextUncompletedQuest = impostorQuestData.quests.find(q => !q.completed);
-            if (nextUncompletedQuest) {
-                // Set location based on current quest being scanned
-                const location = t("game.home.scannedLocation", { index: Date.now() % 100 }); // Simple location placeholder
-                setImpostorQuestLocation(nextUncompletedQuest.id, location);
-                completeImpostorQuest(nextUncompletedQuest.id);
-            }
-        }
+    const communicationsSabotaged = gameState.sabotageState?.active === "COMMUNICATIONS";
 
-        // Call original handleScan for navigation
-        await originalHandleScan(questId);
+    const sabotageEventToMessageKey: Record<string, string> = {
+        COMMUNICATIONS_ACTIVATED: "game.sabotage.messages.communicationsActivated",
+        COMMUNICATIONS_REPAIRED: "game.sabotage.messages.communicationsRepaired",
+        REACTOR_ACTIVATED: "game.sabotage.messages.reactorActivated",
+        REACTOR_PROGRESS: "game.sabotage.messages.reactorProgress",
+        REACTOR_REPAIRED: "game.sabotage.messages.reactorRepaired",
+        REACTOR_ALREADY_SCANNED: "game.sabotage.messages.reactorAlreadyScanned",
+        REACTOR_DISTINCT_CREWMATE_REQUIRED: "game.sabotage.messages.reactorDistinctCrewmateRequired",
     };
 
-    // Initialize impostor quests when player is an impostor and quests aren't initialized yet
-    useEffect(() => {
-        const initializeImpostorQuestsIfNeeded = async () => {
-            if (currentPlayer.role === "IMPOSTOR" && !impostorQuestsInitialized && gameState.batchId) {
-                try {
-                    // Load batch data to generate fake quest assignments
-                    const batchResponse = await getBatch(gameState.batchId);
-                    if (batchResponse.success && batchResponse.data && gameState.questsPerPlayer) {
-                        const fakeAssignments = generateImpostorQuestAssignments(
-                            batchResponse.data.quests,
-                            gameState.questsPerPlayer
-                        );
-                        initializeImpostorQuests(fakeAssignments);
-                    }
-                } catch (error) {
-                    console.error("Failed to initialize impostor quests:", error);
-                }
-            }
-        };
+    const sabotageCodes = new Set([
+        "ERR_SABOTAGE_FORBIDDEN",
+        "ERR_SABOTAGE_ALREADY_ACTIVE",
+        "ERR_SABOTAGE_COOLDOWN",
+        "ERR_SABOTAGE_NOT_ACTIVE",
+        "ERR_SABOTAGE_COMMUNICATIONS_ACTIVE",
+    ]);
 
-        initializeImpostorQuestsIfNeeded();
-    }, [currentPlayer.role, impostorQuestsInitialized, gameState.batchId, gameState.questsPerPlayer, initializeImpostorQuests, generateImpostorQuestAssignments]);
+    // Wrapper for handleScan to intercept sabotage QR first
+    const handleScan = async (questId: string) => {
+        setScanFeedback(null);
+        try {
+            const sabotageResponse = await scanSabotage(gameState.id, userId, questId);
+            const wasHandled = Boolean(sabotageResponse.data?.handled);
+
+            if (wasHandled) {
+                if (sabotageResponse.success && sabotageResponse.data) {
+                    const event = sabotageResponse.data.event;
+                    const translationKey = event ? sabotageEventToMessageKey[event] : null;
+
+                    if (translationKey) {
+                        if (event === "REACTOR_PROGRESS" && sabotageResponse.data.reactorProgress) {
+                            setScanFeedback(
+                                t(translationKey, {
+                                    scanned: sabotageResponse.data.reactorProgress.scanned,
+                                    total: sabotageResponse.data.reactorProgress.total,
+                                }),
+                            );
+                        } else {
+                            setScanFeedback(t(translationKey));
+                        }
+                    } else {
+                        setScanFeedback(t("game.sabotage.messages.scanHandled"));
+                    }
+                } else {
+                    setScanFeedback(
+                        getLocalizedErrorMessage({
+                            t,
+                            code: sabotageResponse.code,
+                            fallback: sabotageResponse.error,
+                        }),
+                    );
+                }
+
+                await refreshGameData(gameState.id, userId);
+                return;
+            }
+
+            if (!sabotageResponse.success && sabotageCodes.has(sabotageResponse.code || "")) {
+                setScanFeedback(
+                    getLocalizedErrorMessage({
+                        t,
+                        code: sabotageResponse.code,
+                        fallback: sabotageResponse.error,
+                    }),
+                );
+                return;
+            }
+
+            await originalHandleScan(questId);
+        } catch (error) {
+            console.error("Failed to process scan:", error);
+            setScanFeedback(t("errors.codes.ERR_SIGNAL_LOST"));
+        }
+    };
     
     // Elimination handler
     const handleElimination = async () => {
@@ -172,6 +200,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     const canUseBuzzer =
         currentPlayer.isAlive &&
         currentPlayer.role !== "ADMIN" &&
+        !(currentPlayer.role === "CREWMATE" && communicationsSabotaged) &&
         !hasUsedBuzzer &&
         !isMeetingActive &&
         gameState.status === "IN_PROGRESS";
@@ -222,6 +251,8 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                 )}
 
                 <div className="space-y-6">
+                    <ReactorSabotageAlert gameState={gameState} />
+
                     {/* Role Badge */}
                     <RoleBadge role={role} />
 
@@ -242,6 +273,9 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         assignedQuests={currentPlayer.assignedQuests}
                         completedQuests={currentPlayer.completedQuests}
                         batchId={gameState.batchId}
+                        currentPlayerId={currentPlayer.id}
+                        communicationsSabotaged={currentPlayer.role === "CREWMATE" && communicationsSabotaged}
+                        gameStateOverride={gameState}
                     />
 
                     {/* Player List (Host Only) */}
@@ -367,6 +401,11 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                             code: meetingErrorCode,
                             fallback: meetingError,
                         })}
+                    </div>
+                )}
+                {scanFeedback && (
+                    <div className="mt-2 p-2 border border-primary/20 bg-primary/10 text-primary text-xs text-center">
+                        {scanFeedback}
                     </div>
                 )}
             </div>

@@ -1,3 +1,5 @@
+import type { BatchSabotages, SabotageType } from "./quest";
+
 export type GameStatus = "LOBBY" | "IN_PROGRESS" | "FINISHED";
 
 export type PlayerRole = "CREWMATE" | "IMPOSTOR" | "ADMIN";
@@ -44,6 +46,24 @@ export interface MeetingView {
     myVoteTargetId: string | null;
 }
 
+export interface ReactorSabotageState {
+    startedAt: number;
+    endsAt: number;
+    scannedByQrId: string[];
+    scannedUserIds: string[];
+}
+
+export interface SabotageCooldownState {
+    communicationsAvailableAt: number;
+    reactorAvailableAt: number;
+}
+
+export interface SabotageState {
+    active: SabotageType | null;
+    reactor: ReactorSabotageState | null;
+    cooldowns: SabotageCooldownState;
+}
+
 export interface Player {
     id: string;
     name: string;
@@ -70,6 +90,8 @@ export interface GameState {
     }; // Quest distribution configuration
     winner?: PlayerRole; // Victory condition result
     meeting?: MeetingState;
+    sabotages?: BatchSabotages;
+    sabotageState?: SabotageState;
 }
 
 export interface ActionResponse<T> {

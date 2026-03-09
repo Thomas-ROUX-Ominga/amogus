@@ -71,17 +71,23 @@ function interpolate(template: string, values?: Record<string, unknown>) {
 vi.mock("next-intl", async () => {
   const React = await import("react");
   const frMessages = (await import("@/lib/i18n/messages/fr")).default as Record<string, unknown>;
+  const translationFns = new Map<string | undefined, (key: string, values?: Record<string, unknown>) => string>();
 
   return {
     NextIntlClientProvider: ({ children }: { children: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
     useLocale: () => "fr",
     useTranslations: (namespace?: string) => {
-      return (key: string, values?: Record<string, unknown>) => {
+      const existing = translationFns.get(namespace);
+      if (existing) return existing;
+
+      const translator = (key: string, values?: Record<string, unknown>) => {
         const fullKey = namespace ? `${namespace}.${key}` : key;
         const message = getByPath(frMessages, fullKey) ?? fullKey;
         return interpolate(message, values);
       };
+      translationFns.set(namespace, translator);
+      return translator;
     },
   };
 });

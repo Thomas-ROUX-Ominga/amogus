@@ -92,10 +92,10 @@ describe("QuestRenderer", () => {
         expect(screen.getByText(/Type de quête non supporté/)).toBeTruthy();
     });
 
-    it("should show 'Retour au Game Home' link for unsupported type", () => {
+    it("should show return link for unsupported type", () => {
         const unsupported = { ...baseTrueFalseQuest, type: "another-unsupported-type" } as unknown as QuestGame;
         render(<QuestRenderer quest={unsupported} gameId="g1" onSuccess={onSuccess} onError={onError} />);
-        const link = screen.getByText("Retour au Game Home");
+        const link = screen.getByText("Retour au cockpit");
         expect(link).toBeTruthy();
         expect(link.closest("a")?.getAttribute("href")).toBe("/game/g1");
     });
@@ -140,10 +140,10 @@ describe("QuestRenderer", () => {
         expect(screen.getByText(/Anneau : 1\/3/i)).toBeTruthy();
     });
 
-    it("should show 'Retour au Game Home' link for malformed quest", () => {
+    it("should show return link for malformed quest", () => {
         const malformed = { ...baseTrueFalseQuest, data: undefined } as unknown as QuestGame;
         render(<QuestRenderer quest={malformed} gameId="g1" onSuccess={onSuccess} onError={onError} />);
-        const link = screen.getByText("Retour au Game Home");
+        const link = screen.getByText("Retour au cockpit");
         expect(link.closest("a")?.getAttribute("href")).toBe("/game/g1");
     });
 });

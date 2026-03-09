@@ -66,7 +66,7 @@ describe("ScanButton", () => {
     it("should have correct aria-label when disabled", () => {
         render(<ScanButton disabled={true} />);
         const button = screen.getByRole("button");
-        expect(button.getAttribute("aria-label")).toBe("Scanner — Bientôt disponible");
+        expect(button.getAttribute("aria-label")).toBe("Scanner - Bientôt disponible");
     });
 
     it("should have correct aria-label when enabled", () => {
