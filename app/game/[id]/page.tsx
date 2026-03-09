@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useState } from "react";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useGameStore, useRealTimeGamePolling } from "@/lib/store/game-store";
 import { useAuth } from "@/hooks/use-auth";
 import { JoinForm } from "@/components/game/join-form";
@@ -11,8 +12,10 @@ import { RoleSelection } from "@/components/game/role-selection";
 import { RoleTransition } from "@/components/effects/role-transition";
 import { GameHome } from "@/components/game/game-home";
 import { Rocket, Loader2, Wifi, WifiOff } from "lucide-react";
+import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 export default function LobbyPage() {
+    const t = useTranslations();
     const { id } = useParams();
     const { gameState, isLoading, isLaunching, error, errorCode, launchError, selectedRole, fetchGame, launch, reset } = useGameStore();
     const { authState } = useAuth();
@@ -128,7 +131,7 @@ export default function LobbyPage() {
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <div className="max-w-2xl w-full border-2 border-primary/20 p-12 space-y-6 bg-black/50 backdrop-blur-sm animate-pulse">
                     <div className="text-primary text-center tracking-[0.2em] uppercase text-sm font-orbitron">
-                        Establishing Uplink...
+                        {t("game.lobby.establishingUplink")}
                     </div>
                 </div>
             </main>
@@ -139,8 +142,12 @@ export default function LobbyPage() {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <ErrorView
-                    title={errorCode === ERROR_CODES.GAME_NOT_FOUND ? "SESSION DECOMMISSIONED" : "SIGNAL INTERRUPTED"}
-                    message={error}
+                    title={
+                        errorCode === ERROR_CODES.GAME_NOT_FOUND
+                            ? t("game.lobby.sessionDecommissioned")
+                            : t("game.lobby.signalInterrupted")
+                    }
+                    message={getLocalizedErrorMessage({ t, code: errorCode, fallback: error })}
                     code={errorCode || "ERR_UNKNOWN_SIG"}
                     onRetry={() => {
                         if (id) fetchGame(id as string);
@@ -167,12 +174,12 @@ export default function LobbyPage() {
                 <div className="max-w-2xl w-full border-2 border-primary/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgba(var(--primary),0.05)]">
                     <div className="flex items-center justify-between border-b border-primary/20 pb-4">
                         <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
-                            Mission Active
+                            {t("game.lobby.missionActive")}
                         </h1>
                         <div className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full animate-pulse bg-green-500" />
                             <span className="text-[10px] text-green-400/80 tracking-widest">
-                                IN_PROGRESS
+                                {t("game.lobby.statusInProgress")}
                             </span>
                         </div>
                     </div>
@@ -187,7 +194,7 @@ export default function LobbyPage() {
             <div className="max-w-2xl w-full border-2 border-primary/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgba(var(--primary),0.05)]">
                 <div className="flex items-center justify-between border-b border-primary/20 pb-4">
                     <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
-                        {isJoined ? "Cockpit Terminal" : "Inbound Entry"}
+                        {isJoined ? t("game.lobby.cockpitTerminal") : t("game.lobby.inboundEntry")}
                     </h1>
                     <div className="flex items-center gap-4">
                         {/* Connection Status Indicator */}
@@ -200,14 +207,14 @@ export default function LobbyPage() {
                             <span className={`text-[8px] tracking-widest ${
                                 isConnected ? 'text-green-400/80' : 'text-red-400/80'
                             }`}>
-                                {isConnected ? 'SYNC' : 'OFFLINE'}
+                                {isConnected ? t("game.lobby.sync") : t("game.lobby.offline")}
                             </span>
                         </div>
                         
                         <div className="flex items-center gap-2">
                             <span className={`w-2 h-2 rounded-full animate-pulse ${isJoined ? 'bg-primary' : 'bg-yellow-500'}`} />
                             <span className="text-[10px] text-primary/80 tracking-widest">
-                                {isJoined ? "SESSION_ACTIVE" : "PENDING_AUTH"}
+                                {isJoined ? t("game.lobby.sessionActive") : t("game.lobby.pendingAuth")}
                             </span>
                         </div>
                     </div>
@@ -220,7 +227,7 @@ export default function LobbyPage() {
                         <div className="w-full space-y-6 animate-in fade-in zoom-in-95 duration-500">
                             <div className="bg-primary/5 p-6 border border-primary/10 rounded-sm">
                                 <label className="text-[8px] text-primary/50 uppercase block mb-1 tracking-widest">
-                                    Game Identifier
+                                    {t("game.lobby.gameIdentifier")}
                                 </label>
                                 <div className="text-xl md:text-2xl font-black tracking-tight text-foreground break-all">
                                     {currentGameState?.id}
@@ -229,7 +236,7 @@ export default function LobbyPage() {
 
                             <div className="space-y-4">
                                 <label className="text-[8px] text-primary/50 uppercase block tracking-widest">
-                                    Manifest: Crew Members ({currentPlayerCount})
+                                    {t("game.lobby.crewManifest", { count: currentPlayerCount })}
                                 </label>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                     {currentGameState?.players.map((player, index) => {
@@ -250,17 +257,17 @@ export default function LobbyPage() {
                                                     {player.name}
                                                     {isNewPlayer && (
                                                         <span className="text-[8px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded border border-green-500/30">
-                                                            NEW
+                                                            {t("game.lobby.new")}
                                                         </span>
                                                     )}
                                                     {player.id === currentGameState?.creatorId && player.id !== userId && (
                                                         <span className="text-[8px] bg-primary/20 text-primary px-2 py-0.5 rounded border border-primary/30 font-bold">
-                                                            HOST
+                                                            {t("game.lobby.host")}
                                                         </span>
                                                     )}
                                                 </span>
                                                 {player.id === userId && (
-                                                    <span className="text-[8px] opacity-50 px-2 py-0.5 border border-primary/50">YOU</span>
+                                                    <span className="text-[8px] opacity-50 px-2 py-0.5 border border-primary/50">{t("game.lobby.you")}</span>
                                                 )}
                                             </div>
                                         );
@@ -279,12 +286,12 @@ export default function LobbyPage() {
                                         {isLaunching ? (
                                             <>
                                                 <Loader2 className="w-5 h-5 animate-spin" />
-                                                Lancement...
+                                                {t("game.lobby.launching")}
                                             </>
                                         ) : (
                                             <>
                                                 <Rocket className="w-5 h-5" />
-                                                Lancer la partie
+                                                {t("game.lobby.launchGame")}
                                             </>
                                         )}
                                     </span>
@@ -293,26 +300,26 @@ export default function LobbyPage() {
 
                             {launchError && (
                                 <div className="p-4 border-l-4 border-destructive/50 bg-destructive/5 text-xs text-destructive/80 tracking-wide space-y-2">
-                                    <div className="font-bold uppercase">Launch Failed</div>
+                                    <div className="font-bold uppercase">{t("game.lobby.launchFailedTitle")}</div>
                                     <div>{launchError}</div>
                                     <button
                                         onClick={handleLaunch}
                                         className="mt-2 px-4 py-2 border border-destructive/30 text-destructive/70 text-xs uppercase tracking-widest hover:bg-destructive/10 transition-colors touch-manipulation"
                                     >
-                                        Retry Launch
+                                        {t("game.lobby.retryLaunch")}
                                     </button>
                                 </div>
                             )}
 
                             {!launchError && !canLaunch && currentPlayerCount === 0 && (
                                 <div className="p-4 border-l-4 border-yellow-500/30 bg-yellow-500/5 text-xs text-yellow-500/80 italic tracking-wide">
-                                    Awaiting crew members before launch authorization...
+                                    {t("game.lobby.awaitingCrewMembers")}
                                 </div>
                             )}
 
                             {!launchError && canLaunch && (
                                 <div className="p-4 border-l-4 border-primary/30 bg-primary/5 text-xs text-muted-foreground italic tracking-wide">
-                                    System ready. Commander may launch the mission.
+                                    {t("game.lobby.systemReady")}
                                 </div>
                             )}
                         </div>
@@ -321,10 +328,10 @@ export default function LobbyPage() {
 
                 <div className="pt-4 flex justify-between items-center opacity-40">
                     <div className="text-[8px] text-muted-foreground uppercase tracking-widest">
-                        SEC_ENC: AES-256-BMAD
+                        {t("game.lobby.securityEncryption")}
                     </div>
                     <div className="text-[8px] text-muted-foreground uppercase tracking-widest">
-                        EST_PING: 14MS
+                        {t("game.lobby.estimatedPing")}
                     </div>
                 </div>
             </div>

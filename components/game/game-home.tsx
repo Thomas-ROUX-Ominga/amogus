@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { GameState, Player } from "@/types/game";
 import { useGameStore } from "@/lib/store/game-store";
 import { RoleBadge } from "@/components/game/role-badge";
@@ -16,6 +17,7 @@ import { GameOverScreen } from "@/components/game/game-over-screen";
 import { useCameraScanner } from "@/hooks/use-camera-scanner";
 import { getBatch } from "@/lib/redis/batch-actions";
 import { getGlobalQuestStats } from "@/lib/utils/quest-calculations";
+import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 interface GameHomeProps {
     gameState: GameState;
@@ -24,6 +26,7 @@ interface GameHomeProps {
 }
 
 export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
+    const t = useTranslations();
     const storageKey = `elimination-dismissed-${gameState.id}-${userId}`;
     const isMeetingActive = gameState.meeting?.status === "ACTIVE";
     const activeMeetingId = gameState.meeting?.id;
@@ -50,9 +53,11 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         getImpostorQuestData,
         isEliminating,
         eliminationError,
+        eliminationErrorCode,
         eliminatePlayerAction,
         isTriggeringMeeting = false,
         meetingError = null,
+        meetingErrorCode = null,
         triggerMeetingAction = async () => false,
     } = useGameStore();
     
@@ -98,7 +103,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
             const nextUncompletedQuest = impostorQuestData.quests.find(q => !q.completed);
             if (nextUncompletedQuest) {
                 // Set location based on current quest being scanned
-                const location = `Scanned Location ${Date.now() % 100}`; // Simple location placeholder
+                const location = t("game.home.scannedLocation", { index: Date.now() % 100 }); // Simple location placeholder
                 setImpostorQuestLocation(nextUncompletedQuest.id, location);
                 completeImpostorQuest(nextUncompletedQuest.id);
             }
@@ -145,17 +150,17 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <div className="max-w-2xl w-full border-2 border-destructive/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm">
                     <div className="text-destructive text-center tracking-[0.2em] uppercase text-sm font-orbitron">
-                        Role Assignment Error
+                        {t("game.home.roleAssignmentErrorTitle")}
                     </div>
                     <p className="text-muted-foreground text-center font-rajdhani">
-                        Your role has not been assigned yet. Please refresh the page or return to the lobby.
+                        {t("game.home.roleAssignmentErrorMessage")}
                     </p>
                     <Link
                         href="/"
                         className="flex items-center justify-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors uppercase tracking-widest font-rajdhani touch-manipulation min-h-[44px] border border-primary/20 p-4"
                     >
                         <ArrowLeft className="w-4 h-4" />
-                        Return to Home
+                        {t("game.home.returnHome")}
                     </Link>
                 </div>
             </main>
@@ -195,14 +200,14 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                 {/* Header: Title + Status Indicator */}
                 <div className="flex items-center justify-between border-b border-primary/20 pb-4">
                     <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
-                        Game Cockpit
+                        {t("game.home.title")}
                     </h1>
                     <div className="flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full animate-pulse ${currentPlayer.isAlive ? "bg-green-500" : "bg-red-500"}`} aria-hidden="true" />
                         <span className={`text-[10px] tracking-widest ${currentPlayer.isAlive ? "text-green-400/80" : "text-red-400/80 font-bold"}`}>
-                            {currentPlayer.isAlive ? "ACTIVE" : "MORT"}
+                            {currentPlayer.isAlive ? t("game.home.statusActive") : t("game.home.statusDead")}
                         </span>
-                        <span className="sr-only">Game is {currentPlayer.isAlive ? "active" : "finished for you"}</span>
+                        <span className="sr-only">{currentPlayer.isAlive ? t("game.home.screenReaderAlive") : t("game.home.screenReaderDead")}</span>
                     </div>
                 </div>
 
@@ -243,7 +248,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     {gameState.creatorId === userId && (
                         <div className="p-6 border border-primary/20 bg-black/30">
                             <div className="text-xs text-primary/60 uppercase tracking-widest mb-4 font-rajdhani">
-                            Joueurs connectés ({gameState.players.length})
+                            {t("game.home.connectedPlayers", { count: gameState.players.length })}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             {gameState.players
@@ -261,12 +266,12 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                                         <div className="flex items-center gap-2">
                                             {player.id === gameState.creatorId && player.id !== userId && (
                                                 <span className="text-[8px] bg-primary/20 text-primary px-2 py-0.5 rounded border border-primary/30 font-bold">
-                                                    HOST
+                                                    {t("game.home.host")}
                                                 </span>
                                             )}
                                             {player.id === userId && (
                                                 <span className="text-[8px] opacity-50 px-2 py-0.5 border border-primary/50">
-                                                    YOU
+                                                    {t("game.home.you")}
                                                 </span>
                                             )}
                                         </div>
@@ -281,7 +286,6 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         <ScanButton 
                             disabled={false} 
                             onClick={openScanner}
-                            gameId={gameState.id}
                         />
                     )}
 
@@ -314,14 +318,14 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest font-rajdhani touch-manipulation min-h-[44px]"
                     >
                         <ArrowLeft className="w-4 h-4" />
-                        Retour à l&apos;accueil
+                        {t("game.home.returnHome")}
                     </Link>
                 </div>
 
                 {/* Footer */}
                 <div className="pt-4 flex justify-between items-center">
                     <div className="text-[8px] opacity-40 text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
-                        Role: {currentPlayer.role}
+                        {t("game.home.footerRole", { role: currentPlayer.role })}
                     </div>
                     <div className="flex items-center gap-2">
                         {currentPlayer.role !== "ADMIN" && (
@@ -342,19 +346,27 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         )}
                     </div>
                     <div className={`text-[8px] uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)] ${currentPlayer.isAlive ? "opacity-40 text-muted-foreground" : "text-red-500 font-bold"}`}>
-                        Status: {currentPlayer.isAlive ? "READY" : "ELIMINÉ"}
+                        {currentPlayer.isAlive ? t("game.home.footerStatusReady") : t("game.home.footerStatusEliminated")}
                     </div>
                 </div>
                 
                 {/* Elimination error display */}
                 {eliminationError && (
                     <div className="mt-2 p-2 border border-destructive/20 bg-destructive/10 text-destructive text-xs text-center">
-                        {eliminationError}
+                        {getLocalizedErrorMessage({
+                            t,
+                            code: eliminationErrorCode,
+                            fallback: eliminationError,
+                        })}
                     </div>
                 )}
                 {meetingError && (
                     <div className="mt-2 p-2 border border-destructive/20 bg-destructive/10 text-destructive text-xs text-center">
-                        {meetingError}
+                        {getLocalizedErrorMessage({
+                            t,
+                            code: meetingErrorCode,
+                            fallback: meetingError,
+                        })}
                     </div>
                 )}
             </div>
@@ -363,10 +375,10 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
                     <div className="max-w-md w-full border border-red-500/30 bg-black p-6 space-y-4 shadow-xl">
                         <h2 className="text-lg font-bold uppercase tracking-wider text-red-300 font-orbitron">
-                            Meeting déclenché
+                            {t("game.home.meetingTriggeredTitle")}
                         </h2>
                         <p className="text-sm text-muted-foreground font-rajdhani">
-                            Un buzz a été déclenché. Rejoignez la salle de meeting et rassemblez-vous IRL.
+                            {t("game.home.meetingTriggeredMessage")}
                         </p>
                         <div className="flex gap-3 justify-end">
                             <button
@@ -374,14 +386,14 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                                 onClick={dismissMeetingPopup}
                                 className="px-4 py-2 text-sm border border-primary/20 hover:bg-primary/10 transition-colors font-rajdhani uppercase tracking-widest"
                             >
-                                Plus tard
+                                {t("game.home.meetingLater")}
                             </button>
                             <Link
                                 href={`/game/${gameState.id}/meeting`}
                                 onClick={dismissMeetingPopup}
                                 className="px-4 py-2 text-sm bg-red-600 text-white hover:bg-red-500 transition-colors font-rajdhani uppercase tracking-widest"
                             >
-                                Rejoindre
+                                {t("game.home.meetingJoin")}
                             </Link>
                         </div>
                     </div>

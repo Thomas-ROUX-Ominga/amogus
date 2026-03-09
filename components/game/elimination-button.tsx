@@ -3,6 +3,7 @@
 import { AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useTranslations } from "next-intl";
 
 interface EliminationButtonProps {
     onEliminate: () => Promise<void>;
@@ -15,6 +16,7 @@ export function EliminationButton({
     disabled = false, 
     isEliminating = false 
 }: EliminationButtonProps) {
+    const t = useTranslations();
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [mounted, setMounted] = useState(false);
 
@@ -62,10 +64,10 @@ export function EliminationButton({
                     disabled={disabled || isEliminating}
                     aria-label={
                         isEliminating 
-                            ? "Signaling elimination..." 
+                            ? t("game.actions.eliminationAriaSignaling")
                             : disabled && !isEliminating 
-                                ? "Already eliminated" 
-                                : "Signal elimination"
+                                ? t("game.actions.eliminationAriaAlready")
+                                : t("game.actions.eliminationAriaSignal")
                     }
                     className="
                         flex items-center gap-1 px-3 py-1.5
@@ -81,10 +83,10 @@ export function EliminationButton({
                 >
                     <AlertTriangle className="w-3 h-3" />
                     {isEliminating 
-                        ? "SIGNALING..." 
+                        ? t("game.actions.signaling")
                         : disabled && !isEliminating 
-                            ? "ELIMINATION SIGNALED" 
-                            : "SIGNAL ELIMINATION"
+                            ? t("game.actions.eliminationSignaled")
+                            : t("game.actions.signalElimination")
                     }
                 </button>
             </div>
@@ -95,25 +97,24 @@ export function EliminationButton({
                         <div className="flex items-center gap-2 text-destructive">
                             <AlertTriangle className="w-4 h-4" />
                             <h2 className="text-lg font-bold font-orbitron uppercase tracking-wider">
-                                Signal Elimination
+                                {t("game.actions.confirmEliminationTitle")}
                             </h2>
                         </div>
                         <p className="text-sm text-muted-foreground font-rajdhani">
-                            Are you sure you want to signal that you have been eliminated? 
-                            This action cannot be undone and you will no longer receive game updates.
+                            {t("game.actions.confirmEliminationMessage")}
                         </p>
                         <div className="flex gap-3 justify-end">
                             <button
                                 onClick={() => setShowConfirmDialog(false)}
                                 className="px-4 py-2 text-sm border border-primary/20 hover:bg-primary/10 transition-colors font-rajdhani uppercase tracking-widest"
                             >
-                                Cancel
+                                {t("common.actions.cancel")}
                             </button>
                             <button
                                 onClick={handleEliminate}
                                 className="px-4 py-2 text-sm bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors font-rajdhani uppercase tracking-widest"
                             >
-                                Signal Elimination
+                                {t("game.actions.signalElimination")}
                             </button>
                         </div>
                     </div>

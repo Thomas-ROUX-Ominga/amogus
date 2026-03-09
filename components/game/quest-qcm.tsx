@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { QuestGame } from "@/types/quest";
 import { useQuestAnswer } from "@/hooks/use-quest-answer";
 import { Check } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface QuestQCMProps {
     quest: Extract<QuestGame, { type: "qcm" }>;
@@ -13,6 +14,7 @@ interface QuestQCMProps {
 }
 
 export function QuestQCM({ quest, onSuccess, onError }: QuestQCMProps) {
+    const t = useTranslations();
     const prefersReducedMotion = useReducedMotion();
     const isMultiple = quest.data.mode === "multiple";
     const [selectedMultipleIds, setSelectedMultipleIds] = useState<string[]>([]);
@@ -86,9 +88,9 @@ export function QuestQCM({ quest, onSuccess, onError }: QuestQCMProps) {
     };
 
     return (
-        <div className="space-y-3" role={isMultiple ? "group" : "radiogroup"} aria-label="Choix de réponse">
+        <div className="space-y-3" role={isMultiple ? "group" : "radiogroup"} aria-label={t("game.questWidgets.responseChoiceAria")}>
             {isMultiple && !answered && !failed && (
-                <p className="text-sm font-rajdhani text-primary/70 mb-2">Sélectionnez plusieurs choix et validez</p>
+                <p className="text-sm font-rajdhani text-primary/70 mb-2">{t("game.questWidgets.multipleSelectionHint")}</p>
             )}
             {quest.data.choices.map((option, index) => (
                 <motion.button
@@ -99,7 +101,10 @@ export function QuestQCM({ quest, onSuccess, onError }: QuestQCMProps) {
                     disabled={answered || failed}
                     role={isMultiple ? "checkbox" : "radio"}
                     aria-checked={isMultiple ? (Array.isArray(selectedValue) ? selectedValue.includes(option.id) : selectedMultipleIds.includes(option.id)) : selectedValue === option.id}
-                    aria-label={`Option ${String.fromCharCode(65 + index)}: ${option.label}`}
+                    aria-label={t("game.questWidgets.optionAria", {
+                        letter: String.fromCharCode(65 + index),
+                        label: option.label,
+                    })}
                     tabIndex={0}
                 >
                     <span className="shrink-0 w-6 text-left text-xs font-[family-name:var(--font-jetbrains-mono)] text-foreground/40 uppercase">
@@ -118,7 +123,7 @@ export function QuestQCM({ quest, onSuccess, onError }: QuestQCMProps) {
                     disabled={selectedMultipleIds.length === 0}
                     className="w-full min-h-[44px] flex items-center justify-center border-2 border-primary/80 bg-primary/20 text-primary font-rajdhani text-sm uppercase tracking-widest hover:bg-primary/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation mt-4"
                 >
-                    Valider
+                    {t("common.actions.confirm")}
                 </button>
             )}
 
@@ -129,9 +134,9 @@ export function QuestQCM({ quest, onSuccess, onError }: QuestQCMProps) {
                         handleRetry();
                     }}
                     className="w-full min-h-[44px] flex items-center justify-center border border-primary/20 bg-black/30 text-foreground/70 font-rajdhani text-sm uppercase tracking-widest hover:bg-primary/10 transition-colors touch-manipulation mt-4"
-                    aria-label="Réessayer la question"
+                    aria-label={t("game.questWidgets.retryAria")}
                 >
-                    Réessayer
+                    {t("common.actions.retry")}
                 </button>
             )}
         </div>

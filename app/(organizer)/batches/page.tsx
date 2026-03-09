@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { BatchForm } from "@/components/admin/batch-form";
 import { BatchList } from "@/components/admin/batch-list";
 
 export default function AdminBatchesPage() {
+  const t = useTranslations();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleBatchCreated = () => {
@@ -22,10 +24,10 @@ export default function AdminBatchesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-black uppercase tracking-[0.2em] text-primary font-orbitron">
-              Batch Management
+              {t("admin.batches.title")}
             </h2>
             <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-2">
-              Create and manage game batches for crew deployment
+              {t("admin.batches.subtitle")}
             </p>
           </div>
           <BatchForm onBatchCreated={handleBatchCreated} />

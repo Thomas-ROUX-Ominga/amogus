@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { QuestGame } from "@/types/quest";
 import { useQuestAnswer } from "@/hooks/use-quest-answer";
 
@@ -12,6 +13,7 @@ interface QuestNumberInputProps {
 }
 
 export function QuestNumberInput({ quest, onSuccess, onError }: QuestNumberInputProps) {
+    const t = useTranslations();
     const prefersReducedMotion = useReducedMotion();
     const { isCorrect, answered, failed, handleAnswer, handleRetry } = useQuestAnswer(
         quest,
@@ -64,8 +66,8 @@ export function QuestNumberInput({ quest, onSuccess, onError }: QuestNumberInput
                     onChange={(e) => setInputValue(e.target.value)}
                     disabled={answered || failed}
                     className={getInputStyle()}
-                    placeholder="Saisissez un nombre..."
-                    aria-label="Nombre de la quête"
+                    placeholder={t("game.questWidgets.numberAria")}
+                    aria-label={t("game.questWidgets.numberAria")}
                     autoFocus
                 />
             </motion.div>
@@ -78,18 +80,18 @@ export function QuestNumberInput({ quest, onSuccess, onError }: QuestNumberInput
                         handleRetry();
                     }}
                     className="w-full min-h-[44px] flex items-center justify-center border border-primary/20 bg-black/30 text-foreground/70 font-rajdhani text-sm uppercase tracking-widest hover:bg-primary/10 transition-colors touch-manipulation"
-                    aria-label="Réessayer la question"
+                    aria-label={t("game.questWidgets.retryAria")}
                 >
-                    Réessayer
+                    {t("common.actions.retry")}
                 </button>
             ) : (
                 <button
                     type="submit"
                     disabled={answered || inputValue.trim() === ""}
                     className="w-full min-h-[44px] flex items-center justify-center border-2 border-primary/80 bg-primary/20 text-primary font-rajdhani text-sm uppercase tracking-widest hover:bg-primary/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
-                    aria-label="Valider la réponse"
+                    aria-label={t("game.questWidgets.submitAria")}
                 >
-                    Valider
+                    {t("common.actions.confirm")}
                 </button>
             )}
         </form>

@@ -5,9 +5,11 @@ import Link from "next/link";
 import useSWR from "swr";
 import { useParams } from "next/navigation";
 import { Skull } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/use-auth";
 import { useGameStore } from "@/lib/store/game-store";
 import { ErrorView } from "@/components/game/error-view";
+import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 function formatRemaining(ms: number): string {
     if (ms <= 0) return "00:00";
@@ -36,6 +38,8 @@ function VoteSkulls({ votes, id }: { votes: number; id: string }) {
 }
 
 export default function MeetingPage() {
+    const t = useTranslations();
+    const locale = useLocale();
     const { id } = useParams();
     const gameId = id as string;
     const { authState } = useAuth();
@@ -85,7 +89,7 @@ export default function MeetingPage() {
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <div className="max-w-3xl w-full border-2 border-primary/20 p-12 space-y-6 bg-black/50 backdrop-blur-sm animate-pulse">
                     <div className="text-primary text-center tracking-[0.2em] uppercase text-sm font-orbitron">
-                        Chargement de la salle de meeting...
+                        {t("game.meeting.loadingRoom")}
                     </div>
                 </div>
             </main>
@@ -96,8 +100,12 @@ export default function MeetingPage() {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <ErrorView
-                    title="SIGNAL MEETING INTERROMPU"
-                    message={meetingError}
+                    title={t("game.meeting.interruptedTitle")}
+                    message={getLocalizedErrorMessage({
+                        t,
+                        code: meetingErrorCode || undefined,
+                        fallback: meetingError,
+                    })}
                     code={meetingErrorCode || "ERR_SIGNAL_LOST"}
                     onRetry={() => {
                         if (userId) fetchMeetingView(gameId, userId);
@@ -126,7 +134,7 @@ export default function MeetingPage() {
               }))
               .sort((a, b) => {
                   if (a.isAlive !== b.isAlive) return a.isAlive ? -1 : 1;
-                  return a.name.localeCompare(b.name, "fr", { sensitivity: "base" });
+                  return a.name.localeCompare(b.name, locale, { sensitivity: "base" });
               });
 
     const myVoteName = playersForMeetingList.find((target) => target.id === myVoteTargetId)?.name ?? null;
@@ -136,23 +144,23 @@ export default function MeetingPage() {
             <div className="max-w-4xl w-full border-2 border-primary/20 p-6 md:p-8 space-y-6 bg-black/50 backdrop-blur-sm">
                 <div className="flex items-center justify-between border-b border-primary/20 pb-4">
                     <h1 className="text-lg md:text-xl font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
-                        Salle du Meeting
+                        {t("game.meeting.roomTitle")}
                     </h1>
                     <div className="text-right">
                         <div className={`text-2xl font-black ${active ? "text-red-300" : "text-primary/70"}`}>
                             {timerLabel}
                         </div>
                         <div className="text-[10px] uppercase tracking-widest text-primary/60">
-                            Timer
+                            {t("game.meeting.timer")}
                         </div>
                     </div>
                 </div>
 
                 {!meeting && (
                     <div className="p-4 border border-primary/20 bg-black/30 text-center space-y-2">
-                        <div className="text-sm uppercase tracking-widest text-primary/80">Aucun meeting en cours</div>
+                        <div className="text-sm uppercase tracking-widest text-primary/80">{t("game.meeting.noMeetingTitle")}</div>
                         <p className="text-xs text-muted-foreground font-rajdhani">
-                            Attendez un buzz pour lancer un meeting et figer les données.
+                            {t("game.meeting.noMeetingDescription")}
                         </p>
                     </div>
                 )}
@@ -160,12 +168,12 @@ export default function MeetingPage() {
                 {completed && meeting && (
                     <div className="p-4 border border-primary/30 bg-primary/10 space-y-2">
                         <div className="text-xs uppercase tracking-widest text-primary font-orbitron">
-                            Meeting terminé
+                            {t("game.meeting.completedTitle")}
                         </div>
                         <p className="text-sm text-muted-foreground font-rajdhani">
                             {meeting.eliminatedPlayerName
-                                ? `${meeting.eliminatedPlayerName} a été éliminé.`
-                                : "Aucune élimination (aucun vote)."}
+                                ? t("game.meeting.eliminatedPlayer", { playerName: meeting.eliminatedPlayerName })
+                                : t("game.meeting.noElimination")}
                         </p>
                     </div>
                 )}
@@ -174,7 +182,7 @@ export default function MeetingPage() {
                     <>
                         <div className="p-4 border border-primary/20 bg-black/30 space-y-3">
                             <div className="text-xs text-primary/60 uppercase tracking-widest font-rajdhani">
-                                Progression de l'équipage (snapshot)
+                                {t("game.meeting.crewProgressSnapshot")}
                             </div>
                             <div className="w-full h-2 bg-white/10 overflow-hidden">
                                 <div
@@ -183,25 +191,31 @@ export default function MeetingPage() {
                                 />
                             </div>
                             <div className="text-sm text-muted-foreground font-rajdhani tracking-wide">
-                                {snapshot.progress.completed}/{snapshot.progress.total} quêtes accomplies
+                                {t("game.meeting.questsCompleted", {
+                                    completed: snapshot.progress.completed,
+                                    total: snapshot.progress.total,
+                                })}
                             </div>
                         </div>
 
                         <div className="p-4 border border-primary/20 bg-black/30 space-y-3">
                             <div className="flex items-center justify-between gap-3">
                                 <div className="text-xs text-primary/60 uppercase tracking-widest font-rajdhani">
-                                    Joueurs et vote (snapshot)
+                                    {t("game.meeting.playersAndVotesSnapshot")}
                                 </div>
                                 {meeting && (
                                     <div className="text-[10px] text-primary/60 uppercase tracking-widest">
-                                        Votes {meeting.totalVotes}/{meeting.totalEligibleVoters}
+                                        {t("game.meeting.votesCount", {
+                                            votes: meeting.totalVotes,
+                                            eligible: meeting.totalEligibleVoters,
+                                        })}
                                     </div>
                                 )}
                             </div>
 
                             {!isEligibleVoter && active && (
                                 <p className="text-xs text-muted-foreground font-rajdhani">
-                                    Vous n&apos;êtes pas éligible au vote pendant ce meeting.
+                                    {t("game.meeting.notEligible")}
                                 </p>
                             )}
 
@@ -236,7 +250,7 @@ export default function MeetingPage() {
                                             <div className="flex items-center justify-between gap-2">
                                                 <span className="truncate">{player.name}</span>
                                                 {!player.isAlive ? (
-                                                    <span className="text-red-400">MORT</span>
+                                                    <span className="text-red-400">{t("game.meeting.dead")}</span>
                                                 ) : (
                                                     <VoteSkulls votes={player.votes} id={player.id} />
                                                 )}
@@ -249,7 +263,9 @@ export default function MeetingPage() {
                             {active && isEligibleVoter && (
                                 <div className="flex items-center justify-between gap-3">
                                     <div className="text-xs text-muted-foreground font-rajdhani">
-                                        {myVoteName ? `Votre vote: ${myVoteName}` : "Vous n'avez pas encore voté."}
+                                        {myVoteName
+                                            ? t("game.meeting.yourVote", { playerName: myVoteName })
+                                            : t("game.meeting.noVoteYet")}
                                     </div>
                                     {myVoteTargetId && (
                                         <button
@@ -261,7 +277,7 @@ export default function MeetingPage() {
                                             disabled={isMeetingVoting}
                                             className="px-3 py-1.5 border border-primary/40 text-primary text-xs uppercase tracking-widest hover:bg-primary/10 transition-colors disabled:opacity-50"
                                         >
-                                            Annuler mon vote
+                                            {t("game.actions.cancelVote")}
                                         </button>
                                     )}
                                 </div>
@@ -275,13 +291,13 @@ export default function MeetingPage() {
                         href={`/game/${gameId}`}
                         className="px-4 py-2 border border-primary/40 text-primary text-xs uppercase tracking-widest hover:bg-primary/10 transition-colors"
                     >
-                        Retour cockpit
+                        {t("game.meeting.returnCockpit")}
                     </Link>
                     <Link
                         href="/"
                         className="px-4 py-2 border border-white/20 text-muted-foreground text-xs uppercase tracking-widest hover:bg-white/5 transition-colors"
                     >
-                        Accueil
+                        {t("game.meeting.home")}
                     </Link>
                 </div>
             </div>

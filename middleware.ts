@@ -1,8 +1,32 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import {
+  LOCALE_COOKIE_MAX_AGE_SECONDS,
+  LOCALE_COOKIE_NAME,
+} from "@/lib/i18n/config";
+import { resolveAppLocale } from "@/lib/i18n/locale";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const locale = resolveAppLocale({
+    cookieLocale: request.cookies.get(LOCALE_COOKIE_NAME)?.value ?? null,
+    acceptLanguage: request.headers.get("accept-language"),
+  });
+  const hadLocaleCookie = Boolean(request.cookies.get(LOCALE_COOKIE_NAME));
+
+  const withLocaleCookie = (response: NextResponse) => {
+    if (hadLocaleCookie) {
+      return response;
+    }
+
+    response.cookies.set(LOCALE_COOKIE_NAME, locale, {
+      path: "/",
+      maxAge: LOCALE_COOKIE_MAX_AGE_SECONDS,
+      sameSite: "lax",
+    });
+
+    return response;
+  };
 
   // Allow public routes and assets
   if (
@@ -14,7 +38,7 @@ export async function middleware(request: NextRequest) {
     pathname === "/login" ||
     pathname === "/register"
   ) {
-    return NextResponse.next();
+    return withLocaleCookie(NextResponse.next());
   }
 
   // No bypasses for E2E tests in middleware - use real auth or mock cookies
@@ -34,7 +58,7 @@ export async function middleware(request: NextRequest) {
       
       if (sessionResult.success) {
         // Valid session, allow access
-        return NextResponse.next();
+        return withLocaleCookie(NextResponse.next());
       }
     }
     
@@ -45,23 +69,23 @@ export async function middleware(request: NextRequest) {
       // No users exist, redirect to registration
       if (pathname !== "/register") {
         const registerUrl = new URL("/register", request.url);
-        return NextResponse.redirect(registerUrl);
+        return withLocaleCookie(NextResponse.redirect(registerUrl));
       }
-      return NextResponse.next();
+      return withLocaleCookie(NextResponse.next());
     }
     
     // Users exist but no valid session for organizer routes, redirect to login
     if (isOrganizerRoute) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(loginUrl);
+      return withLocaleCookie(NextResponse.redirect(loginUrl));
     }
   } catch (error) {
     console.error("Middleware auth error:", error);
-    return NextResponse.next();
+    return withLocaleCookie(NextResponse.next());
   }
 
-  return NextResponse.next();
+  return withLocaleCookie(NextResponse.next());
 }
 
 export const config = {
@@ -72,9 +96,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - game (public game routes)
-     * - / (root page)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico|game).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 };

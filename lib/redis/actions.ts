@@ -299,6 +299,7 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
         return {
             success: false,
             error: "Failed to create game. Please try again.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
         };
     }
 }

@@ -3,9 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, User, Eye, EyeOff, ShieldPlus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { register } from "@/lib/redis/auth-actions";
+import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
+import { ERROR_CODES } from "@/lib/constants/error-codes";
 
 export default function RegisterPage() {
+  const t = useTranslations();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -20,13 +24,13 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("auth.register.errors.passwordMismatch"));
       setIsLoading(false);
       return;
     }
 
     if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError(t("auth.register.errors.passwordMinLength"));
       setIsLoading(false);
       return;
     }
@@ -37,10 +41,21 @@ export default function RegisterPage() {
       if (result.success) {
         router.push("/login?registered=true");
       } else {
-        setError(result.error || "Registration failed");
+        setError(
+          getLocalizedErrorMessage({
+            t,
+            code: result.code,
+            fallback: result.error,
+          }),
+        );
       }
     } catch {
-      setError("An unexpected error occurred");
+      setError(
+        getLocalizedErrorMessage({
+          t,
+          code: ERROR_CODES.ERR_SIGNAL_LOST,
+        }),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -56,10 +71,10 @@ export default function RegisterPage() {
           </div>
           <div className="space-y-1">
             <h1 className="text-2xl font-black uppercase tracking-[0.2em] text-primary font-orbitron">
-              Organizer Setup
+              {t("auth.register.title")}
             </h1>
             <p className="text-[10px] text-muted-foreground uppercase tracking-widest leading-relaxed">
-              Create a new tactical operator profile.
+              {t("auth.register.subtitle")}
             </p>
           </div>
         </div>
@@ -73,7 +88,7 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-tighter text-primary/60 ml-1">Username_</label>
+                <label className="text-[10px] uppercase tracking-tighter text-primary/60 ml-1">{t("auth.register.usernameLabel")}</label>
                 <div className="relative group">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/30" />
                   <input
@@ -81,7 +96,7 @@ export default function RegisterPage() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="w-full bg-black border border-primary/30 p-3 pl-10 text-lg tracking-[0.1em] text-foreground focus:outline-none focus:border-primary transition-all rounded-none uppercase"
-                    placeholder="New_ID..."
+                    placeholder={t("auth.register.usernamePlaceholder")}
                     required
                     disabled={isLoading}
                   />
@@ -89,7 +104,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-tighter text-primary/60 ml-1">Secret_Phrase_</label>
+                <label className="text-[10px] uppercase tracking-tighter text-primary/60 ml-1">{t("auth.register.passwordLabel")}</label>
                 <div className="relative group">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/30" />
                   <input
@@ -97,7 +112,7 @@ export default function RegisterPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-black border border-primary/30 p-3 pl-10 pr-10 text-lg tracking-[0.1em] text-foreground focus:outline-none focus:border-primary transition-all rounded-none uppercase"
-                    placeholder="Secret..."
+                    placeholder={t("auth.register.passwordPlaceholder")}
                     required
                     disabled={isLoading}
                     minLength={8}
@@ -114,7 +129,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-tighter text-primary/60 ml-1">Confirm_Secret_</label>
+                <label className="text-[10px] uppercase tracking-tighter text-primary/60 ml-1">{t("auth.register.confirmPasswordLabel")}</label>
                 <div className="relative group">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/30" />
                   <input
@@ -122,7 +137,7 @@ export default function RegisterPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="w-full bg-black border border-primary/30 p-3 pl-10 text-lg tracking-[0.1em] text-foreground focus:outline-none focus:border-primary transition-all rounded-none uppercase"
-                    placeholder="Repeat..."
+                    placeholder={t("auth.register.confirmPasswordPlaceholder")}
                     required
                     disabled={isLoading}
                   />
@@ -132,7 +147,7 @@ export default function RegisterPage() {
 
             {error && (
               <div className="bg-destructive/10 border border-destructive/20 p-3 text-[10px] text-destructive uppercase tracking-widest text-center">
-                [SETUP_FAILED] {error}
+                {t("auth.register.setupFailedPrefix")} {error}
               </div>
             )}
 
@@ -141,7 +156,7 @@ export default function RegisterPage() {
               disabled={isLoading || !username || !password || password !== confirmPassword}
               className="w-full bg-primary hover:bg-primary/90 disabled:bg-primary/10 disabled:text-primary/30 text-primary-foreground font-black py-4 transition-all flex items-center justify-center gap-2 group relative overflow-hidden"
             >
-              {isLoading ? "INITIALIZING..." : "REGISTER OPERATOR"}
+              {isLoading ? t("auth.register.initializing") : t("auth.register.registerOperator")}
             </button>
             
             <div className="text-center pt-2">
@@ -150,7 +165,7 @@ export default function RegisterPage() {
                 onClick={() => router.push("/login")}
                 className="text-[10px] uppercase tracking-widest text-primary/50 hover:text-primary transition-colors"
               >
-                Existing account? [Go_to_Login]
+                {t("auth.register.existingAccount")}
               </button>
             </div>
           </form>
@@ -158,10 +173,10 @@ export default function RegisterPage() {
 
         {/* Security Notice */}
         <div className="mt-6 text-[8px] text-primary/40 font-mono border-t border-primary/10 pt-4 uppercase tracking-widest">
-          <div className="mb-2 text-primary/60">[SECURITY_PROTOCOL]</div>
-          <div>• Passwords are hashed and never stored in plain text</div>
-          <div>• Sessions expire automatically after 24 hours</div>
-          <div>• Multi-operator isolation active</div>
+          <div className="mb-2 text-primary/60">{t("auth.register.securityTitle")}</div>
+          <div>{t("auth.register.securityPassword")}</div>
+          <div>{t("auth.register.securitySession")}</div>
+          <div>{t("auth.register.securityIsolation")}</div>
         </div>
       </div>
     </div>

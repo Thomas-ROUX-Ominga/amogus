@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { QuestDuration } from "@/types/quest";
 import { FailedOverlay } from "@/components/game/failed-overlay";
 import { RINGS_COUNT_BY_DURATION, RINGS_TOLERANCE_DEG } from "@/lib/mini-games";
@@ -81,6 +82,7 @@ interface QuestRingsProps {
 }
 
 export function QuestRings({ duration, onSuccess, onError }: QuestRingsProps) {
+    const t = useTranslations();
     const totalRings = RINGS_COUNT_BY_DURATION[duration];
     const [rings, setRings] = useState<RingState[]>(() => createRings(duration));
     const [currentRingIndex, setCurrentRingIndex] = useState(0);
@@ -165,10 +167,13 @@ export function QuestRings({ duration, onSuccess, onError }: QuestRingsProps) {
         <div className="space-y-4">
             <div className="text-center space-y-1">
                 <p className="font-rajdhani text-sm uppercase tracking-[0.2em] text-primary/70">
-                    Alignez les bagues dans l&apos;ordre
+                    {t("game.miniGames.ringsInstruction")}
                 </p>
                 <p className="font-rajdhani text-xs text-foreground/70" aria-live="polite">
-                    Anneau : {activeDisplayIndex}/{totalRings}
+                    {t("game.miniGames.ringsProgress", {
+                        current: activeDisplayIndex,
+                        total: totalRings,
+                    })}
                 </p>
             </div>
 

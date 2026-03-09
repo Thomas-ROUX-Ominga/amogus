@@ -3,14 +3,18 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { login } from "@/lib/redis/auth-actions";
 import { useAuth } from "@/hooks/use-auth";
+import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
+import { ERROR_CODES } from "@/lib/constants/error-codes";
 
 function LoginContent() {
+  const t = useTranslations();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -24,7 +28,7 @@ function LoginContent() {
     if (!username.trim() || !password.trim() || isLoading) return;
 
     setIsLoading(true);
-    setError("");
+    setError(null);
 
     try {
       const result = await login(username.trim(), password.trim());
@@ -34,10 +38,21 @@ function LoginContent() {
         router.push(redirect);
         router.refresh();
       } else {
-        setError(result.error || "Access denied");
+        setError(
+          getLocalizedErrorMessage({
+            t,
+            code: result.code,
+            fallback: result.error,
+          }),
+        );
       }
     } catch {
-      setError("Authentication failed");
+      setError(
+        getLocalizedErrorMessage({
+          t,
+          code: ERROR_CODES.ERR_SIGNAL_LOST,
+        }),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -53,10 +68,10 @@ function LoginContent() {
           </div>
           <div className="space-y-1">
             <h1 className="text-2xl font-black uppercase tracking-[0.2em] text-primary font-orbitron">
-              Organizer Login
+              {t("auth.login.title")}
             </h1>
             <p className="text-[10px] text-muted-foreground uppercase tracking-widest leading-relaxed">
-              Verify credentials to access tactical dashboard.
+              {t("auth.login.subtitle")}
             </p>
           </div>
         </div>
@@ -70,14 +85,14 @@ function LoginContent() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-tighter text-primary/60 ml-1">Username_</label>
+                <label className="text-[10px] uppercase tracking-tighter text-primary/60 ml-1">{t("auth.login.usernameLabel")}</label>
                 <div className="relative group/input">
                   <div className="absolute -inset-0.5 bg-primary/20 rounded-sm opacity-0 group-focus-within/input:opacity-100 transition duration-300 blur-sm"></div>
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="ID..."
+                    placeholder={t("auth.login.usernamePlaceholder")}
                     autoComplete="username"
                     className="relative w-full bg-black border border-primary/30 p-3 text-lg tracking-[0.2em] text-foreground placeholder:text-primary/10 focus:outline-none focus:border-primary transition-all rounded-none uppercase"
                   />
@@ -85,14 +100,14 @@ function LoginContent() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-tighter text-primary/60 ml-1">Password_</label>
+                <label className="text-[10px] uppercase tracking-tighter text-primary/60 ml-1">{t("auth.login.passwordLabel")}</label>
                 <div className="relative group/input">
                   <div className="absolute -inset-0.5 bg-primary/20 rounded-sm opacity-0 group-focus-within/input:opacity-100 transition duration-300 blur-sm"></div>
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="SECRET..."
+                    placeholder={t("auth.login.passwordPlaceholder")}
                     autoComplete="current-password"
                     className="relative w-full bg-black border border-primary/30 p-3 text-lg tracking-[0.2em] text-foreground placeholder:text-primary/10 focus:outline-none focus:border-primary transition-all rounded-none uppercase"
                   />
@@ -101,14 +116,14 @@ function LoginContent() {
             </div>
 
             {registered && (
-              <div className="bg-green-500/10 border border-green-500/20 p-3 text-[10px] text-green-500 uppercase tracking-widest text-center">
-                [ACCOUNT_DEPLOYED] Authorization granted.
+                <div className="bg-green-500/10 border border-green-500/20 p-3 text-[10px] text-green-500 uppercase tracking-widest text-center">
+                  {t("auth.login.registeredSuccess")}
               </div>
             )}
 
             {error && (
               <div className="bg-destructive/10 border border-destructive/20 p-3 text-[10px] text-destructive uppercase tracking-widest text-center animate-shake">
-                [ACCESS_DENIED] {error}
+                {t("auth.login.errorPrefix")} {error}
               </div>
             )}
 
@@ -118,7 +133,7 @@ function LoginContent() {
               className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground font-black py-4 transition-all flex items-center justify-center gap-2 group relative overflow-hidden"
             >
               <span className="relative z-10 flex items-center gap-2 tracking-[0.3em] uppercase text-sm">
-                {isLoading ? "AUTHORIZING..." : "INITIALIZE SESSION"}
+                {isLoading ? t("auth.login.authorizing") : t("auth.login.initializeSession")}
                 {!isLoading && <ChevronRight size={18} className="translate-x-0 group-hover:translate-x-1 transition-transform" />}
               </span>
             </button>
@@ -129,7 +144,7 @@ function LoginContent() {
                 onClick={() => router.push("/register")}
                 className="text-[10px] uppercase tracking-widest text-primary/50 hover:text-primary transition-colors"
               >
-                No account? [Request_Access]
+                {t("auth.login.noAccount")}
               </button>
             </div>
           </form>
@@ -138,10 +153,10 @@ function LoginContent() {
         {/* Footer Info */}
         <div className="pt-4 flex justify-between items-center opacity-30 px-2">
           <div className="text-[8px] tracking-tighter uppercase">
-            System: ORGANIZER_PORTAL_V2
+            {t("auth.login.systemLabel")}
           </div>
           <div className="text-[8px] tracking-tighter uppercase">
-            Protocol: SECURE_LOGIN
+            {t("auth.login.protocolLabel")}
           </div>
         </div>
       </div>
@@ -151,8 +166,18 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><div className="text-primary font-mono tracking-widest">CONNECTING...</div></div>}>
+    <Suspense fallback={<LoginFallback />}>
       <LoginContent />
     </Suspense>
+  );
+}
+
+function LoginFallback() {
+  const t = useTranslations();
+
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-primary font-mono tracking-widest">{t("auth.login.connecting")}</div>
+    </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PointerEvent } from "react";
 import { AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { QuestDuration } from "@/types/quest";
 import { WIRES_COUNT_BY_DURATION } from "@/lib/mini-games";
 import { FailedOverlay } from "@/components/game/failed-overlay";
@@ -69,6 +70,7 @@ interface QuestWiresProps {
 }
 
 export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
+    const t = useTranslations();
     const [round, setRound] = useState(() => createRound(duration));
     const [connections, setConnections] = useState<Record<number, number>>({});
     const [dragging, setDragging] = useState<DragState | null>(null);
@@ -155,10 +157,13 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
         <div className="space-y-4">
             <div className="text-center space-y-1">
                 <p className="font-rajdhani text-sm uppercase tracking-[0.2em] text-primary/70">
-                    Reliez les fils de la même couleur
+                    {t("game.miniGames.wiresInstruction")}
                 </p>
                 <p className="font-rajdhani text-xs text-foreground/70" aria-live="polite">
-                    Fils reliés : {connectedCount}/{totalWires}
+                    {t("game.miniGames.wiresConnected", {
+                        connected: connectedCount,
+                        total: totalWires,
+                    })}
                 </p>
             </div>
 

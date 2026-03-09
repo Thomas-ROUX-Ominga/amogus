@@ -1,6 +1,7 @@
 "use client";
 
 import { Shield, Users, Crown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { PlayerRole } from "@/types/game";
 
 interface RoleBadgeProps {
@@ -11,24 +12,25 @@ interface RoleBadgeProps {
 const ROLE_CONFIG = {
     CREWMATE: {
         color: "#2DA44E",
-        label: "CREWMATE",
+        labelKey: "game.roleBadge.crewmate",
         Icon: Users,
     },
     IMPOSTOR: {
         color: "#DA3633",
-        label: "IMPOSTOR",
+        labelKey: "game.roleBadge.impostor",
         Icon: Shield,
     },
     ADMIN: {
         color: "#6366F1",
-        label: "ADMIN",
+        labelKey: "game.roleBadge.admin",
         Icon: Crown,
     },
 } as const;
 
 export function RoleBadge({ role, variant = "full" }: RoleBadgeProps) {
+    const t = useTranslations();
     const config = ROLE_CONFIG[role];
-    const { Icon, color, label } = config;
+    const { Icon, color, labelKey } = config;
 
     if (variant === "compact") {
         return (
@@ -38,7 +40,7 @@ export function RoleBadge({ role, variant = "full" }: RoleBadgeProps) {
                     className="text-xs font-bold uppercase tracking-wider font-orbitron"
                     style={{ color }}
                 >
-                    {label}
+                    {t(labelKey)}
                 </span>
             </div>
         );
@@ -49,13 +51,13 @@ export function RoleBadge({ role, variant = "full" }: RoleBadgeProps) {
             <Icon className="w-16 h-16" style={{ color }} />
             <div>
                 <div className="text-xs text-muted-foreground uppercase tracking-widest mb-1 font-rajdhani">
-                    Votre rôle
+                    {t("game.roleBadge.yourRole")}
                 </div>
                 <div
                     className="text-3xl font-black uppercase tracking-wider font-orbitron"
                     style={{ color }}
                 >
-                    {label}
+                    {t(labelKey)}
                 </div>
             </div>
         </div>

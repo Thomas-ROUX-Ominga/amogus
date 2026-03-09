@@ -95,7 +95,7 @@ describe("LiveDashboard", () => {
 
     render(<LiveDashboard gameId="TEST123" onGameChange={mockOnGameChange} />);
 
-    expect(screen.getByText("Game: TEST123")).toBeInTheDocument();
+    expect(screen.getByText("Partie: TEST123")).toBeInTheDocument();
     expect(screen.getByText("Omi")).toBeInTheDocument();
     expect(screen.getByText("TestPlayer")).toBeInTheDocument();
     expect(screen.getByText("IN_PROGRESS")).toBeInTheDocument();
@@ -128,7 +128,7 @@ describe("LiveDashboard", () => {
 
     render(<LiveDashboard gameId="TEST123" onGameChange={mockOnGameChange} />);
 
-    expect(screen.getByText("Loading game data...")).toBeInTheDocument();
+    expect(screen.getByText("Chargement des données de partie...")).toBeInTheDocument();
   });
 
   it("shows error state", () => {
@@ -142,7 +142,7 @@ describe("LiveDashboard", () => {
 
     render(<LiveDashboard gameId="TEST123" onGameChange={mockOnGameChange} />);
 
-    expect(screen.getByText("Failed to load game data")).toBeInTheDocument();
+    expect(screen.getByText("Impossible de charger les données de partie")).toBeInTheDocument();
     expect(screen.getByText("Game not found")).toBeInTheDocument();
   });
 });

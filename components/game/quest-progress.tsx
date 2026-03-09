@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { PlayerRole } from "@/types/game";
 import { QuestList } from "./quest-list";
 import { useGameStore } from "@/lib/store/game-store";
@@ -28,6 +29,7 @@ export function QuestProgress({
     completedQuests = EMPTY_ARRAY,
     batchId
 }: QuestProgressProps) {
+    const t = useTranslations();
     const { getImpostorQuestData, impostorQuestsInitialized, gameQuests = [], fetchGameQuests = async () => {}, isGameQuestsLoading, gameState } = useGameStore();
 
     // For impostors, show quest list if initialized, otherwise show loading
@@ -36,7 +38,7 @@ export function QuestProgress({
             return (
                 <div className="p-4 border border-primary/20 bg-black/30 space-y-3">
                     <div className="text-xs text-primary/60 uppercase tracking-widest font-rajdhani">
-                        Progression des quêtes
+                        {t("game.questProgress.questsProgress")}
                     </div>
                     <div className="animate-pulse space-y-2">
                         <div className="h-2 bg-white/10 rounded w-full"></div>
@@ -52,7 +54,7 @@ export function QuestProgress({
         return (
             <div className="p-4 border border-primary/20 bg-black/30 space-y-4">
                 <div className="text-xs text-primary/60 uppercase tracking-widest font-rajdhani">
-                    Progression des quêtes
+                    {t("game.questProgress.questsProgress")}
                 </div>
                 
                 {/* Progress Bar */}
@@ -73,11 +75,15 @@ export function QuestProgress({
                 {/* Progress Text */}
                 <div className="text-sm text-muted-foreground font-rajdhani tracking-wide">
                     {isLoading ? (
-                        <span className="animate-pulse">Chargement...</span>
+                        <span className="animate-pulse">{t("game.questProgress.loading")}</span>
                     ) : impostorQuestData.total > 0 ? (
-                        `${impostorQuestData.completed}/${impostorQuestData.total} quêtes accomplies`
+                        t("game.questProgress.completedOutOf", {
+                            completed: impostorQuestData.completed,
+                            total: impostorQuestData.total,
+                            scope: "",
+                        })
                     ) : (
-                        "En attente de missions..."
+                        t("game.questProgress.pendingMissions")
                     )}
                 </div>
 
@@ -151,13 +157,15 @@ export function QuestProgress({
                     assignedList = Array.from({ length: total }, (_, index) => {
                         const isCompleted = index < completed;
                         return {
-                            id: isCompleted && completedQuests[index] ? completedQuests[index] : `crewmate-quest-${index}`,
-                            type: 'qcm' as const,
-                            duration: index % 3 === 0 ? 'short' as const : index % 3 === 1 ? 'medium' as const : 'long' as const,
-                            location: isCompleted ? `Location ${index + 1}` : undefined,
-                            completed: isCompleted
-                        };
-                    });
+                                    id: isCompleted && completedQuests[index] ? completedQuests[index] : `crewmate-quest-${index}`,
+                                    type: 'qcm' as const,
+                                    duration: index % 3 === 0 ? 'short' as const : index % 3 === 1 ? 'medium' as const : 'long' as const,
+                                    location: isCompleted
+                                        ? t("game.questProgress.locationLabel", { index: index + 1 })
+                                        : undefined,
+                                    completed: isCompleted
+                                };
+                            });
                 }
 
                 setCrewQuests(assignedList);
@@ -173,7 +181,7 @@ export function QuestProgress({
     return (
         <div className="p-4 border border-primary/20 bg-black/30 space-y-4">
             <div className="text-xs text-primary/60 uppercase tracking-widest font-rajdhani">
-                {role === "ADMIN" ? "Progression de l'équipage" : "Progression des quêtes"}
+                {role === "ADMIN" ? t("game.questProgress.crewProgress") : t("game.questProgress.questsProgress")}
             </div>
             <div className="w-full h-2 bg-white/10 overflow-hidden">
                 <div
@@ -190,11 +198,15 @@ export function QuestProgress({
             </div>
             <div className="text-sm text-muted-foreground font-rajdhani tracking-wide">
                 {isLoading ? (
-                    <span className="animate-pulse">Chargement...</span>
+                    <span className="animate-pulse">{t("game.questProgress.loading")}</span>
                 ) : total > 0 ? (
-                    `${completed}/${total} quêtes accomplies ${role === "ADMIN" ? "au total" : ""}`
+                    t("game.questProgress.completedOutOf", {
+                        completed,
+                        total,
+                        scope: role === "ADMIN" ? t("game.questProgress.completedScopeTotal") : "",
+                    })
                 ) : (
-                    "En attente de missions..."
+                    t("game.questProgress.pendingMissions")
                 )}
             </div>
             

@@ -1,6 +1,7 @@
 "use client";
 
 import { GameState } from "@/types/game";
+import { useTranslations } from "next-intl";
 import { getTotalQuests, calculateGlobalProgress, calculatePlayerProgress } from "@/lib/utils/quest-calculations";
 
 interface ProgressBarProps {
@@ -8,6 +9,7 @@ interface ProgressBarProps {
 }
 
 export function ProgressBar({ gameState }: ProgressBarProps) {
+    const t = useTranslations();
     const progress = calculateGlobalProgress(gameState.players, gameState);
     const totalQuests = getTotalQuests(gameState);
     let totalCompleted = 0;
@@ -20,10 +22,10 @@ export function ProgressBar({ gameState }: ProgressBarProps) {
         <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgba(var(--primary),0.05)]">
             <div className="flex items-center justify-between border-b border-primary/20 pb-4 mb-6">
                 <h2 className="text-lg font-bold uppercase tracking-[0.2em] text-primary font-orbitron">
-                    Global Progress
+                    {t("admin.progressBar.title")}
                 </h2>
                 <div className="text-[10px] text-primary/50 tracking-widest">
-                    CREW WIDE
+                    {t("admin.progressBar.crewWide")}
                 </div>
             </div>
 
@@ -31,7 +33,7 @@ export function ProgressBar({ gameState }: ProgressBarProps) {
                 {/* Main Progress Bar */}
                 <div className="space-y-2">
                     <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Mission Completion</span>
+                        <span className="text-muted-foreground">{t("admin.progressBar.missionCompletion")}</span>
                         <span className="text-primary font-bold">{progress.toFixed(1)}%</span>
                     </div>
                     <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden">
@@ -51,7 +53,7 @@ export function ProgressBar({ gameState }: ProgressBarProps) {
                             {totalCompleted}
                         </div>
                         <div className="text-[8px] text-primary/50 tracking-widest uppercase">
-                            Quests Done
+                            {t("admin.progressBar.questsDone")}
                         </div>
                     </div>
                     <div className="p-3 border border-white/20 bg-white/5">
@@ -59,7 +61,7 @@ export function ProgressBar({ gameState }: ProgressBarProps) {
                             {gameState.players.length * totalQuests}
                         </div>
                         <div className="text-[8px] text-muted-foreground/50 tracking-widest uppercase">
-                            Total Possible
+                            {t("admin.progressBar.totalPossible")}
                         </div>
                     </div>
                 </div>
@@ -67,7 +69,7 @@ export function ProgressBar({ gameState }: ProgressBarProps) {
                 {/* Progress by Player */}
                 <div className="space-y-2">
                     <div className="text-[8px] text-primary/50 tracking-widest uppercase">
-                        Individual Progress
+                        {t("admin.progressBar.individualProgress")}
                     </div>
                     {gameState.players.map(player => {
                         const playerProgress = calculatePlayerProgress(player.completedQuests, gameState);

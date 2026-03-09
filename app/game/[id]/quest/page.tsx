@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Check } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useGameStore } from "@/lib/store/game-store";
 import { useAuth } from "@/hooks/use-auth";
 import { ErrorView } from "@/components/game/error-view";
@@ -11,26 +12,34 @@ import { QuestView } from "@/components/game/quest-view";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { isValidDuration, getRandomQuestGame, getQuestGamesByDuration } from "@/lib/constants/quest-pool";
 import { QuestDuration, Quest } from "@/types/quest";
+import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 export default function QuestPage() {
     return (
         <Suspense
-            fallback={
-                <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
-                    <div className="max-w-2xl w-full border-2 border-primary/20 p-12 space-y-6 bg-black/50 backdrop-blur-sm animate-pulse">
-                        <div className="text-primary text-center tracking-[0.2em] uppercase text-sm font-orbitron">
-                            Chargement de la quête...
-                        </div>
-                    </div>
-                </main>
-            }
+            fallback={<QuestPageLoadingState />}
         >
             <QuestPageContent />
         </Suspense>
     );
 }
 
+function QuestPageLoadingState() {
+    const t = useTranslations();
+
+    return (
+        <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
+            <div className="max-w-2xl w-full border-2 border-primary/20 p-12 space-y-6 bg-black/50 backdrop-blur-sm animate-pulse">
+                <div className="text-primary text-center tracking-[0.2em] uppercase text-sm font-orbitron">
+                    {t("game.questPage.loading")}
+                </div>
+            </div>
+        </main>
+    );
+}
+
 function QuestPageContent() {
+    const t = useTranslations();
     const { id } = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -95,12 +104,12 @@ function QuestPageContent() {
                     id: questId,
                     type: currentQuestContent.content.type,
                     duration: currentQuestContent.content.duration,
-                    location: currentQuest?.location || "Zone de quête",
+                    location: currentQuest?.location || t("game.questPage.questZone"),
                 };
                 setCurrentQuest(updatedQuest);
             }
         }
-    }, [currentQuestContent, currentQuest, questId, setCurrentQuest]);
+    }, [currentQuestContent, currentQuest, questId, setCurrentQuest, t]);
 
     // Select a random quest once game is loaded and duration is valid
     const questError = useMemo(() => {
@@ -108,10 +117,10 @@ function QuestPageContent() {
         if (questId) return null;
 
         if (!isValidDuration(duration)) {
-            return { code: ERROR_CODES.ERR_INVALID_DURATION, message: "Durée invalide. Les valeurs acceptées sont : short, medium, long." };
+            return { code: ERROR_CODES.ERR_INVALID_DURATION, message: t("game.questPage.invalidDurationMessage") };
         }
         return null;
-    }, [duration, questId]);
+    }, [duration, questId, t]);
 
     useEffect(() => {
         if (!gameState) return;
@@ -126,7 +135,7 @@ function QuestPageContent() {
                     id: "impostor-sim",
                     type: "true-false",
                     duration: (isValidDuration(duration) ? duration : "short") as QuestDuration,
-                    location: "Système de camouflage",
+                    location: t("game.questPage.camouflageSystem"),
                 });
             }
             return;
@@ -155,7 +164,7 @@ function QuestPageContent() {
                         id: questGame.id,
                         type: questGame.type,
                         duration: questGame.duration,
-                        location: "Zone de quête", // TODO: This should come from actual quest assignment
+                        location: t("game.questPage.questZone"), // TODO: This should come from actual quest assignment
                     };
                     setCurrentQuest(quest);
                     // Haptic feedback on successful quest load
@@ -169,14 +178,14 @@ function QuestPageContent() {
                 }
             }
         }
-    }, [gameState, duration, questId, currentQuest?.id, currentQuest?.duration, setCurrentQuest, userId, gameId, loadDynamicQuestContent]);
+    }, [gameState, duration, questId, currentQuest?.id, currentQuest?.duration, setCurrentQuest, userId, gameId, loadDynamicQuestContent, t]);
 
     if (isStale || isLoading || !userId) {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <div className="max-w-2xl w-full border-2 border-primary/20 p-12 space-y-6 bg-black/50 backdrop-blur-sm animate-pulse">
                     <div className="text-primary text-center tracking-[0.2em] uppercase text-sm font-orbitron">
-                        Chargement de la quête...
+                        {t("game.questPage.loading")}
                     </div>
                 </div>
             </main>
@@ -188,8 +197,12 @@ function QuestPageContent() {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <ErrorView
-                    title={errorCode === ERROR_CODES.GAME_NOT_FOUND ? "SESSION INTROUVABLE" : "SIGNAL PERDU"}
-                    message={error}
+                    title={errorCode === ERROR_CODES.GAME_NOT_FOUND ? t("game.questPage.sessionNotFoundTitle") : t("game.questPage.signalLostTitle")}
+                    message={getLocalizedErrorMessage({
+                        t,
+                        code: errorCode,
+                        fallback: error,
+                    })}
                     code={errorCode || ERROR_CODES.ERR_QUEST_LOAD_FAILED}
                     onRetry={() => { if (id) fetchGame(gameId); }}
                 />
@@ -202,7 +215,7 @@ function QuestPageContent() {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <ErrorView
-                    title="DURÉE INVALIDE"
+                    title={t("game.questPage.invalidDurationTitle")}
                     message={questError.message}
                     code={questError.code}
                     onRetry={() => { router.push(`/game/${gameId}`); }}
@@ -218,8 +231,8 @@ function QuestPageContent() {
             return (
                 <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                     <ErrorView
-                        title="MISSION INACTIVE"
-                        message="La partie n'est pas en cours. Retournez au cockpit."
+                        title={t("game.questPage.missionInactiveTitle")}
+                        message={t("game.questPage.missionInactiveMessage")}
                         code={ERROR_CODES.ERR_INVALID_STATE}
                         onRetry={() => { router.push(`/game/${gameId}`); }}
                     />
@@ -233,8 +246,8 @@ function QuestPageContent() {
             return (
                 <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                     <ErrorView
-                        title="ACCÈS REFUSÉ"
-                        message="Vous n'êtes pas un membre de cet équipage."
+                        title={t("game.questPage.accessDeniedTitle")}
+                        message={t("game.questPage.accessDeniedMessage")}
                         code={ERROR_CODES.ERR_INVALID_SIGNATURE}
                         onRetry={() => { router.push(`/game/${gameId}`); }}
                     />
@@ -247,8 +260,8 @@ function QuestPageContent() {
             return (
                 <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                     <ErrorView
-                        title="RÔLE NON ASSIGNÉ"
-                        message="Vous devez d'abord sélectionner un rôle avant d'accéder aux quêtes."
+                        title={t("game.questPage.roleNotAssignedTitle")}
+                        message={t("game.questPage.roleNotAssignedMessage")}
                         code={ERROR_CODES.ERR_INVALID_ROLE}
                         onRetry={() => { router.push(`/game/${gameId}`); }}
                     />
@@ -261,23 +274,23 @@ function QuestPageContent() {
                 <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                     <div className="max-w-2xl w-full border-2 border-red-500/30 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm">
                         <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-red-300 font-orbitron text-center">
-                            MEETING EN COURS
+                            {t("game.questPage.meetingActiveTitle")}
                         </h1>
                         <p className="text-center text-muted-foreground font-rajdhani">
-                            Un buzz a été déclenché. Rejoignez la salle de meeting et rassemblez-vous IRL.
+                            {t("game.questPage.meetingActiveMessage")}
                         </p>
                         <div className="flex flex-col gap-3">
                             <Link
                                 href={`/game/${gameId}/meeting`}
                                 className="flex items-center justify-center w-full min-h-[44px] border-2 border-red-500/40 text-red-200 font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-red-500/15 transition-colors"
                             >
-                                Rejoindre le meeting
+                                {t("game.questPage.joinMeeting")}
                             </Link>
                             <Link
                                 href={`/game/${gameId}`}
                                 className="flex items-center justify-center w-full min-h-[44px] border-2 border-primary/50 bg-transparent text-primary font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-primary/10 transition-colors"
                             >
-                                Retour au cockpit
+                                {t("game.questPage.returnToCockpit")}
                             </Link>
                         </div>
                     </div>
@@ -295,17 +308,17 @@ function QuestPageContent() {
                             <div className="flex items-center justify-center gap-3">
                                 <Check className="w-6 h-6 text-[#2DA44E]" aria-hidden="true" />
                                 <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-[#2DA44E] font-orbitron">
-                                    QUÊTE DÉJÀ ACCOMPLIE
+                                    {t("game.questPage.questAlreadyCompletedTitle")}
                                 </h1>
                             </div>
                             <p className="text-center text-muted-foreground font-rajdhani">
-                                Vous avez déjà validé cette mission.
+                                {t("game.questPage.questAlreadyCompletedMessage")}
                             </p>
                             <Link
                                 href={`/game/${gameId}`}
                                 className="flex items-center justify-center w-full min-h-[44px] border-2 border-primary/50 bg-transparent text-primary font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-primary/10 active:scale-95 transition-all touch-manipulation"
                             >
-                                RETOUR AU COCKPIT
+                                {t("game.questPage.returnToCockpit")}
                             </Link>
                         </div>
                     </main>
@@ -319,8 +332,8 @@ function QuestPageContent() {
                     return (
                         <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                             <ErrorView
-                                title="QUÊTE NON ASSIGNÉE"
-                                message="Cette mission n'est pas répertoriée dans votre registre personnel. Veuillez scanner une quête qui vous a été attribuée."
+                                title={t("game.questPage.questNotAssignedTitle")}
+                                message={t("game.questPage.questNotAssignedMessage")}
                                 code={ERROR_CODES.ERR_QUEST_NOT_ASSIGNED}
                                 onRetry={() => { router.push(`/game/${gameId}`); }}
                             />
@@ -339,8 +352,8 @@ function QuestPageContent() {
                 return (
                     <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                         <ErrorView
-                            title="AUCUNE QUÊTE"
-                            message="Aucune quête disponible pour cette durée."
+                            title={t("game.questPage.noQuestTitle")}
+                            message={t("game.questPage.noQuestMessage")}
                             code={ERROR_CODES.ERR_NO_QUESTS}
                             onRetry={() => { router.push(`/game/${gameId}`); }}
                         />
@@ -354,7 +367,7 @@ function QuestPageContent() {
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <div className="max-w-2xl w-full border-2 border-primary/20 p-12 space-y-6 bg-black/50 backdrop-blur-sm animate-pulse">
                     <div className="text-primary text-center tracking-[0.2em] uppercase text-sm font-orbitron">
-                        Sélection de la quête...
+                        {t("game.questPage.selectingQuest")}
                     </div>
                 </div>
             </main>

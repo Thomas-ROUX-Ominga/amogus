@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Terminal, Shield, ChevronRight, Hash, LogOut, User } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { isValidShortCode, normalizeShortCode } from "@/lib/utils/short-code";
 import { useAuth } from "@/hooks/use-auth";
 import { clearSession } from "@/lib/redis/auth-actions";
 
 export default function Home() {
+  const t = useTranslations();
   const [gameId, setGameId] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
@@ -22,12 +24,12 @@ export default function Home() {
     const normalizedCode = normalizeShortCode(gameId.trim());
     
     if (!normalizedCode) {
-      setError("Please enter a session code");
+      setError(t("home.errors.enterSessionCode"));
       return;
     }
     
     if (!isValidShortCode(normalizedCode)) {
-      setError("Invalid session code format (requires 6-char alphanumeric)");
+      setError(t("home.errors.invalidSessionCodeFormat"));
       return;
     }
     
@@ -67,7 +69,7 @@ export default function Home() {
               </h1>
             </motion.div>
             <p className="text-muted-foreground text-xs uppercase tracking-[0.2em] border-l-2 border-primary/20 pl-4 py-1">
-              Mission Uplink Terminal [v2.0.0]
+              {t("home.missionUplink")}
             </p>
           </header>
 
@@ -79,7 +81,7 @@ export default function Home() {
                   type="text"
                   value={gameId}
                   onChange={handleInputChange}
-                  placeholder="6-CHAR CODE..."
+                  placeholder={t("home.sessionCodePlaceholder")}
                   className={`w-full bg-black/50 border-2 p-5 pl-12 text-2xl font-black tracking-[0.3em] text-foreground placeholder:text-primary/10 focus:outline-none transition-all rounded-none uppercase ${
                     error 
                       ? 'border-destructive animate-pulse' 
@@ -100,7 +102,7 @@ export default function Home() {
                 disabled={!gameId.trim() || !!error}
                 className="w-full bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border-2 border-primary/30 hover:border-primary font-black py-4 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span className="tracking-[0.4em] uppercase text-sm">Join Session</span>
+                <span className="tracking-[0.4em] uppercase text-sm">{t("home.joinSession")}</span>
                 <ChevronRight className="group-hover:translate-x-1 transition-transform" />
               </button>
             </form>
@@ -126,7 +128,7 @@ export default function Home() {
                     {session.username}
                   </h2>
                   <p className="text-[8px] text-muted-foreground uppercase tracking-widest">
-                    Authorized Organizer
+                    {t("home.organizerAuthorized")}
                   </p>
                 </div>
               </div>
@@ -136,14 +138,14 @@ export default function Home() {
                   onClick={() => router.push("/batches")}
                   className="w-full border border-primary/30 py-3 px-4 text-[10px] uppercase tracking-[0.2em] bg-primary/10 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all font-bold"
                 >
-                  Manage Batches
+                  {t("home.manageBatches")}
                 </button>
                 <button
                   onClick={handleLogout}
                   className="w-full border border-primary/10 py-3 px-4 text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-all flex items-center justify-center gap-2"
                 >
                   <LogOut size={12} />
-                  Terminate
+                  {t("home.terminate")}
                 </button>
               </div>
             </>
@@ -152,26 +154,26 @@ export default function Home() {
               <div className="space-y-2">
                 <Shield className="w-12 h-12 text-primary/40 mx-auto" />
                 <h2 className="text-sm font-black uppercase tracking-[0.3em] font-orbitron">
-                  Organizer
+                  {t("home.organizer")}
                 </h2>
               </div>
 
               <p className="text-[9px] text-muted-foreground uppercase leading-relaxed tracking-widest max-w-[180px] mx-auto">
-                Authorized personnel only. Create batches and manage sessions.
+                {t("home.organizerDescription")}
               </p>
 
               <button
                 onClick={() => router.push("/login")}
                 className="w-full max-w-[200px] border border-primary/30 py-3 px-4 text-[10px] uppercase tracking-[0.2em] hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all font-bold"
               >
-                Login Portal
+                {t("home.loginPortal")}
               </button>
             </>
           )}
         </div>
 
         <div className="absolute bottom-4 text-[8px] text-primary/20 uppercase tracking-widest">
-          Secure Terminal // Encrypted_Link
+          {t("home.secureTerminal")}
         </div>
       </section>
 

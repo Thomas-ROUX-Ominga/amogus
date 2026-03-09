@@ -5,7 +5,9 @@ import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { motion } from "framer-motion";
 import { AlertTriangle, Home, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
+import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 interface ErrorViewProps {
     title?: string;
@@ -15,12 +17,20 @@ interface ErrorViewProps {
 }
 
 export function ErrorView({
-    title = "SIGNAL LOST",
-    message = "Unable to establish secure uplink with game module.",
-    code = ERROR_CODES.ERR_SIGNAL_LOST,
+    title,
+    message,
+    code,
     onRetry
 }: ErrorViewProps) {
+    const t = useTranslations();
     const router = useRouter();
+    const errorCode = code || ERROR_CODES.ERR_SIGNAL_LOST;
+    const localizedTitle = title || t("errors.genericTitle");
+    const localizedMessage = getLocalizedErrorMessage({
+        t,
+        code: errorCode,
+        fallback: message,
+    });
 
     useEffect(() => {
         // Trigger haptic alert on mount - Safe check
@@ -83,7 +93,7 @@ export function ErrorView({
                 transition={{ delay: 0.2 }}
                 className="text-4xl font-bold font-orbitron text-destructive mb-4 tracking-tighter"
             >
-                {title}
+                {localizedTitle}
             </motion.h1>
 
             <motion.div
@@ -93,10 +103,10 @@ export function ErrorView({
                 className="max-w-md bg-destructive/5 border border-destructive/20 rounded-lg p-6 backdrop-blur-sm mb-8"
             >
                 <p className="text-destructive/80 font-mono text-sm leading-relaxed mb-4">
-                    {message}
+                    {localizedMessage}
                 </p>
                 <div className="text-[10px] font-mono text-destructive/40 uppercase tracking-widest">
-                    SYSTEM_REPORT: {code}
+                    {t("errors.systemReport")}: {errorCode}
                 </div>
             </motion.div>
 
@@ -111,7 +121,7 @@ export function ErrorView({
                     className="flex items-center justify-center gap-2 w-full h-14 bg-destructive text-destructive-foreground font-bold rounded-md hover:bg-destructive/90 transition-colors shadow-[0_0_20px_rgba(239,68,68,0.3)] active:scale-95 touch-manipulation"
                 >
                     <Home className="w-5 h-5" />
-                    <span className="font-orbitron tracking-wide text-lg">RECOVER SIGNAL</span>
+                    <span className="font-orbitron tracking-wide text-lg">{t("errors.recoverSignal")}</span>
                 </button>
 
                 <button
@@ -119,12 +129,12 @@ export function ErrorView({
                     className="flex items-center justify-center gap-2 w-full h-12 border border-destructive/30 text-destructive/70 font-mono text-sm rounded-md hover:bg-destructive/5 transition-colors active:scale-95 touch-manipulation"
                 >
                     <RefreshCw className="w-4 h-4" />
-                    RETRY SYNC
+                    {t("errors.retrySync")}
                 </button>
             </motion.div>
 
             <div className="mt-12 text-[10px] text-destructive/20 font-mono uppercase tracking-[0.2em]">
-                Protocol: No-Dead-End-Active
+                {t("errors.protocol")}
             </div>
         </div>
     );

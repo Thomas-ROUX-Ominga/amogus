@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 
 interface PulseButtonProps {
     onClick?: () => void;
@@ -16,6 +17,7 @@ export function PulseButton({
     children,
     disabled,
 }: PulseButtonProps) {
+    const t = useTranslations();
     return (
         <div className="relative inline-block">
             {isLoading && (
@@ -43,7 +45,7 @@ export function PulseButton({
                 {isLoading ? (
                     <span className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 bg-background rounded-full animate-bounce" />
-                        INITIALIZING...
+                        {t("common.actions.loading")}
                     </span>
                 ) : children}
             </button>

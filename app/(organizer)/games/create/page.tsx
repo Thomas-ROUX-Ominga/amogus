@@ -3,11 +3,14 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { createGame, CreateGameInput } from "@/lib/redis/actions";
 import { getAllBatches } from "@/lib/redis/batch-actions";
+import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 import { BatchListItem } from "@/types/quest";
 
 export default function CreateGamePage() {
+  const t = useTranslations();
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
   const [batches, setBatches] = useState<BatchListItem[]>([]);
@@ -48,7 +51,7 @@ export default function CreateGamePage() {
       // Validate minimum quests per player
       const totalQuests = questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long;
       if (totalQuests < 3) {
-        setError("Minimum 3 quests per player required (1 short + 1 medium + 1 long)");
+        setError(t("organizer.gamesCreate.errors.minimumThree"));
         return;
       }
 
@@ -60,17 +63,23 @@ export default function CreateGamePage() {
       const response = await createGame(input);
       
       if (response.success && response.data) {
-        setSuccess(`Game created successfully! Short code: ${response.data}`);
+        setSuccess(t("organizer.gamesCreate.successCreated", { code: response.data }));
         // Redirect to the specific game admin dashboard after a short delay
         setTimeout(() => {
           router.push(`/tracker/${response.data}`);
         }, 2000);
       } else {
-        setError(response.error || "Failed to create game");
+        setError(
+          getLocalizedErrorMessage({
+            t,
+            code: response.code,
+            fallback: response.error,
+          }),
+        );
       }
     } catch (error) {
       console.error("Failed to create game:", error);
-      setError("An unexpected error occurred");
+      setError(getLocalizedErrorMessage({ t, code: "ERR_SIGNAL_LOST" }));
     } finally {
       setIsCreating(false);
     }
@@ -85,15 +94,15 @@ export default function CreateGamePage() {
             className="flex items-center gap-2 text-primary/70 hover:text-primary transition-colors"
           >
             <ArrowLeft size={16} />
-            <span className="text-xs uppercase tracking-widest">Back</span>
+            <span className="text-xs uppercase tracking-widest">{t("organizer.gamesCreate.back")}</span>
           </button>
           
           <div>
             <h1 className="text-2xl font-black uppercase tracking-[0.2em] text-primary font-orbitron">
-              Create Game Session
+              {t("organizer.gamesCreate.title")}
             </h1>
             <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">
-              Generate a short code for players to join
+              {t("organizer.gamesCreate.subtitle")}
             </p>
           </div>
         </div>
@@ -103,7 +112,7 @@ export default function CreateGamePage() {
           {/* Batch Selection */}
           <div className="border border-primary/20 bg-black/30 p-6">
             <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-4">
-              Batch Selection (Optional)
+              {t("organizer.gamesCreate.batchSelectionTitle")}
             </h2>
             
             <div className="space-y-4">
@@ -112,17 +121,20 @@ export default function CreateGamePage() {
                 onChange={(e) => setSelectedBatch(e.target.value)}
                 className="w-full bg-black/50 border-2 border-primary/20 p-3 text-foreground focus:outline-none focus:border-primary transition-all"
               >
-                <option value="">Select a batch (optional)</option>
+                <option value="">{t("organizer.gamesCreate.batchSelectPlaceholder")}</option>
                 {batches.map((batch) => (
                   <option key={batch.id} value={batch.id}>
-                    Batch {batch.id.substring(0, 8)}... - {batch.questCount} quests
+                    {t("organizer.gamesCreate.batchOption", {
+                      batchId: batch.id.substring(0, 8),
+                      questCount: batch.questCount,
+                    })}
                   </option>
                 ))}
               </select>
               
               {selectedBatch && (
                 <p className="text-[10px] text-primary/60">
-                  Selected batch will provide quests for this game session
+                  {t("organizer.gamesCreate.selectedBatchHint")}
                 </p>
               )}
             </div>
@@ -131,13 +143,13 @@ export default function CreateGamePage() {
           {/* Quest Distribution */}
           <div className="border border-primary/20 bg-black/30 p-6">
             <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-4">
-              Quests Per Player
+              {t("organizer.gamesCreate.questsPerPlayer")}
             </h2>
             
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label htmlFor="short-quests" className="text-[10px] text-primary/60 uppercase tracking-widest block mb-2">
-                  Short Quests
+                  {t("organizer.gamesCreate.shortQuests")}
                 </label>
                 <input
                   id="short-quests"
@@ -155,7 +167,7 @@ export default function CreateGamePage() {
               
               <div>
                 <label htmlFor="medium-quests" className="text-[10px] text-primary/60 uppercase tracking-widest block mb-2">
-                  Medium Quests
+                  {t("organizer.gamesCreate.mediumQuests")}
                 </label>
                 <input
                   id="medium-quests"
@@ -173,7 +185,7 @@ export default function CreateGamePage() {
               
               <div>
                 <label htmlFor="long-quests" className="text-[10px] text-primary/60 uppercase tracking-widest block mb-2">
-                  Long Quests
+                  {t("organizer.gamesCreate.longQuests")}
                 </label>
                 <input
                   id="long-quests"
@@ -191,10 +203,12 @@ export default function CreateGamePage() {
             </div>
             
             <p className="text-[10px] text-primary/60 mt-4">
-              Total per player: {questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long} quests
+              {t("organizer.gamesCreate.totalPerPlayer", {
+                count: questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long,
+              })}
               {questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long < 3 && (
                 <span className="text-destructive block mt-1">
-                  ⚠ Minimum 3 quests required
+                  {t("organizer.gamesCreate.minimumRequired")}
                 </span>
               )}
             </p>
@@ -221,7 +235,9 @@ export default function CreateGamePage() {
           >
             <Plus size={16} />
             <span className="tracking-[0.4em] uppercase text-sm">
-              {isCreating ? "Creating Game..." : "Create Game Session"}
+              {isCreating
+                ? t("organizer.gamesCreate.creatingGame")
+                : t("organizer.gamesCreate.createGameSession")}
             </span>
           </button>
         </form>

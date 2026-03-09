@@ -17,6 +17,7 @@ import { getRandomMiniGame } from "@/lib/mini-games";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 interface QuestRendererProps {
     quest: QuestGame;
@@ -26,6 +27,7 @@ interface QuestRendererProps {
 }
 
 export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRendererProps) {
+    const t = useTranslations();
     const [selectedMiniGame] = useState(() => getRandomMiniGame());
 
     // Validate quest has data field
@@ -34,13 +36,13 @@ export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRender
             <div className="p-6 border border-destructive/30 bg-destructive/5 backdrop-blur-sm text-center space-y-4">
                 <AlertTriangle className="w-8 h-8 text-destructive mx-auto" aria-hidden="true" />
                 <p className="text-sm text-destructive/80 font-rajdhani">
-                    Données de quête invalides. Contenu manquant.
+                    {t("game.questRenderer.invalidData")}
                 </p>
                 <Link
                     href={`/game/${gameId}`}
                     className="inline-block min-h-[44px] leading-[44px] px-6 border border-primary/30 text-primary/70 font-rajdhani text-sm uppercase tracking-widest hover:bg-primary/10 transition-colors touch-manipulation"
                 >
-                    Retour au Game Home
+                    {t("game.questRenderer.returnToGameHome")}
                 </Link>
             </div>
         );
@@ -82,13 +84,13 @@ export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRender
                 <div className="p-6 border border-destructive/30 bg-destructive/5 backdrop-blur-sm text-center space-y-4">
                     <AlertTriangle className="w-8 h-8 text-destructive mx-auto" aria-hidden="true" />
                     <p className="text-sm text-destructive/80 font-rajdhani">
-                        Type de quête non supporté : {unknownType}
+                        {t("game.questRenderer.unsupportedType", { type: unknownType })}
                     </p>
                     <Link
                         href={`/game/${gameId}`}
                         className="inline-block min-h-[44px] leading-[44px] px-6 border border-primary/30 text-primary/70 font-rajdhani text-sm uppercase tracking-widest hover:bg-primary/10 transition-colors touch-manipulation"
                     >
-                        Retour au Game Home
+                        {t("game.questRenderer.returnToGameHome")}
                     </Link>
                 </div>
             );

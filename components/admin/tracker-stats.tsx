@@ -1,6 +1,7 @@
 "use client";
 
 import { GameState } from "@/types/game";
+import { useTranslations } from "next-intl";
 import { getTotalQuests, calculateGlobalProgress } from "@/lib/utils/quest-calculations";
 
 interface TrackerStatsProps {
@@ -8,6 +9,12 @@ interface TrackerStatsProps {
 }
 
 export function TrackerStats({ gameState }: TrackerStatsProps) {
+    const t = useTranslations();
+    const statusLabelMap: Record<string, string> = {
+        LOBBY: t("common.status.lobby"),
+        IN_PROGRESS: t("common.status.inProgress"),
+        FINISHED: t("common.status.finished"),
+    };
     const totalQuests = getTotalQuests(gameState);
     let totalCompleted = 0;
     let activePlayers = 0;
@@ -37,10 +44,10 @@ export function TrackerStats({ gameState }: TrackerStatsProps) {
         <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgba(var(--primary),0.05)]">
             <div className="flex items-center justify-between border-b border-primary/20 pb-4 mb-6">
                 <h2 className="text-lg font-bold uppercase tracking-[0.2em] text-primary font-orbitron">
-                    Mission Stats
+                    {t("admin.trackerStats.title")}
                 </h2>
                 <div className="text-[10px] text-primary/50 tracking-widest">
-                    LIVE DATA
+                    {t("admin.trackerStats.liveData")}
                 </div>
             </div>
 
@@ -48,10 +55,10 @@ export function TrackerStats({ gameState }: TrackerStatsProps) {
                 {/* Game Status */}
                 <div className="p-3 border border-primary/20 bg-primary/5">
                     <div className="text-sm font-bold text-primary uppercase tracking-widest">
-                        {gameState.status}
+                        {statusLabelMap[gameState.status] || gameState.status}
                     </div>
                     <div className="text-[8px] text-primary/50 mt-1">
-                        Game Status
+                        {t("admin.trackerStats.gameStatus")}
                     </div>
                 </div>
 
@@ -62,7 +69,7 @@ export function TrackerStats({ gameState }: TrackerStatsProps) {
                             {activePlayers}
                         </div>
                         <div className="text-[8px] text-green-400/50 tracking-widest uppercase">
-                            Active
+                            {t("admin.trackerStats.active")}
                         </div>
                     </div>
                     <div className="p-3 border border-red-500/20 bg-red-500/5">
@@ -70,7 +77,7 @@ export function TrackerStats({ gameState }: TrackerStatsProps) {
                             {eliminatedPlayers}
                         </div>
                         <div className="text-[8px] text-red-400/50 tracking-widest uppercase">
-                            Eliminated
+                            {t("admin.trackerStats.eliminated")}
                         </div>
                     </div>
                 </div>
@@ -78,7 +85,7 @@ export function TrackerStats({ gameState }: TrackerStatsProps) {
                 {/* Role Distribution */}
                 <div className="space-y-2">
                     <div className="text-[8px] text-primary/50 tracking-widest uppercase">
-                        Role Distribution
+                        {t("admin.trackerStats.roleDistribution")}
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="p-3 border border-blue-500/20 bg-blue-500/5">
@@ -86,7 +93,7 @@ export function TrackerStats({ gameState }: TrackerStatsProps) {
                                 {crewmateCount}
                             </div>
                             <div className="text-[8px] text-blue-400/50 tracking-widest uppercase">
-                                Crewmates
+                                {t("admin.trackerStats.crewmates")}
                             </div>
                         </div>
                         <div className="p-3 border border-red-500/20 bg-red-500/5">
@@ -94,7 +101,7 @@ export function TrackerStats({ gameState }: TrackerStatsProps) {
                                 {impostorCount}
                             </div>
                             <div className="text-[8px] text-red-400/50 tracking-widest uppercase">
-                                Impostors
+                                {t("admin.trackerStats.impostors")}
                             </div>
                         </div>
                     </div>
@@ -103,7 +110,7 @@ export function TrackerStats({ gameState }: TrackerStatsProps) {
                 {/* Quest Stats */}
                 <div className="space-y-2">
                     <div className="text-[8px] text-primary/50 tracking-widest uppercase">
-                        Quest Progress
+                        {t("admin.trackerStats.questProgress")}
                     </div>
                     <div className="p-3 border border-white/20 bg-white/5">
                         <div className="flex justify-between items-center">
@@ -112,7 +119,7 @@ export function TrackerStats({ gameState }: TrackerStatsProps) {
                                     {totalCompleted}
                                 </div>
                                 <div className="text-[8px] text-muted-foreground/50 tracking-widest uppercase">
-                                    Completed
+                                    {t("admin.trackerStats.completed")}
                                 </div>
                             </div>
                             <div className="text-right">
@@ -120,7 +127,7 @@ export function TrackerStats({ gameState }: TrackerStatsProps) {
                                     {gameState.players.length * totalQuests}
                                 </div>
                                 <div className="text-[8px] text-primary/30 tracking-widest uppercase">
-                                    Possible
+                                    {t("admin.trackerStats.possible")}
                                 </div>
                             </div>
                         </div>
@@ -130,14 +137,14 @@ export function TrackerStats({ gameState }: TrackerStatsProps) {
                 {/* Average Progress */}
                 <div className="space-y-2">
                     <div className="text-[8px] text-primary/50 tracking-widest uppercase">
-                        Crew Performance
+                        {t("admin.trackerStats.crewPerformance")}
                     </div>
                     <div className="p-3 border border-primary/20 bg-primary/5">
                         <div className="text-lg font-bold text-primary">
                             {averageProgress.toFixed(1)}%
                         </div>
                         <div className="text-[8px] text-primary/50 tracking-widest uppercase">
-                            Average Progress
+                            {t("admin.trackerStats.averageProgress")}
                         </div>
                     </div>
                 </div>
@@ -148,7 +155,7 @@ export function TrackerStats({ gameState }: TrackerStatsProps) {
                         {gameState.id}
                     </div>
                     <div className="text-[8px] text-muted-foreground/50 tracking-widest uppercase mt-1">
-                        Game Identifier
+                        {t("admin.trackerStats.gameIdentifier")}
                     </div>
                 </div>
             </div>

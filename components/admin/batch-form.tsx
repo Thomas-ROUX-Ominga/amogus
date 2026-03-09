@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { createBatch } from "@/lib/redis/batch-actions";
+import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 import { BatchCreateInput } from "@/types/quest";
 
 interface BatchFormProps {
@@ -10,6 +12,7 @@ interface BatchFormProps {
 }
 
 export function BatchForm({ onBatchCreated }: BatchFormProps) {
+  const t = useTranslations();
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [totalQuests, setTotalQuests] = useState("");
@@ -24,7 +27,7 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
       const questCount = parseInt(totalQuests);
       
       if (isNaN(questCount) || questCount < 3 || questCount > 100) {
-        setError("Total quests must be between 3 and 100");
+        setError(t("admin.batchForm.errors.questRange"));
         return;
       }
 
@@ -32,7 +35,13 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
       const result = await createBatch(input);
 
       if (!result.success) {
-        setError(result.error || "Failed to create batch");
+        setError(
+          getLocalizedErrorMessage({
+            t,
+            code: result.code,
+            fallback: result.error,
+          }),
+        );
         return;
       }
 
@@ -41,7 +50,13 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
       setIsOpen(false);
       onBatchCreated?.();
     } catch {
-      setError("An unexpected error occurred");
+      setError(
+        getLocalizedErrorMessage({
+          t,
+          code: "ERR_SIGNAL_LOST",
+          fallback: t("game.join.errors.unexpected"),
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -64,7 +79,7 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
         <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
         <span className="relative flex items-center gap-2 tracking-[0.3em] uppercase text-sm">
           <Plus size={16} />
-          Create New Batch
+          {t("admin.batchForm.createButton")}
         </span>
       </button>
     );
@@ -75,17 +90,17 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
       <div className="w-full max-w-md bg-black border border-primary/30 rounded-sm p-6 space-y-6">
         <div className="space-y-2">
           <h2 className="text-lg font-black uppercase tracking-[0.2em] text-primary font-orbitron">
-            Create New Batch
+            {t("admin.batchForm.title")}
           </h2>
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
-            Generate a new batch of quests with automatic distribution
+            {t("admin.batchForm.subtitle")}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           <div className="space-y-2">
             <label className="text-[10px] uppercase tracking-widest text-primary/70">
-              Total Number of Quests
+              {t("admin.batchForm.totalQuestsLabel")}
             </label>
             <div className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/50 to-primary/0 rounded-sm opacity-20 group-focus-within:opacity-100 transition duration-500 blur-sm"></div>
@@ -95,14 +110,14 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
                 max="100"
                 value={totalQuests}
                 onChange={(e) => setTotalQuests(e.target.value)}
-                placeholder="Enter number (3-100)"
+                placeholder={t("admin.batchForm.totalQuestsPlaceholder")}
                 className="relative w-full bg-black/80 border border-primary/30 p-4 font-mono text-center text-xl tracking-widest text-foreground placeholder:text-primary/20 focus:outline-none focus:border-primary transition-all rounded-sm uppercase"
                 disabled={isSubmitting}
                 required
               />
             </div>
             <p className="text-[8px] text-muted-foreground uppercase tracking-widest">
-              System will automatically distribute: 1/3 Short, 1/3 Medium, 1/3 Long
+              {t("admin.batchForm.totalQuestsHint")}
             </p>
           </div>
 
@@ -119,7 +134,7 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
               disabled={isSubmitting}
               className="flex-1 bg-black/80 border border-primary/30 hover:border-primary/50 text-primary font-black py-3 rounded-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              CANCEL
+              {t("admin.batchForm.cancel")}
             </button>
             <button
               type="submit"
@@ -128,7 +143,9 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
             >
               <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
               <span className="relative tracking-[0.3em] uppercase text-sm">
-                {isSubmitting ? "CREATING..." : "CREATE BATCH"}
+                {isSubmitting
+                  ? t("admin.batchForm.creating")
+                  : t("admin.batchForm.createBatch")}
               </span>
             </button>
           </div>

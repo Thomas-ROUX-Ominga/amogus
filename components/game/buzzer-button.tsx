@@ -1,6 +1,7 @@
 "use client";
 
 import { Siren } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface BuzzerButtonProps {
     onBuzz: () => Promise<void>;
@@ -17,6 +18,7 @@ export function BuzzerButton({
     hasUsed = false,
     meetingActive = false,
 }: BuzzerButtonProps) {
+    const t = useTranslations();
     const handleClick = async () => {
         try {
             if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
@@ -32,12 +34,12 @@ export function BuzzerButton({
     };
 
     const label = isBuzzing
-        ? "BUZZ..."
+        ? t("game.actions.buzzing")
         : meetingActive
-        ? "MEETING ACTIF"
+        ? t("game.actions.buzzActive")
         : hasUsed
-        ? "BUZZ UTILISÉ"
-        : "BUZZER";
+        ? t("game.actions.buzzUsed")
+        : t("game.actions.buzz");
 
     return (
         <button

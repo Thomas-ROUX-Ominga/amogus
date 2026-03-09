@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileDown, Save, Edit2, Check, Play, Lock } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { Batch, Quest } from "@/types/quest";
 import { updateQuestsLocations } from "@/lib/redis/batch-actions";
 import { createGame } from "@/lib/redis/actions";
 import { generateQuestPDF, downloadPDF } from "@/lib/utils/pdf-utils";
 import { useAuthGuard } from "@/hooks/use-auth";
+import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 interface BatchDetailProps {
   batch: Batch;
@@ -16,6 +18,8 @@ interface BatchDetailProps {
 
 export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
   const router = useRouter();
+  const t = useTranslations();
+  const locale = useLocale();
   const authGuard = useAuthGuard(true); // Require organizer account
   
   const [locations, setLocations] = useState<Record<string, string>>(
@@ -57,7 +61,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
   const handleSaveLocations = async () => {
     if (authGuard.isLoading) return;
     if (!authGuard.canProceed) {
-      setError(authGuard.reason || "Authentication required");
+      setError(authGuard.reason || t("admin.batchDetail.authRequired"));
       return;
     }
 
@@ -69,15 +73,21 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
       const result = await updateQuestsLocations(batch.id, locations);
 
       if (!result.success) {
-        setError(result.error || "Failed to save locations");
+        setError(
+          getLocalizedErrorMessage({
+            t,
+            code: result.code,
+            fallback: result.error,
+          }),
+        );
         return;
       }
 
       onUpdate(result.data!);
-      setSuccessMessage("Locations saved successfully");
+      setSuccessMessage(t("admin.batchDetail.locationsSaved"));
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch {
-      setError("An unexpected error occurred");
+      setError(getLocalizedErrorMessage({ t, code: "ERR_SIGNAL_LOST" }));
     } finally {
       setIsSaving(false);
     }
@@ -91,7 +101,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
       const pdfBlob = await generateQuestPDF(batch.quests);
       downloadPDF(pdfBlob, `batch-${batch.id.slice(-8)}-quests.pdf`);
     } catch {
-      setError("Failed to generate PDF");
+      setError(getLocalizedErrorMessage({ t, code: "ERR_SIGNAL_LOST" }));
     } finally {
       setIsGenerating(false);
     }
@@ -100,7 +110,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
   const handleLaunchGame = async () => {
     if (authGuard.isLoading) return;
     if (!authGuard.canProceed) {
-      setError(authGuard.reason || "Organizer authentication required to launch games");
+      setError(authGuard.reason || t("admin.batchDetail.authRequired"));
       return;
     }
 
@@ -110,13 +120,18 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
     // Story 11.3: Game Settings from Batch - Validate quest distribution
     const totalQuests = questDistribution.short + questDistribution.medium + questDistribution.long;
     if (totalQuests < 1) {
-      setError("At least 1 quest total must be selected");
+      setError(t("admin.batchDetail.atLeastOneQuest"));
       setIsLaunching(false);
       return;
     }
 
     if (totalQuests > batch.questCount) {
-      setError(`Cannot assign ${totalQuests} quests per player. Only ${batch.questCount} quests available in batch.`);
+      setError(
+        t("admin.batchDetail.tooManyQuests", {
+          selected: totalQuests,
+          available: batch.questCount,
+        }),
+      );
       setIsLaunching(false);
       return;
     }
@@ -129,20 +144,26 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
       });
 
       if (!result.success) {
-        setError(result.error || "Failed to launch game");
+        setError(
+          getLocalizedErrorMessage({
+            t,
+            code: result.code,
+            fallback: result.error,
+          }),
+        );
         return;
       }
 
       router.push(`/game/${result.data}`);
     } catch {
-      setError("An unexpected error occurred");
+      setError(getLocalizedErrorMessage({ t, code: "ERR_SIGNAL_LOST" }));
     } finally {
       setIsLaunching(false);
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
+    return new Date(dateString).toLocaleString(locale, {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -153,12 +174,33 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
   };
 
   const getFormatLabel = (duration: Quest["duration"]) => {
-    const formatMap = {
-      short: "S",
-      medium: "M",
-      long: "L",
+    const formatMap: Record<Quest["duration"], string> = {
+      short: t("admin.dashboard.short"),
+      medium: t("admin.dashboard.medium"),
+      long: t("admin.dashboard.long"),
     };
     return formatMap[duration];
+  };
+
+  const getQuestTypeLabel = (type: Quest["type"]) => {
+    const typeKeyMap: Record<
+      Quest["type"],
+      | "common.questTypes.true-false"
+      | "common.questTypes.qcm"
+      | "common.questTypes.single-input"
+      | "common.questTypes.number-input"
+      | "common.questTypes.intrus"
+      | "common.questTypes.mini-game"
+    > = {
+      "true-false": "common.questTypes.true-false",
+      qcm: "common.questTypes.qcm",
+      "single-input": "common.questTypes.single-input",
+      "number-input": "common.questTypes.number-input",
+      intrus: "common.questTypes.intrus",
+      "mini-game": "common.questTypes.mini-game",
+    };
+
+    return t(typeKeyMap[type]);
   };
 
   return (
@@ -171,9 +213,9 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
               BATCH-{batch.id.slice(-8).toUpperCase()}
             </h1>
             <div className="flex items-center gap-4 text-[8px] text-muted-foreground uppercase tracking-widest">
-              <span>{batch.questCount} QUESTS</span>
+              <span>{t("admin.batchDetail.questsCount", { count: batch.questCount })}</span>
               <span>•</span>
-              <span>CREATED: {formatDate(batch.createdAt)}</span>
+              <span>{t("admin.batchDetail.createdAt", { date: formatDate(batch.createdAt) })}</span>
             </div>
           </div>
 
@@ -183,7 +225,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
               <div className="flex items-center gap-2 px-4 py-3 border border-destructive/30 bg-destructive/10 text-destructive">
                 <Lock size={14} />
                 <span className="text-xs font-black tracking-widest uppercase">
-                  {authGuard.reason || "Authentication Required"}
+                  {authGuard.reason || t("admin.batchDetail.authRequired")}
                 </span>
               </div>
             )}
@@ -194,7 +236,11 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
               className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3 px-6 rounded-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs tracking-widest animate-pulse hover:animate-none"
             >
               <Play size={14} />
-              {isLaunching ? "INITIALIZING..." : (authGuard.isLoading ? "CHECKING AUTH..." : "LAUNCH MISSION")}
+              {isLaunching
+                ? t("admin.batchDetail.initializing")
+                : authGuard.isLoading
+                ? t("admin.batchDetail.checkingAuth")
+                : t("admin.batchDetail.launchMission")}
             </button>
 
             <button
@@ -203,7 +249,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
               className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-black font-black py-3 px-6 rounded-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs tracking-widest"
             >
               <Save size={14} />
-              {isSaving ? "SAVING..." : "SAVE LOCATIONS"}
+              {isSaving ? t("admin.batchDetail.saving") : t("admin.batchDetail.saveLocations")}
             </button>
 
             <button
@@ -212,7 +258,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
               className="flex items-center gap-2 bg-black/80 border border-primary/30 hover:border-primary/50 text-primary font-black py-3 px-6 rounded-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs tracking-widest"
             >
               <FileDown size={14} />
-              {isGenerating ? "GENERATING..." : "GENERATE PDF"}
+              {isGenerating ? t("admin.batchDetail.generating") : t("admin.batchDetail.generatePdf")}
             </button>
           </div>
         </div>
@@ -220,12 +266,12 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
         {/* Story 11.3: Game Settings from Batch - Quest Distribution Settings */}
         <div className="border border-primary/20 bg-black/30 p-4">
           <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-3">
-            QUEST DISTRIBUTION SETTINGS
+            {t("admin.batchDetail.questDistribution")}
           </h3>
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-[8px] text-muted-foreground uppercase tracking-widest mb-1">
-                SHORT QUESTS
+                {t("admin.batchDetail.shortQuests")}
               </label>
               <input
                 type="number"
@@ -238,7 +284,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
             </div>
             <div>
               <label className="block text-[8px] text-muted-foreground uppercase tracking-widest mb-1">
-                MEDIUM QUESTS
+                {t("admin.batchDetail.mediumQuests")}
               </label>
               <input
                 type="number"
@@ -251,7 +297,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
             </div>
             <div>
               <label className="block text-[8px] text-muted-foreground uppercase tracking-widest mb-1">
-                LONG QUESTS
+                {t("admin.batchDetail.longQuests")}
               </label>
               <input
                 type="number"
@@ -268,7 +314,10 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
               ? "text-destructive font-bold animate-pulse" 
               : "text-muted-foreground"
           }`}>
-            TOTAL: {questDistribution.short + questDistribution.medium + questDistribution.long} / {batch.questCount} QUESTS PER PLAYER
+            {t("admin.batchDetail.totalPerPlayer", {
+              selected: questDistribution.short + questDistribution.medium + questDistribution.long,
+              available: batch.questCount,
+            })}
           </div>
         </div>
 
@@ -289,7 +338,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
       {/* Quest List */}
       <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
         <h2 className="text-lg font-bold uppercase tracking-wider text-primary mb-6">
-          Quest Locations
+          {t("admin.batchDetail.questLocations")}
         </h2>
 
         <div className="space-y-3">
@@ -318,7 +367,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
                   {quest.id}
                 </div>
                 <div className="text-[8px] text-muted-foreground uppercase tracking-widest mt-1">
-                  {quest.type} • {quest.duration}
+                  {getQuestTypeLabel(quest.type)} • {getFormatLabel(quest.duration)}
                 </div>
               </div>
 
@@ -337,7 +386,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
                           setEditingId(null);
                         }
                       }}
-                      placeholder="Enter location..."
+                      placeholder={t("admin.batchDetail.enterLocation")}
                       className="flex-1 bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
                       autoFocus
                     />
@@ -353,14 +402,14 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
                     <div className="flex-1 text-xs text-primary px-3 py-2 border border-primary/10 bg-black/20">
                       {locations[quest.id] || (
                         <span className="text-muted-foreground/50">
-                          No location set
+                          {t("admin.batchDetail.noLocation")}
                         </span>
                       )}
                     </div>
                     <button
                       onClick={() => setEditingId(quest.id)}
                       className="p-2 text-primary hover:text-primary/80 border border-primary/30 hover:border-primary/50 transition-all"
-                      title="Edit location"
+                      title={t("admin.batchDetail.editLocation")}
                     >
                       <Edit2 size={14} />
                     </button>

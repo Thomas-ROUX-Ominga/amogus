@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { motion } from "framer-motion";
 import { Shield, Users } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useGameStore } from "@/lib/store/game-store";
 import { useAuth } from "@/hooks/use-auth";
 import { PlayerRole } from "@/types/game";
@@ -13,6 +14,7 @@ interface RoleSelectionProps {
 }
 
 export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
+    const t = useTranslations();
     const { chooseRole, isSelectingRole, roleError } = useGameStore();
     const { authState } = useAuth();
     const userId = authState.session?.userId;
@@ -44,10 +46,10 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                     <Shield className="text-[#58A6FF] w-10 h-10" />
                 </div>
                 <h2 className="text-3xl font-black uppercase tracking-[0.2em] text-[#58A6FF] font-orbitron">
-                    Choisissez votre rôle
+                    {t("game.roleSelection.title")}
                 </h2>
                 <p className="text-xs text-[#8B949E] uppercase tracking-widest leading-relaxed font-rajdhani">
-                    Sélectionnez votre rôle pour accéder au cockpit
+                    {t("game.roleSelection.subtitle")}
                 </p>
             </div>
 
@@ -63,10 +65,10 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                     <Users className="w-12 h-12 text-[#2DA44E] group-hover:scale-110 transition-transform" />
                     <div className="text-center">
                         <div className="text-2xl font-black uppercase tracking-wider text-[#2DA44E] font-rajdhani">
-                            CREWMATE
+                            {t("game.roleSelection.crewmate")}
                         </div>
                         <div className="text-xs text-[#2DA44E]/70 uppercase tracking-widest mt-1 font-rajdhani">
-                            MEMBRE D&apos;ÉQUIPAGE
+                            {t("game.roleSelection.crewmateDescription")}
                         </div>
                     </div>
                 </motion.button>
@@ -82,10 +84,10 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                     <Shield className="w-12 h-12 text-[#DA3633] group-hover:scale-110 transition-transform" />
                     <div className="text-center">
                         <div className="text-2xl font-black uppercase tracking-wider text-[#DA3633] font-rajdhani">
-                            IMPOSTOR
+                            {t("game.roleSelection.impostor")}
                         </div>
                         <div className="text-xs text-[#DA3633]/70 uppercase tracking-widest mt-1 font-rajdhani">
-                            AGENT INFILTRÉ
+                            {t("game.roleSelection.impostorDescription")}
                         </div>
                     </div>
                 </motion.button>
@@ -98,7 +100,7 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                     className="p-4 border border-[#58A6FF]/20 bg-[#58A6FF]/5 text-center"
                 >
                     <div className="text-xs text-[#58A6FF] uppercase tracking-widest animate-pulse font-rajdhani">
-                        Attribution du rôle en cours...
+                        {t("game.roleSelection.assigning")}
                     </div>
                 </motion.div>
             )}
@@ -121,13 +123,13 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                         }}
                         className="mt-2 text-xs text-[#DA3633]/70 uppercase tracking-widest hover:text-[#DA3633] transition-colors font-rajdhani"
                     >
-                        Réessayer
+                        {t("game.roleSelection.retry")}
                     </button>
                 </motion.div>
             )}
 
             <div className="text-[8px] text-[#8B949E]/40 uppercase tracking-widest text-center font-rajdhani">
-                Module: ROLE_SELECT // Status: ACTIVE
+                {t("game.roleSelection.moduleStatus")}
             </div>
         </motion.div>
     );

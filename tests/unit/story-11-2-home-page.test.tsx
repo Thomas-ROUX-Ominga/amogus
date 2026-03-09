@@ -68,12 +68,12 @@ describe('Home Page - Story 11.2', () => {
       );
       
       // Check for join form elements
-      expect(screen.getByPlaceholderText('6-CHAR CODE...')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /join session/i })).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('CODE 6 CAR...')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /rejoindre la session/i })).toBeInTheDocument();
       
       // Check for login option
-      expect(screen.getByRole('button', { name: /login portal/i })).toBeInTheDocument();
-      expect(screen.getByText('Organizer')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /portail de connexion/i })).toBeInTheDocument();
+      expect(screen.getByText('Organisateur')).toBeInTheDocument();
     });
 
     it('should handle join by code correctly', async () => {
@@ -87,8 +87,8 @@ describe('Home Page - Story 11.2', () => {
         </AuthProvider>
       );
       
-      const input = screen.getByPlaceholderText('6-CHAR CODE...');
-      const submitButton = screen.getByRole('button', { name: /join session/i });
+      const input = screen.getByPlaceholderText('CODE 6 CAR...');
+      const submitButton = screen.getByRole('button', { name: /rejoindre la session/i });
 
       fireEvent.change(input, { target: { value: 'abc123' } });
       fireEvent.click(submitButton);
@@ -105,7 +105,7 @@ describe('Home Page - Story 11.2', () => {
         </AuthProvider>
       );
       
-      const loginButton = screen.getByRole('button', { name: /login portal/i });
+      const loginButton = screen.getByRole('button', { name: /portail de connexion/i });
       fireEvent.click(loginButton);
 
       expect(mockPush).toHaveBeenCalledWith('/login');

@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
-import { X, Clock, Check, AlertTriangle } from "lucide-react";
+import { X, Clock, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Quest, QuestDuration, QuestGame } from "@/types/quest";
 import { useGameStore } from "@/lib/store/game-store";
 import { getRandomQuestGame } from "@/lib/constants/quest-pool";
@@ -34,6 +35,7 @@ const SUCCESS_OVERLAY_DURATION_MS = 2000;
 
 export function QuestView({ quest, gameId, userId }: QuestViewProps) {
     const router = useRouter();
+    const t = useTranslations();
     const prefersReducedMotion = useReducedMotion();
     const { gameState, clearQuest, setQuestAnswered, completeQuestAction, isCompletingQuest, completionError, completionErrorCode, questAnswered, currentQuestContent, recordFailedQuest, loadDynamicQuestContent } = useGameStore();
     
@@ -66,8 +68,8 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                     id: `mini-game-${quest.duration}`,
                     type: "mini-game",
                     duration: quest.duration,
-                    title: "Mini-Jeu",
-                    instruction: "Réussis le mini-jeu affiché pour valider la quête.",
+                    title: t("game.questView.miniGameTitle"),
+                    instruction: t("game.questView.miniGameInstruction"),
                     data: {},
                 });
                 setIsLoadingGame(false);
@@ -196,7 +198,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-primary/20 pb-4 mb-6">
                 <h1 className="text-sm font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
-                    Quest Active
+                    {t("game.questView.activeTitle")}
                 </h1>
                 {!isImpostor && (
                     <div
@@ -205,7 +207,9 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                     >
                         <Clock className="w-3 h-3" aria-hidden="true" />
                         <span aria-hidden="true">{DURATION_LABELS[quest.duration]}</span>
-                        <span className="sr-only">Durée {DURATION_LABELS[quest.duration]}</span>
+                        <span className="sr-only">
+                            {t("game.questView.durationSr", { duration: DURATION_LABELS[quest.duration] })}
+                        </span>
                     </div>
                 )}
             </div>
@@ -223,20 +227,20 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                                         <div className="h-4 bg-primary/10 rounded mb-2"></div>
                                         <div className="h-4 bg-primary/10 rounded w-3/4 mx-auto"></div>
                                     </div>
-                                    <p className="text-sm text-primary/60 font-rajdhani">Chargement de la quête...</p>
+                                    <p className="text-sm text-primary/60 font-rajdhani">{t("game.questView.loadingQuest")}</p>
                                 </div>
                             </div>
                         ) : !questGame ? (
                             <div className="p-6 border border-destructive/30 bg-destructive/5 backdrop-blur-sm text-center space-y-4">
                                 <AlertTriangle className="w-8 h-8 text-destructive mx-auto" />
                                 <p className="text-sm text-destructive/80 font-rajdhani">
-                                    Données de quête invalides. Options ou réponse manquantes.
+                                    {t("game.questView.invalidQuestData")}
                                 </p>
                                 <a 
                                     href={`/game/${gameId}`}
                                     className="inline-block min-h-[44px] leading-[44px] px-6 border border-primary/30 text-primary/70 font-rajdhani text-sm uppercase tracking-widest hover:bg-primary/10 transition-colors touch-manipulation"
                                 >
-                                    Retour au Game Home
+                                    {t("game.questView.returnToGameHome")}
                                 </a>
                             </div>
                         ) : (
@@ -271,7 +275,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                     {isCompletingQuest && (
                         <div className="p-4 border border-primary/20 bg-black/30 text-center" role="status" aria-live="polite">
                             <span className="text-sm text-primary/80 font-rajdhani tracking-wide animate-pulse">
-                                Enregistrement...
+                                {t("game.questView.saving")}
                             </span>
                         </div>
                     )}
@@ -281,7 +285,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                             <div className="flex items-center justify-center gap-2">
                                 <AlertTriangle className="w-5 h-5 text-destructive" aria-hidden="true" />
                                 <span className="text-sm font-bold text-destructive font-orbitron tracking-wide">
-                                    ERREUR DE SAUVEGARDE
+                                    {t("game.questView.saveErrorTitle")}
                                 </span>
                             </div>
                             <p className="text-xs text-destructive/80 text-center font-rajdhani">
@@ -293,15 +297,15 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                                     onClick={() => router.push(`/game/${gameId}`)}
                                     className="w-full min-h-[44px] flex items-center justify-center border-2 border-destructive/50 bg-transparent text-destructive font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-destructive/10 active:scale-95 transition-all touch-manipulation"
                                 >
-                                    RETOUR ACCUEIL
+                                    {t("game.questView.returnHome")}
                                 </button>
                             ) : (
                                 <button
                                     onClick={handleRetryCompletion}
-                                    aria-label="Réessayer la sauvegarde de la quête"
+                                    aria-label={t("game.questView.retrySaveAria")}
                                     className="w-full min-h-[44px] flex items-center justify-center border-2 border-primary/50 bg-transparent text-primary font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-primary/10 active:scale-95 transition-all touch-manipulation"
                                 >
-                                    RÉESSAYER
+                                    {t("common.actions.retry")}
                                 </button>
                             )}
                         </div>
@@ -313,21 +317,21 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
             <div className="pt-6 pb-4">
                 <button
                     onClick={handleFlee}
-                    aria-label="Abandonner la quête et retourner au Game Home"
+                    aria-label={t("game.questView.fleeAria")}
                     className="w-full min-h-[56px] flex items-center justify-center gap-3 border-2 border-destructive/50 bg-transparent text-destructive font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-destructive/10 active:scale-95 transition-all touch-manipulation"
                 >
                     <X className="w-5 h-5" />
-                    Abandonner
+                    {t("game.questView.flee")}
                 </button>
             </div>
 
             {/* Footer */}
             <div className="flex justify-between items-center opacity-40 pt-2">
                 <div className="text-[8px] text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
-                    Quest: {quest.id}
+                    {t("game.questView.questLabel", { questId: quest.id })}
                 </div>
                 <div className="text-[8px] text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
-                    Type: {quest.type}
+                    {t("game.questView.typeLabel", { questType: quest.type })}
                 </div>
             </div>
 

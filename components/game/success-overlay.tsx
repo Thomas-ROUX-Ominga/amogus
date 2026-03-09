@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
+import { useTranslations } from "next-intl";
 
 interface SuccessOverlayProps {
   onManualExit: () => void;
@@ -21,6 +22,7 @@ export function SuccessOverlay({
   duration = 2000,
   allowManualExit = true
 }: SuccessOverlayProps) {
+  const t = useTranslations();
   useEffect(() => {
     // Haptic feedback pattern
     // Crewmate: [50, 50, 50, 50, 200]
@@ -118,9 +120,9 @@ export function SuccessOverlay({
         <h1 className={`text-4xl md:text-6xl font-orbitron font-bold tracking-wider ${
           isImpostor ? 'text-[#DA3633]' : 'text-green-500'
         }`}>
-          MISSION
+          {t("game.overlays.mission")}
           <br />
-          ACCOMPLIE
+          {t("game.overlays.accomplished")}
         </h1>
       </motion.div>
 
@@ -139,7 +141,7 @@ export function SuccessOverlay({
             }`}
           >
             <X size={18} />
-            Retour au Cockpit
+            {t("game.overlays.returnToCockpit")}
           </button>
         )}
       </motion.div>

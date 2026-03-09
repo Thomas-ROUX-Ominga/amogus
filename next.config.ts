@@ -1,4 +1,5 @@
 import withSerwistInit from "@serwist/next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 const withSerwist = withSerwistInit({
   swSrc: "app/sw.ts",
@@ -6,8 +7,10 @@ const withSerwist = withSerwistInit({
   disable: process.env.NODE_ENV !== "production",
 });
 
-export default withSerwist({
+const withNextIntl = createNextIntlPlugin("./lib/i18n/request.ts");
+
+export default withNextIntl(withSerwist({
   // Next.js config options
   serverExternalPackages: ["redis"],
   turbopack: {},
-});
+}));

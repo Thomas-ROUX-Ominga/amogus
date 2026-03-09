@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { QuestDuration } from "@/types/quest";
 import { MINI_BAC_CATEGORY_COUNT } from "@/lib/mini-games";
 import { FailedOverlay } from "@/components/game/failed-overlay";
@@ -57,6 +58,7 @@ interface QuestMiniBacProps {
 }
 
 export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps) {
+    const t = useTranslations();
     const prefersReducedMotion = useReducedMotion();
     const [gameState, setGameState] = useState<MiniBacState>(() =>
         generateState(duration)
@@ -136,7 +138,7 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
             <form
                 onSubmit={handleSubmit}
                 className="space-y-5 max-w-3xl mx-auto"
-                aria-label="Formulaire Mini-Bac"
+                aria-label={t("game.questWidgets.miniBacFormAria")}
             >
                 {/* Letter display */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 p-4">
@@ -153,10 +155,10 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
                     </motion.div>
                     <div className="text-center sm:text-left max-w-md space-y-1">
                         <p className="font-rajdhani text-sm uppercase tracking-[0.2em] text-primary/70">
-                            Mini-Bac
+                            {t("game.miniBac.title")}
                         </p>
                         <p className="font-rajdhani text-xs text-foreground/70">
-                            Trouve un mot valide pour chaque catégorie en commençant par la lettre affichée.
+                            {t("game.miniBac.instruction")}
                         </p>
                     </div>
                 </div>
@@ -177,7 +179,7 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
                                     htmlFor={`minibac-input-${index}`}
                                     className="text-xs uppercase tracking-widest text-primary/60 font-[family-name:var(--font-jetbrains-mono)]"
                                 >
-                                    {category.name} ({category.type === "proper" ? "nom propre" : "nom commun"})
+                                    {category.name} ({category.type === "proper" ? t("game.miniBac.properNoun") : t("game.miniBac.commonNoun")})
                                 </label>
                                 <motion.input
                                     id={`minibac-input-${index}`}
@@ -195,7 +197,10 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
                                             ? "border-[#DA3633] text-[#DA3633]"
                                             : "border-primary/20 focus:border-primary/40 focus:bg-primary/5"
                                     }`}
-                                    aria-label={`Mot commençant par ${gameState.letter} pour la catégorie ${category.name}`}
+                                    aria-label={t("game.miniBac.inputAria", {
+                                        letter: gameState.letter,
+                                        category: category.name,
+                                    })}
                                     aria-invalid={hasError}
                                     autoComplete="off"
                                     autoCapitalize="none"
@@ -203,7 +208,7 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
                                 />
                                 {hasError && (
                                     <p className="text-[10px] text-[#DA3633] font-rajdhani" role="alert">
-                                        Mot invalide ou inexistant
+                                        {t("game.miniBac.invalidWord")}
                                     </p>
                                 )}
                             </motion.div>
@@ -216,9 +221,9 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
                     type="submit"
                     disabled={submitted || !allFilled}
                     className="w-full max-w-2xl mx-auto min-h-[44px] flex items-center justify-center border-2 border-primary/80 bg-primary/20 text-primary font-rajdhani text-sm uppercase tracking-widest hover:bg-primary/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
-                    aria-label="Valider les réponses"
+                    aria-label={t("game.questWidgets.miniBacSubmitAria")}
                 >
-                    Valider
+                    {t("common.actions.confirm")}
                 </button>
             </form>
 

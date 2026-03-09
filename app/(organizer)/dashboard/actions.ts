@@ -1,8 +1,9 @@
 "use server";
 
 import { getGame, getQuestMetadata, eliminatePlayer as eliminatePlayerAction } from "@/lib/redis/actions";
-import { GameState } from "@/types/game";
+import { ActionResponse, GameState } from "@/types/game";
 import { verifySession } from "@/lib/redis/auth-utils";
+import { ERROR_CODES } from "@/lib/constants/error-codes";
 
 export interface DashboardStats {
   totalQuestsAssigned: number;
@@ -28,10 +29,14 @@ export interface DashboardData {
   stats: DashboardStats;
 }
 
-export async function getDashboardData(gameId: string): Promise<{ success: boolean; data?: DashboardData; error?: string }> {
+export async function getDashboardData(gameId: string): Promise<ActionResponse<DashboardData>> {
   const gameResponse = await getGame(gameId);
   if (!gameResponse.success || !gameResponse.data) {
-    return { success: false, error: gameResponse.error };
+    return {
+      success: false,
+      error: gameResponse.error,
+      code: gameResponse.code ?? ERROR_CODES.ERR_SIGNAL_LOST,
+    };
   }
 
   const state = gameResponse.data;
@@ -106,34 +111,54 @@ export async function getDashboardData(gameId: string): Promise<{ success: boole
   };
 }
 
-export async function eliminatePlayer(gameId: string, playerId: string): Promise<{ success: boolean; error?: string }> {
+export async function eliminatePlayer(gameId: string, playerId: string): Promise<ActionResponse<void>> {
   try {
     // Verify admin session
     const session = await verifySession();
     if (!session.success) {
-      return { success: false, error: "Unauthorized: Admin access required" };
+      return {
+        success: false,
+        error: "Unauthorized: Admin access required",
+        code: ERROR_CODES.ERR_UNAUTHORIZED,
+      };
     }
 
     // Verify the game exists and admin is the creator
     const gameResponse = await getGame(gameId);
     if (!gameResponse.success || !gameResponse.data) {
-      return { success: false, error: "Game not found" };
+      return {
+        success: false,
+        error: "Game not found",
+        code: ERROR_CODES.GAME_NOT_FOUND,
+      };
     }
 
     const game = gameResponse.data;
     if (game.creatorId !== session.data!.userId) {
-      return { success: false, error: "Unauthorized: Only game creator can eliminate players" };
+      return {
+        success: false,
+        error: "Unauthorized: Only game creator can eliminate players",
+        code: ERROR_CODES.ERR_UNAUTHORIZED,
+      };
     }
 
     // Call the existing eliminatePlayer action
     const result = await eliminatePlayerAction(gameId, playerId);
     if (!result.success) {
-      return { success: false, error: result.error };
+      return {
+        success: false,
+        error: result.error,
+        code: result.code ?? ERROR_CODES.ERR_SIGNAL_LOST,
+      };
     }
 
     return { success: true };
   } catch (error) {
     console.error("Failed to eliminate player:", error);
-    return { success: false, error: "Failed to eliminate player" };
+    return {
+      success: false,
+      error: "Failed to eliminate player",
+      code: ERROR_CODES.ERR_SIGNAL_LOST,
+    };
   }
 }

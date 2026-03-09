@@ -48,3 +48,40 @@ Object.defineProperty(globalThis, 'crypto', {
     }),
   },
 });
+
+function getByPath(
+  obj: Record<string, unknown>,
+  path: string,
+): string | undefined {
+  const value = path.split(".").reduce<unknown>((acc, part) => {
+    if (acc && typeof acc === "object" && part in (acc as Record<string, unknown>)) {
+      return (acc as Record<string, unknown>)[part];
+    }
+    return undefined;
+  }, obj);
+
+  return typeof value === "string" ? value : undefined;
+}
+
+function interpolate(template: string, values?: Record<string, unknown>) {
+  if (!values) return template;
+  return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? `{${key}}`));
+}
+
+vi.mock("next-intl", async () => {
+  const React = await import("react");
+  const frMessages = (await import("@/lib/i18n/messages/fr")).default as Record<string, unknown>;
+
+  return {
+    NextIntlClientProvider: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+    useLocale: () => "fr",
+    useTranslations: (namespace?: string) => {
+      return (key: string, values?: Record<string, unknown>) => {
+        const fullKey = namespace ? `${namespace}.${key}` : key;
+        const message = getByPath(frMessages, fullKey) ?? fullKey;
+        return interpolate(message, values);
+      };
+    },
+  };
+});

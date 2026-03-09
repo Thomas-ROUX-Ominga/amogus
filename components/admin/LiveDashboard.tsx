@@ -3,13 +3,18 @@
 import useSWR from "swr";
 import { useState } from "react";
 import { ArrowLeft, RefreshCw, Users, Target, TrendingUp, Clock, Skull } from "lucide-react";
-import { GameState } from "@/types/game";
+import { useLocale, useTranslations } from "next-intl";
 import { getDashboardData, DashboardData, eliminatePlayer } from "@/app/(organizer)/dashboard/actions";
 import { SimpleProgressBar } from "./simple-progress-bar";
+import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 interface LiveDashboardProps {
   gameId: string;
   onGameChange: () => void;
+}
+
+interface DashboardFetchError extends Error {
+  code?: string;
 }
 
 const DASHBOARD_REFRESH_INTERVAL = Number(process.env.NEXT_PUBLIC_DASHBOARD_REFRESH_INTERVAL) || 2000;
@@ -17,12 +22,16 @@ const DASHBOARD_REFRESH_INTERVAL = Number(process.env.NEXT_PUBLIC_DASHBOARD_REFR
 const fetcher = async (gameId: string): Promise<DashboardData> => {
   const result = await getDashboardData(gameId);
   if (!result.success || !result.data) {
-    throw new Error(result.error || "Failed to fetch game data");
+    const error = new Error(result.error || "Failed to fetch game data") as DashboardFetchError;
+    error.code = result.code;
+    throw error;
   }
   return result.data;
 };
 
 export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
+  const t = useTranslations();
+  const locale = useLocale();
   const [eliminatingPlayer, setEliminatingPlayer] = useState<string | null>(null);
   
   const {
@@ -55,22 +64,29 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
   };
 
   if (error) {
+    const dashboardError = error as DashboardFetchError;
+    const localizedMessage = getLocalizedErrorMessage({
+      t,
+      code: dashboardError.code,
+      fallback: dashboardError.message,
+    });
+
     return (
       <div className="border-2 border-red-500/20 p-8 bg-black/50 backdrop-blur-sm">
         <div className="text-center space-y-4">
-          <div className="text-red-400 text-sm">Failed to load game data</div>
-          <div className="text-red-300 text-xs font-mono">{error.message}</div>
+          <div className="text-red-400 text-sm">{t("admin.dashboard.failedLoadGameData")}</div>
+          <div className="text-red-300 text-xs font-mono">{localizedMessage}</div>
           <button
             onClick={() => mutate()}
             className="px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors text-xs uppercase tracking-widest"
           >
-            Retry
+            {t("admin.dashboard.retry")}
           </button>
           <button
             onClick={onGameChange}
             className="px-4 py-2 bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-colors text-xs uppercase tracking-widest"
           >
-            Select Different Game
+            {t("admin.dashboard.selectDifferentGame")}
           </button>
         </div>
       </div>
@@ -82,7 +98,7 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
       <div className="border-2 border-primary/20 p-8 bg-black/50 backdrop-blur-sm">
         <div className="text-center space-y-4">
           <RefreshCw className="w-8 h-8 text-primary animate-spin mx-auto" />
-          <div className="text-primary text-sm">Loading game data...</div>
+          <div className="text-primary text-sm">{t("admin.dashboard.loadingGameData")}</div>
         </div>
       </div>
     );
@@ -106,16 +122,18 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
           </button>
           <div>
             <h2 className="text-lg font-bold uppercase tracking-[0.2em] text-primary font-orbitron">
-              Game: {gameState.id}
+              {t("admin.dashboard.gameLabel", { gameId: gameState.id })}
             </h2>
             <div className="flex items-center gap-4 text-[10px] text-primary/50 tracking-widest mt-1">
               <span className="flex items-center gap-1">
                 <Clock size={10} />
-                {new Date(gameState.createdAt).toLocaleTimeString()}
+                {new Date(gameState.createdAt).toLocaleTimeString(
+                  locale === "fr" ? "fr-FR" : "en-US",
+                )}
               </span>
               <span className="flex items-center gap-1">
                 <Users size={10} />
-                {gameState.players.length} Players
+                {t("admin.dashboard.players", { count: gameState.players.length })}
               </span>
               <span className="px-2 py-1 bg-primary/10 border border-primary/30 rounded text-primary">
                 {gameState.status}
@@ -128,7 +146,7 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
           className="flex items-center gap-2 px-3 py-2 text-[10px] uppercase tracking-widest text-primary/70 hover:text-primary border border-primary/30 hover:border-primary/50 transition-all rounded-none"
         >
           <RefreshCw size={12} />
-          Refresh
+          {t("admin.dashboard.refresh")}
         </button>
       </div>
 
@@ -138,7 +156,7 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
         <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold uppercase tracking-widest text-primary font-orbitron">
-              Progression Globale
+              {t("admin.dashboard.overallProgress")}
             </h3>
             <Target className="text-primary/50 w-4 h-4" />
           </div>
@@ -147,7 +165,7 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
               {stats.totalQuestsCompleted} / {stats.totalQuestsAssigned}
             </div>
             <div className="text-xs text-primary/50 tracking-widest uppercase">
-              Quests Completed
+              {t("admin.dashboard.questsCompleted")}
             </div>
             <SimpleProgressBar progress={overallProgress} />
             <div className="text-lg font-bold text-primary">
@@ -160,7 +178,7 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
         <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold uppercase tracking-widest text-primary">
-              Progress by Format
+              {t("admin.dashboard.progressByFormat")}
             </h3>
             <TrendingUp className="text-primary/50 w-4 h-4" />
           </div>
@@ -168,7 +186,7 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
             {/* Short */}
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
-                <span className="text-green-400">Short</span>
+                <span className="text-green-400">{t("admin.dashboard.short")}</span>
                 <span className="text-green-400/70">
                   {stats.progressByFormat.short.completed} / {stats.progressByFormat.short.assigned}
                 </span>
@@ -185,7 +203,7 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
             {/* Medium */}
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
-                <span className="text-yellow-400">Medium</span>
+                <span className="text-yellow-400">{t("admin.dashboard.medium")}</span>
                 <span className="text-yellow-400/70">
                   {stats.progressByFormat.medium.completed} / {stats.progressByFormat.medium.assigned}
                 </span>
@@ -202,7 +220,7 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
             {/* Long */}
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
-                <span className="text-red-400">Long</span>
+                <span className="text-red-400">{t("admin.dashboard.long")}</span>
                 <span className="text-red-400/70">
                   {stats.progressByFormat.long.completed} / {stats.progressByFormat.long.assigned}
                 </span>
@@ -223,7 +241,7 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
         <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold uppercase tracking-widest text-primary">
-              Crew Status
+              {t("admin.dashboard.crewStatus")}
             </h3>
             <Users className="text-primary/50 w-4 h-4" />
           </div>
@@ -234,7 +252,7 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
                   {stats.playerProgress.filter(p => p.isAlive).length}
                 </div>
                 <div className="text-[8px] text-green-400/50 tracking-widest uppercase">
-                  Active
+                  {t("admin.dashboard.active")}
                 </div>
               </div>
               <div className="text-center">
@@ -242,12 +260,12 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
                   {stats.playerProgress.filter(p => !p.isAlive).length}
                 </div>
                 <div className="text-[8px] text-red-400/50 tracking-widest uppercase">
-                  Eliminated
+                  {t("admin.dashboard.eliminated")}
                 </div>
               </div>
             </div>
             <div className="text-xs text-primary/50">
-              Average Progress:{" "}
+              {t("admin.dashboard.averageProgress")}:{" "}
               <span className="text-primary font-bold">
                 {stats.playerProgress.length > 0
                   ? (stats.playerProgress.reduce((sum, p) => sum + p.percentage, 0) / stats.playerProgress.length).toFixed(1)
@@ -262,10 +280,10 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
       <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-sm font-bold uppercase tracking-widest text-primary">
-            Individual Progress
+            {t("admin.dashboard.individualProgress")}
           </h3>
           <div className="text-[10px] text-primary/50 tracking-widest">
-            LIVE DATA
+            {t("admin.dashboard.liveData")}
           </div>
         </div>
         <div className="space-y-3">
@@ -300,7 +318,7 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
                   {!player.isAlive && (
                     <span className="flex items-center gap-1 text-[8px] px-2 py-1 bg-red-500 text-white font-bold rounded animate-in fade-in slide-in-from-left-1">
                       <Skull size={8} />
-                      ÉLIMINÉ
+                      {t("admin.dashboard.eliminatedTag")}
                     </span>
                   )}
                 </div>
@@ -318,7 +336,7 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
                       onClick={() => handleEliminatePlayer(player.id)}
                       disabled={eliminatingPlayer === player.id}
                       className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
-                      title="Eliminate Player"
+                      title={t("admin.dashboard.eliminatePlayerTitle")}
                     >
                       {eliminatingPlayer === player.id ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />

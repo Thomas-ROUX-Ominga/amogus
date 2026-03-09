@@ -3,14 +3,22 @@
 import { Player } from "@/types/game";
 import { getTotalQuests } from "@/lib/utils/quest-calculations";
 import { Clock, CheckCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface PlayerQuestProgressProps {
     player: Player;
     isCurrentUser?: boolean;
     totalCount?: number;
+    locale?: string;
 }
 
-export function PlayerQuestProgress({ player, isCurrentUser = false, totalCount: providedTotalCount }: PlayerQuestProgressProps) {
+export function PlayerQuestProgress({
+    player,
+    isCurrentUser = false,
+    totalCount: providedTotalCount,
+    locale = "fr",
+}: PlayerQuestProgressProps) {
+    const t = useTranslations();
     const completedCount = player.completedQuests?.length || 0;
     const totalCount = providedTotalCount || getTotalQuests();
     const completionPercentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
@@ -22,7 +30,10 @@ export function PlayerQuestProgress({ player, isCurrentUser = false, totalCount:
                 <div className="flex items-center gap-2">
                     <CheckCircle className="w-3 h-3 text-green-500" />
                     <span className="text-primary/80">
-                        {completedCount}/{totalCount} Quêtes
+                        {t("game.questProgress.completed", {
+                            completed: completedCount,
+                            total: totalCount,
+                        })}
                     </span>
                 </div>
                 <div className="text-primary/60">
@@ -43,9 +54,11 @@ export function PlayerQuestProgress({ player, isCurrentUser = false, totalCount:
                 <div className="flex items-center gap-2 text-[8px] text-primary/50">
                     <Clock className="w-2 h-2" />
                     <span>
-                        Dernière quête: {new Date(player.lastQuestCompleted).toLocaleTimeString('fr-FR', {
+                        {t("game.questProgress.lastQuest", {
+                            time: new Date(player.lastQuestCompleted).toLocaleTimeString(locale, {
                             hour: '2-digit',
                             minute: '2-digit'
+                            }),
                         })}
                     </span>
                 </div>
@@ -54,7 +67,7 @@ export function PlayerQuestProgress({ player, isCurrentUser = false, totalCount:
             {/* Current User Indicator */}
             {isCurrentUser && (
                 <div className="text-[8px] text-primary/70 text-center">
-                    VOUS
+                    {t("game.questProgress.you")}
                 </div>
             )}
         </div>

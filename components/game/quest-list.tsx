@@ -1,6 +1,7 @@
 "use client";
 
 import { Quest } from "@/types/quest";
+import { useTranslations } from "next-intl";
 
 interface QuestListProps {
     quests: Array<Quest & { completed: boolean; location?: string }>;
@@ -8,6 +9,7 @@ interface QuestListProps {
 }
 
 export function QuestList({ quests, isLoading = false }: QuestListProps) {
+    const t = useTranslations();
     if (isLoading) {
         return (
             <div className="space-y-2">
@@ -24,7 +26,7 @@ export function QuestList({ quests, isLoading = false }: QuestListProps) {
     if (quests.length === 0) {
         return (
             <div className="text-sm text-muted-foreground font-rajdhani tracking-wide">
-                En attente de missions...
+                {t("game.questList.pendingMissions")}
             </div>
         );
     }
@@ -63,7 +65,7 @@ export function QuestList({ quests, isLoading = false }: QuestListProps) {
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs text-primary/60 uppercase tracking-widest font-rajdhani">
-                                Quête {index + 1}
+                                {t("game.questList.questLabel", { index: index + 1 })}
                             </span>
                             <span className={`text-xs px-2 py-1 rounded-full font-rajdhani ${
                                 quest.duration === 'short'
@@ -72,7 +74,11 @@ export function QuestList({ quests, isLoading = false }: QuestListProps) {
                                     ? 'bg-yellow-500/20 text-yellow-400'
                                     : 'bg-red-500/20 text-red-400'
                             }`}>
-                                {quest.duration === 'short' ? 'Court' : quest.duration === 'medium' ? 'Moyen' : 'Long'}
+                                {quest.duration === "short"
+                                    ? t("game.questList.durationShort")
+                                    : quest.duration === "medium"
+                                    ? t("game.questList.durationMedium")
+                                    : t("game.questList.durationLong")}
                             </span>
                         </div>
                         {quest.location && (
@@ -81,7 +87,7 @@ export function QuestList({ quests, isLoading = false }: QuestListProps) {
                             </div>
                         )}
                         <div className="text-xs text-muted-foreground font-rajdhani tracking-wide">
-                            {quest.completed ? 'Accomplie' : 'En cours'}
+                            {quest.completed ? t("game.questList.completed") : t("game.questList.inProgress")}
                         </div>
                     </div>
                 </div>

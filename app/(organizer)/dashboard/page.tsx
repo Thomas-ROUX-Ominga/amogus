@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Shield, Activity } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { LiveDashboard } from "@/components/admin/LiveDashboard";
 
 interface DashboardPageProps {
@@ -9,6 +10,8 @@ interface DashboardPageProps {
 }
 
 export default function DashboardPage({ searchParams }: DashboardPageProps) {
+  const t = useTranslations();
+  const gameInputRef = useRef<HTMLInputElement>(null);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(
     searchParams.gameId || null
   );
@@ -24,10 +27,10 @@ export default function DashboardPage({ searchParams }: DashboardPageProps) {
             </div>
             <div>
               <h1 className="text-xl font-black uppercase tracking-[0.2em] text-primary font-orbitron">
-                Live Dashboard
+                {t("admin.dashboard.title")}
               </h1>
               <p className="text-[10px] text-primary/50 tracking-widest mt-1">
-                Real-time mission control and crew progress tracking
+                {t("admin.dashboard.subtitle")}
               </p>
             </div>
           </div>
@@ -41,15 +44,16 @@ export default function DashboardPage({ searchParams }: DashboardPageProps) {
                 <Activity className="text-primary w-8 h-8" />
               </div>
               <h2 className="text-lg font-bold uppercase tracking-[0.2em] text-primary">
-                Select Game Session
+                {t("admin.dashboard.selectSessionTitle")}
               </h2>
               <p className="text-sm text-primary/70">
-                Enter a game code to monitor live progress and crew statistics
+                {t("admin.dashboard.selectSessionDescription")}
               </p>
               <div className="max-w-md mx-auto">
                 <input
+                  ref={gameInputRef}
                   type="text"
-                  placeholder="Enter game code (e.g., ABC123)"
+                  placeholder={t("admin.dashboard.selectSessionPlaceholder")}
                   className="w-full px-4 py-3 bg-black/50 border border-primary/30 text-primary placeholder:text-primary/30 font-mono text-sm focus:outline-none focus:border-primary/50 transition-colors"
                   onKeyPress={(e) => {
                     if (e.key === "Enter") {
@@ -62,17 +66,14 @@ export default function DashboardPage({ searchParams }: DashboardPageProps) {
                 />
                 <button
                   onClick={() => {
-                    const input = document.querySelector(
-                      "input[placeholder='Enter game code (e.g., ABC123)']"
-                    ) as HTMLInputElement;
-                    const value = input?.value.trim();
+                    const value = gameInputRef.current?.value.trim();
                     if (value) {
                       setSelectedGameId(value);
                     }
                   }}
                   className="w-full mt-3 px-4 py-3 bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50 transition-all font-mono text-sm uppercase tracking-widest"
                 >
-                  Monitor Game
+                  {t("admin.dashboard.monitorGame")}
                 </button>
               </div>
             </div>

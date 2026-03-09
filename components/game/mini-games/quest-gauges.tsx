@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent } from "react";
+import { useTranslations } from "next-intl";
 import { QuestDuration } from "@/types/quest";
 import {
     GAUGE_ALIGNMENT_TOLERANCE_PERCENT,
@@ -49,6 +50,7 @@ interface QuestGaugesProps {
 }
 
 export function QuestGauges({ duration, onSuccess, onError }: QuestGaugesProps) {
+    const t = useTranslations();
     // No failure state for this mini-game.
     void onError;
 
@@ -120,10 +122,13 @@ export function QuestGauges({ duration, onSuccess, onError }: QuestGaugesProps) 
         <div className="space-y-4">
             <div className="text-center space-y-1">
                 <p className="font-rajdhani text-sm uppercase tracking-[0.2em] text-primary/70">
-                    Alignez les curseurs sur chaque trait
+                    {t("game.miniGames.gaugesInstruction")}
                 </p>
                 <p className="font-rajdhani text-xs text-foreground/70" aria-live="polite">
-                    Jauges alignées : {alignedCount}/{gauges.length}
+                    {t("game.miniGames.gaugesAligned", {
+                        aligned: alignedCount,
+                        total: gauges.length,
+                    })}
                 </p>
             </div>
 

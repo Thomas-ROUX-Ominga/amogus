@@ -5,6 +5,7 @@ import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { useParams } from "next/navigation";
 import { useGameStore } from "@/lib/store/game-store";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocale, useTranslations } from "next-intl";
 import { ErrorView } from "@/components/game/error-view";
 import { PlayerList } from "@/components/admin/player-list";
 import { ProgressBar } from "@/components/admin/progress-bar";
@@ -13,13 +14,22 @@ import { RefreshButton } from "@/components/admin/refresh-button";
 import { AdminErrorBoundary } from "@/components/admin/error-boundary";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 export default function AdminTrackerPage() {
+    const t = useTranslations();
+    const locale = useLocale();
     const { id } = useParams();
     const { gameState, isLoading, error, errorCode, fetchGame } = useGameStore();
     const { authState } = useAuth();
     const userId = authState.session?.userId;
     const [lastSyncTime] = useState<number | null>(null);
+
+    const statusLabelMap: Record<string, string> = {
+        LOBBY: t("common.status.lobby"),
+        IN_PROGRESS: t("common.status.inProgress"),
+        FINISHED: t("common.status.finished"),
+    };
 
     useEffect(() => {
         if (id) {
@@ -32,7 +42,7 @@ export default function AdminTrackerPage() {
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <div className="max-w-2xl w-full border-2 border-primary/20 p-12 space-y-6 bg-black/50 backdrop-blur-sm animate-pulse">
                     <div className="text-primary text-center tracking-[0.2em] uppercase text-sm font-orbitron">
-                        Establishing Admin Uplink...
+                        {t("admin.tracker.loadingUplink")}
                     </div>
                 </div>
             </main>
@@ -43,8 +53,16 @@ export default function AdminTrackerPage() {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <ErrorView
-                    title={errorCode === ERROR_CODES.GAME_NOT_FOUND ? "SESSION DECOMMISSIONED" : "ADMIN SIGNAL INTERRUPTED"}
-                    message={error}
+                    title={
+                        errorCode === ERROR_CODES.GAME_NOT_FOUND
+                            ? t("game.lobby.sessionDecommissioned")
+                            : t("admin.tracker.adminSignalInterrupted")
+                    }
+                    message={getLocalizedErrorMessage({
+                        t,
+                        code: errorCode || undefined,
+                        fallback: error,
+                    })}
                     code={errorCode || "ERR_ADMIN_SIG"}
                     onRetry={() => {
                         if (id) fetchGame(id as string);
@@ -59,8 +77,8 @@ export default function AdminTrackerPage() {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <ErrorView
-                    title="ACCESS DENIED"
-                    message="Only the game organizer can access the admin tracker."
+                    title={t("admin.tracker.accessDenied")}
+                    message={t("admin.tracker.accessDeniedMessage")}
                     code="ERR_ADMIN_ACCESS"
                     onRetry={() => {
                         window.location.href = `/game/${id}`;
@@ -75,7 +93,7 @@ export default function AdminTrackerPage() {
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <div className="max-w-2xl w-full border-2 border-destructive/20 p-12 space-y-6 bg-black/50 backdrop-blur-sm">
                     <div className="text-destructive text-center tracking-[0.2em] uppercase text-sm font-orbitron">
-                        Game Data Not Found
+                        {t("admin.tracker.gameDataNotFound")}
                     </div>
                 </div>
             </main>
@@ -95,14 +113,14 @@ export default function AdminTrackerPage() {
                                 className="p-2 border border-primary/20 hover:border-primary/40 transition-colors flex items-center gap-2 text-primary/80 hover:text-primary"
                             >
                                 <ArrowLeft className="w-4 h-4" />
-                                <span className="text-xs uppercase tracking-widest">Return</span>
+                                <span className="text-xs uppercase tracking-widest">{t("admin.tracker.return")}</span>
                             </Link>
                             <div>
                                 <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
-                                    Admin Tracker
+                                    {t("admin.tracker.title")}
                                 </h1>
                                 <div className="text-[10px] text-primary/50 tracking-widest mt-1">
-                                    GAME: {gameState.id}
+                                    {t("admin.tracker.gameLabel", { gameId: gameState.id })}
                                 </div>
                             </div>
                         </div>
@@ -114,13 +132,13 @@ export default function AdminTrackerPage() {
                                 'bg-red-500'
                             }`} />
                             <span className="text-[10px] text-primary/80 tracking-widest">
-                                {gameState.status}
+                                {statusLabelMap[gameState.status] || gameState.status}
                             </span>
                         </div>
                     </div>
                     {lastSyncTime && (
                         <div className="text-[8px] text-primary/40 tracking-widest text-right">
-                            Dernière synchro: {new Date(lastSyncTime).toLocaleTimeString('fr-FR', {
+                            {t("admin.dashboard.refresh")}: {new Date(lastSyncTime).toLocaleTimeString(locale, {
                                 hour: '2-digit',
                                 minute: '2-digit',
                                 second: '2-digit'
@@ -146,10 +164,10 @@ export default function AdminTrackerPage() {
                 {/* Footer */}
                 <div className="border-t border-primary/10 pt-4 flex justify-between items-center opacity-40">
                     <div className="text-[8px] text-muted-foreground uppercase tracking-widest">
-                        ADMIN_TERMINAL_v1.0
+                        {t("admin.tracker.footerTerminal")}
                     </div>
                     <div className="text-[8px] text-muted-foreground uppercase tracking-widest">
-                        SEC_ENC: AES-256-BMAD
+                        {t("admin.tracker.footerEncryption")}
                     </div>
                 </div>
             </div>

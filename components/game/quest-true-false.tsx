@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Check, X } from "lucide-react";
 import { QuestGame } from "@/types/quest";
 import { useQuestAnswer } from "@/hooks/use-quest-answer";
+import { useTranslations } from "next-intl";
 
 interface QuestTrueFalseProps {
     quest: Extract<QuestGame, { type: "true-false" }>;
@@ -12,6 +13,7 @@ interface QuestTrueFalseProps {
 }
 
 export function QuestTrueFalse({ quest, onSuccess, onError }: QuestTrueFalseProps) {
+    const t = useTranslations();
     const prefersReducedMotion = useReducedMotion();
     const { selectedValue, isCorrect, answered, failed, handleAnswer, handleRetry } = useQuestAnswer(
         quest,
@@ -49,7 +51,7 @@ export function QuestTrueFalse({ quest, onSuccess, onError }: QuestTrueFalseProp
     };
 
     return (
-        <div className="space-y-4" role="group" aria-label="Réponse Vrai ou Faux">
+        <div className="space-y-4" role="group" aria-label={t("game.questWidgets.trueFalseAria")}>
             {quest.data.choices.map((option) => (
                 <motion.button
                     key={option.id}
@@ -58,7 +60,7 @@ export function QuestTrueFalse({ quest, onSuccess, onError }: QuestTrueFalseProp
                     className={getButtonStyle(option.id)}
                     onClick={() => handleAnswer(option.id)}
                     disabled={answered || failed}
-                    aria-label={`Répondre ${option.label}`}
+                    aria-label={t("game.questWidgets.answerOptionAria", { label: option.label })}
                     tabIndex={0}
                 >
                     {option.id === "true" ? (
@@ -74,9 +76,9 @@ export function QuestTrueFalse({ quest, onSuccess, onError }: QuestTrueFalseProp
                 <button
                     onClick={handleRetry}
                     className="w-full min-h-[44px] flex items-center justify-center border border-primary/20 bg-black/30 text-foreground/70 font-rajdhani text-sm uppercase tracking-widest hover:bg-primary/10 transition-colors touch-manipulation"
-                    aria-label="Réessayer la question"
+                    aria-label={t("game.questWidgets.retryAria")}
                 >
-                    Réessayer
+                    {t("common.actions.retry")}
                 </button>
             )}
         </div>

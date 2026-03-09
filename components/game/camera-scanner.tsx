@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Camera, AlertCircle, Loader2 } from "lucide-react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import { useTranslations } from "next-intl";
 import { EliminatedScreen } from "@/components/game/eliminated-screen";
 
 export interface CameraScannerProps {
@@ -15,6 +16,7 @@ export interface CameraScannerProps {
 }
 
 export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = false, playerRole }: CameraScannerProps) {
+    const t = useTranslations();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
@@ -155,18 +157,18 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
         const message = (err as { message?: string }).message || '';
 
         if (name === 'NotAllowedError' || message.includes('Permission denied')) {
-            return "Camera access denied. Please enable camera permissions in your browser settings.";
+            return t("game.scanner.errors.accessDenied");
         }
         if (name === 'NotFoundError' || message.includes('No camera')) {
-            return "No camera found. Please ensure your device has a working rear camera.";
+            return t("game.scanner.errors.noCamera");
         }
         if (name === 'NotSupportedError' || message.includes('not supported')) {
-            return "Secure context (HTTPS) required for camera access, or browser not supported.";
+            return t("game.scanner.errors.notSupported");
         }
         if (name === 'NotReadableError' || message.includes('already in use')) {
-            return "Camera is locked by another app. Please close other camera apps and retry.";
+            return t("game.scanner.errors.locked");
         }
-        return "Failed to access camera. Please check your settings and try again.";
+        return t("game.scanner.errors.generic");
     };
 
     const handleRetry = () => {
@@ -189,13 +191,13 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                             <div className="flex items-center gap-3">
                                 <Camera className="w-6 h-6 text-primary" />
                                 <h2 className="text-lg font-bold text-primary font-orbitron tracking-wider">
-                                    QR SCANNER
+                                    {t("game.scanner.title")}
                                 </h2>
                             </div>
                             <button
                                 onClick={onClose}
                                 className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors"
-                                aria-label="Close scanner"
+                                aria-label={t("game.scanner.closeScannerAria")}
                             >
                                 <X className="w-5 h-5 text-primary" />
                             </button>
@@ -213,10 +215,10 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                                 <div className="absolute inset-0 bg-blue-500/10 backdrop-blur-sm border border-blue-500/30 rounded-lg p-4 m-4">
                                     <div className="text-center space-y-2">
                                         <h3 className="text-sm font-bold text-blue-400 font-orbitron uppercase tracking-wider">
-                                            Ghost Mode Active
+                                            {t("game.scanner.ghostModeTitle")}
                                         </h3>
                                         <p className="text-xs text-blue-300 font-rajdhani">
-                                            You can continue scanning QR codes to complete your remaining quests.
+                                            {t("game.scanner.ghostModeDescription")}
                                         </p>
                                     </div>
                                 </div>
@@ -228,7 +230,7 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                                     <div
                                         id={scannerRegionId}
                                         className="w-full h-full rounded-lg overflow-hidden bg-black [&_video]:object-cover [&_video]:w-full [&_video]:h-full"
-                                        aria-label="Camera view for QR code scanning"
+                                        aria-label={t("game.scanner.cameraViewAria")}
                                         role="img"
                                     />
                                     {/* Scanning overlay frame */}
@@ -249,7 +251,7 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                                     <div className="text-center space-y-4">
                                         <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
                                         <p className="text-primary font-rajdhani tracking-wider">
-                                            Initializing camera...
+                                            {t("game.scanner.initializingCamera")}
                                         </p>
                                     </div>
                                 </div>
@@ -261,7 +263,7 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                                         <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
                                         <div>
                                             <h3 className="text-lg font-bold text-destructive font-orbitron mb-2">
-                                                Camera Error
+                                                {t("game.scanner.cameraErrorTitle")}
                                             </h3>
                                             <p className="text-sm text-muted-foreground font-rajdhani">
                                                 {error}
@@ -271,7 +273,7 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                                             onClick={handleRetry}
                                             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-orbitron tracking-wider hover:bg-primary/80 transition-colors"
                                         >
-                                            Retry
+                                            {t("game.scanner.retry")}
                                         </button>
                                     </div>
                                 </div>
@@ -281,7 +283,7 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                         {/* Instructions */}
                         <div className="p-4 bg-black/50 text-center">
                             <p className="text-sm text-primary/80 font-rajdhani tracking-wider">
-                                Position QR code within the frame to scan
+                                {t("game.scanner.instruction")}
                             </p>
                         </div>
                     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { Player } from "@/types/game";
+import { useLocale, useTranslations } from "next-intl";
 import { PlayerQuestProgress } from "./player-quest-progress";
 
 interface PlayerListProps {
@@ -9,15 +10,22 @@ interface PlayerListProps {
 }
 
 export function PlayerList({ players, currentUserId }: PlayerListProps) {
+    const t = useTranslations();
+    const locale = useLocale();
+    const roleLabelMap: Record<string, string> = {
+        CREWMATE: t("game.roleBadge.crewmate"),
+        IMPOSTOR: t("game.roleBadge.impostor"),
+        ADMIN: t("game.roleBadge.admin"),
+    };
 
     return (
         <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgba(var(--primary),0.05)]">
             <div className="flex items-center justify-between border-b border-primary/20 pb-4 mb-6">
                 <h2 className="text-lg font-bold uppercase tracking-[0.2em] text-primary font-orbitron">
-                    Crew Manifest
+                    {t("admin.playerList.title")}
                 </h2>
                 <div className="text-[10px] text-primary/50 tracking-widest">
-                    {players.length} MEMBERS
+                    {t("admin.playerList.members", { count: players.length })}
                 </div>
             </div>
 
@@ -39,12 +47,12 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
                                     <div>
                                         <div className="font-bold text-sm">{player.name}</div>
                                         <div className="text-[8px] opacity-50 mt-1">
-                                            {player.role || 'NO_ROLE'} • {player.isAlive ? 'ACTIVE' : 'ELIMINATED'}
+                                            {player.role ? roleLabelMap[player.role] || player.role : t("admin.playerList.noRole")} • {player.isAlive ? t("admin.playerList.active") : t("admin.playerList.eliminated")}
                                         </div>
                                     </div>
                                     {isCurrentUser && (
                                         <span className="text-[8px] opacity-50 px-2 py-0.5 border border-primary/50">
-                                            YOU
+                                            {t("admin.playerList.you")}
                                         </span>
                                     )}
                                 </div>
@@ -53,6 +61,7 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
                                     <PlayerQuestProgress 
                                         player={player} 
                                         isCurrentUser={isCurrentUser}
+                                        locale={locale}
                                     />
                                 </div>
                             </div>
@@ -63,7 +72,7 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
 
             {players.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground/50 text-xs tracking-widest uppercase">
-                    No crew members detected
+                    {t("admin.playerList.noCrew")}
                 </div>
             )}
         </div>

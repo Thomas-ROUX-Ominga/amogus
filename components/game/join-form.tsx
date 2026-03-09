@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useGameStore } from "@/lib/store/game-store";
 import { UserPlus, Terminal } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/use-auth";
+import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 interface JoinFormProps {
     gameId: string;
@@ -11,9 +13,10 @@ interface JoinFormProps {
 }
 
 export function JoinForm({ gameId, userId }: JoinFormProps) {
+    const t = useTranslations();
     const [pseudo, setPseudo] = useState("");
     const [isSuccess, setIsSuccess] = useState(false);
-    const { join, isJoining, error } = useGameStore();
+    const { join, isJoining, error, errorCode } = useGameStore();
     const { setAnonymousSession } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -39,11 +42,10 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
                 </div>
                 <div className="space-y-2">
                     <h2 className="text-2xl font-black uppercase tracking-[0.2em] text-primary font-orbitron">
-                        Identify Yourself
+                        {t("game.join.identifyYourself")}
                     </h2>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest leading-relaxed px-4">
-                        Access to the cockpit requires a valid crew signature.
-                        Enter your alias to establish the uplink.
+                        {t("game.join.subtitle")}
                     </p>
                 </div>
             </div>
@@ -55,7 +57,7 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
                         type="text"
                         value={pseudo}
                         onChange={(e) => setPseudo(e.target.value.slice(0, 20))}
-                        placeholder="ENTER PSEUDO..."
+                        placeholder={t("game.join.placeholder")}
                         autoFocus
                         className="relative w-full bg-black/80 border border-primary/30 p-4 font-mono text-center text-xl tracking-widest text-foreground placeholder:text-primary/20 focus:outline-none focus:border-primary transition-all rounded-sm uppercase"
                     />
@@ -63,7 +65,7 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
 
                 {error && (
                     <div className="bg-destructive/10 border border-destructive/20 p-3 text-[10px] text-destructive uppercase tracking-widest text-center animate-shake">
-                        [ERROR] {error}
+                        [ERROR] {getLocalizedErrorMessage({ t, code: errorCode, fallback: error })}
                     </div>
                 )}
 
@@ -74,7 +76,7 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
                 >
                     <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                     <span className="relative flex items-center gap-2 tracking-[0.3em] uppercase text-sm">
-                        {isJoining || isSuccess ? "ESTABLISHING..." : "REJOINDRE"}
+                        {isJoining || isSuccess ? t("game.join.establishing") : t("game.join.join")}
                         {!(isJoining || isSuccess) && <UserPlus size={18} />}
                     </span>
                 </button>
@@ -82,10 +84,10 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
 
             <div className="pt-8 border-t border-primary/10 flex justify-between items-center opacity-30">
                 <div className="text-[8px] font-mono tracking-tighter uppercase">
-                    Auth_Type: ZERO_ACCOUNT
+                    {t("game.join.authType")}
                 </div>
                 <div className="text-[8px] font-mono tracking-tighter uppercase">
-                    Sec_Level: ENCRYPTED
+                    {t("game.join.securityLevel")}
                 </div>
             </div>
         </div>

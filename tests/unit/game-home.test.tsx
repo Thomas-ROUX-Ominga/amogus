@@ -74,14 +74,14 @@ describe("GameHome", () => {
         } as unknown as ReturnType<typeof useGameStore>);
     });
 
-    it("should render Game Cockpit title", () => {
+    it("should render cockpit title", () => {
         render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
-        expect(screen.getByText("Game Cockpit")).toBeTruthy();
+        expect(screen.getByText("Cockpit de partie")).toBeTruthy();
     });
 
-    it("should render ACTIVE status indicator", () => {
+    it("should render active status indicator", () => {
         render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
-        expect(screen.getByText("ACTIVE")).toBeTruthy();
+        expect(screen.getByText("ACTIF")).toBeTruthy();
     });
 
     it("should render role badge for Crewmate", () => {
@@ -105,9 +105,9 @@ describe("GameHome", () => {
         expect(screen.getByText(/Joueurs connectés \(2\)/)).toBeTruthy();
     });
 
-    it("should highlight current player with YOU badge", () => {
+    it("should highlight current player with VOUS badge", () => {
         render(<GameHome gameState={hostGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
-        expect(screen.getByText("YOU")).toBeTruthy();
+        expect(screen.getByText("VOUS")).toBeTruthy();
     });
 
     it("should render SCAN button", () => {
@@ -150,13 +150,13 @@ describe("GameHome", () => {
 
     it("should render footer with role info", () => {
         render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
-        expect(screen.getByText("Role: CREWMATE")).toBeTruthy();
-        expect(screen.getByText("Status: READY")).toBeTruthy();
+        expect(screen.getByText("Rôle: CREWMATE")).toBeTruthy();
+        expect(screen.getByText("Statut: PRÊT")).toBeTruthy();
     });
 
     it("should render screen reader text for game status", () => {
         render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
-        expect(screen.getByText("Game is active")).toBeTruthy();
+        expect(screen.getByText("La partie est active")).toBeTruthy();
     });
 
     it("should hide SCAN button for Crewmate when all quests are completed", () => {
@@ -198,7 +198,7 @@ describe("GameHome", () => {
     it("should show 'ELIMINÉ' status in footer when player is dead", () => {
         const deadPlayer: Player = { ...crewmatePlayer, isAlive: false };
         render(<GameHome gameState={mockGameState} currentPlayer={deadPlayer} userId="user-1" />);
-        expect(screen.getByText("Status: ELIMINÉ")).toBeTruthy();
+        expect(screen.getByText("Statut: ÉLIMINÉ")).toBeTruthy();
     });
 
     it("should not show 'MORT' overlay if already dismissed in sessionStorage", () => {
@@ -216,7 +216,7 @@ describe("GameHome", () => {
         render(<GameHome gameState={mockGameState} currentPlayer={deadPlayer} userId="user-1" />);
         
         // Overlay should not be visible, but cockpit should be
-        expect(screen.getByText("Game Cockpit")).toBeTruthy();
+        expect(screen.getByText("Cockpit de partie")).toBeTruthy();
         expect(screen.queryByText("Continuer")).toBeNull();
         
         vi.unstubAllGlobals();

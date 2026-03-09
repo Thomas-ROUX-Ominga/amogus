@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
     Bird,
     Bug,
@@ -74,6 +75,7 @@ interface QuestMemoryProps {
 }
 
 export function QuestMemory({ duration, onSuccess, onError }: QuestMemoryProps) {
+    const t = useTranslations();
     // Memory has no failure state.
     void onError;
 
@@ -162,10 +164,13 @@ export function QuestMemory({ duration, onSuccess, onError }: QuestMemoryProps) 
         <div className="space-y-4">
             <div className="text-center space-y-1">
                 <p className="font-rajdhani text-sm uppercase tracking-[0.2em] text-primary/70">
-                    Trouvez les paires d&apos;icônes
+                    {t("game.miniGames.memoryInstruction")}
                 </p>
                 <p className="font-rajdhani text-xs text-foreground/70" aria-live="polite">
-                    Paires trouvées : {matchedPairsCount}/{pairCount}
+                    {t("game.miniGames.memoryPairsFound", {
+                        found: matchedPairsCount,
+                        total: pairCount,
+                    })}
                 </p>
             </div>
 
@@ -185,7 +190,7 @@ export function QuestMemory({ duration, onSuccess, onError }: QuestMemoryProps) 
                                 data-testid={`memory-card-${index}`}
                                 data-icon-key={card.iconKey}
                                 data-state={card.isMatched ? "matched" : isRevealed ? "flipped" : "hidden"}
-                                aria-label={`Carte ${index + 1}`}
+                                aria-label={t("game.miniGames.memoryCardAria", { index: index + 1 })}
                                 aria-pressed={isRevealed}
                                 disabled={isLocked || card.isMatched}
                                 className={`aspect-square min-h-[44px] rounded-sm border transition-all ${

@@ -3,15 +3,16 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { Scan } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 interface ScanButtonProps {
     disabled?: boolean;
     onClick?: () => void;
     href?: string;
-    gameId?: string; // Added for camera scanner integration
 }
 
-export function ScanButton({ disabled = true, onClick, href, gameId }: ScanButtonProps) {
+export function ScanButton({ disabled = true, onClick, href }: ScanButtonProps) {
+    const t = useTranslations();
     const prefersReducedMotion = useReducedMotion();
 
     const handlePress = () => {
@@ -60,11 +61,11 @@ export function ScanButton({ disabled = true, onClick, href, gameId }: ScanButto
         <>
             <Scan className="w-10 h-10 text-primary" />
             <span className="text-xl font-black text-primary tracking-[0.3em]">
-                SCANNER
+                {t("game.scanButton.label")}
             </span>
             {disabled && (
                 <span className="text-xs text-primary/60 font-rajdhani tracking-widest">
-                    Bientôt disponible
+                    {t("game.scanButton.comingSoon")}
                 </span>
             )}
         </>
@@ -88,7 +89,7 @@ export function ScanButton({ disabled = true, onClick, href, gameId }: ScanButto
             <Link
                 href={href}
                 onClick={handlePress}
-                aria-label="Scanner"
+                aria-label={t("game.scanButton.scannerAria")}
                 className={className}
             >
                 {content}
@@ -103,7 +104,11 @@ export function ScanButton({ disabled = true, onClick, href, gameId }: ScanButto
             onClick={handlePress}
             onKeyDown={handleKeyDown}
             disabled={disabled}
-            aria-label={disabled ? "Scanner — Bientôt disponible" : "Scanner"}
+            aria-label={
+                disabled
+                    ? t("game.scanButton.scannerComingSoonAria")
+                    : t("game.scanButton.scannerAria")
+            }
             style={{ willChange: prefersReducedMotion ? "auto" : "transform" }}
             className={className}
         >

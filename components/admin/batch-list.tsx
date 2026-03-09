@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { Trash2, List, Calendar, AlertTriangle, Settings } from "lucide-react";
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 import { getAllBatches, deleteBatch } from "@/lib/redis/batch-actions";
+import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 import { BatchListItem } from "@/types/quest";
 
 interface BatchListProps {
@@ -12,6 +14,8 @@ interface BatchListProps {
 }
 
 export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
+  const t = useTranslations();
+  const locale = useLocale();
   const [batches, setBatches] = useState<BatchListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -26,13 +30,24 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
       const result = await getAllBatches();
       
       if (!result.success) {
-        setError(result.error || "Failed to load batches");
+        setError(
+          getLocalizedErrorMessage({
+            t,
+            code: result.code,
+            fallback: result.error,
+          }),
+        );
         return;
       }
 
       setBatches(result.data || []);
     } catch {
-      setError("An unexpected error occurred");
+      setError(
+        getLocalizedErrorMessage({
+          t,
+          code: "ERR_SIGNAL_LOST",
+        }),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -46,7 +61,13 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
       const result = await deleteBatch(batchId);
       
       if (!result.success) {
-        setError(result.error || "Failed to delete batch");
+        setError(
+          getLocalizedErrorMessage({
+            t,
+            code: result.code,
+            fallback: result.error,
+          }),
+        );
         return;
       }
 
@@ -55,7 +76,12 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
       onBatchDeleted?.();
       setConfirmDeleteId(null);
     } catch {
-      setError("An unexpected error occurred");
+      setError(
+        getLocalizedErrorMessage({
+          t,
+          code: "ERR_SIGNAL_LOST",
+        }),
+      );
     } finally {
       setDeletingId(null);
     }
@@ -66,13 +92,13 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
   }, [refreshTrigger]);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
+    return new Date(dateString).toLocaleString(locale, {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
     });
   };
 
@@ -81,7 +107,7 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
       <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
         <div className="flex items-center justify-center py-8">
           <div className="text-[10px] text-primary uppercase tracking-widest animate-pulse">
-            LOADING BATCHES...
+            {t("admin.batches.loadingList")}
           </div>
         </div>
       </div>
@@ -99,7 +125,7 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
             onClick={loadBatches}
             className="mt-4 text-[8px] text-primary uppercase tracking-widest hover:text-primary/80"
           >
-            RETRY
+            {t("common.actions.retry")}
           </button>
         </div>
       </div>
@@ -112,10 +138,10 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
         <div className="text-center py-8">
           <List className="text-primary/30 w-12 h-12 mx-auto mb-4" />
           <h3 className="text-lg font-bold uppercase tracking-wider text-primary mb-2">
-            No Batches Found
+            {t("admin.batches.noBatchesFound")}
           </h3>
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
-            Create your first batch to get started
+            {t("admin.batches.noBatchesDescription")}
           </p>
         </div>
       </div>
@@ -125,7 +151,7 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
   return (
     <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
       <h3 className="text-lg font-bold uppercase tracking-wider text-primary mb-6">
-        Batch Inventory
+        {t("admin.batches.inventoryTitle")}
       </h3>
       
       <div className="space-y-3">
@@ -148,7 +174,7 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
                     {formatDate(batch.createdAt)}
                   </div>
                   <div className="text-[8px] text-muted-foreground uppercase tracking-widest">
-                    {batch.questCount} QUESTS
+                    {t("admin.batchDetail.questsCount", { count: batch.questCount })}
                   </div>
                 </div>
               </div>
@@ -158,7 +184,7 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
               <Link
                 href={`/batches/${batch.id}`}
                 className="p-2 text-primary hover:text-primary/80 hover:bg-primary/10 border border-primary/30 hover:border-primary/50 transition-all"
-                title="Manage batch"
+                title={t("admin.batches.manageBatch")}
               >
                 <Settings size={16} />
               </Link>
@@ -167,7 +193,7 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
                 onClick={() => setConfirmDeleteId(batch.id)}
                 disabled={deletingId === batch.id}
                 className="p-2 text-destructive hover:text-destructive/80 hover:bg-destructive/10 border border-destructive/30 hover:border-destructive/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Delete batch"
+                title={t("admin.batches.deleteBatch")}
               >
                 <Trash2 size={16} />
               </button>
@@ -184,11 +210,13 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
               <div className="flex items-center gap-2 text-destructive mb-2">
                 <AlertTriangle size={18} />
                 <h2 className="text-lg font-black uppercase tracking-[0.2em] font-orbitron">
-                  Confirm Deletion
+                  {t("admin.batches.confirmDeletion")}
                 </h2>
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest leading-relaxed">
-                This action cannot be undone. All quests in BATCH-{confirmDeleteId.slice(-8).toUpperCase()} will be permanently purged.
+                {t("admin.batches.confirmDeletionMessage", {
+                  batchCode: `BATCH-${confirmDeleteId.slice(-8).toUpperCase()}`,
+                })}
               </p>
             </div>
 
@@ -197,7 +225,7 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
                 onClick={() => setConfirmDeleteId(null)}
                 className="flex-1 bg-black/80 border border-primary/30 hover:border-primary/50 text-primary font-black py-3 rounded-sm transition-all text-xs tracking-widest"
               >
-                ABORT
+                {t("common.actions.abort")}
               </button>
               <button
                 onClick={() => handleDelete(confirmDeleteId)}
@@ -206,7 +234,9 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
               >
                 <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                 <span className="relative">
-                  {deletingId === confirmDeleteId ? "PURGING..." : "CONFIRM PURGE"}
+                  {deletingId === confirmDeleteId
+                    ? t("admin.batches.purgeInProgress")
+                    : t("admin.batches.confirmPurge")}
                 </span>
               </button>
             </div>
@@ -216,8 +246,12 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
       
       <div className="mt-6 pt-4 border-t border-primary/10">
         <div className="flex justify-between items-center text-[8px] text-muted-foreground uppercase tracking-widest">
-          <span>TOTAL BATCHES: {batches.length}</span>
-          <span>TOTAL QUESTS: {batches.reduce((sum, batch) => sum + batch.questCount, 0)}</span>
+          <span>{t("admin.batches.totalBatches", { count: batches.length })}</span>
+          <span>
+            {t("admin.batches.totalQuests", {
+              count: batches.reduce((sum, batch) => sum + batch.questCount, 0),
+            })}
+          </span>
         </div>
       </div>
     </div>

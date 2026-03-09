@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslations } from "next-intl";
 
 interface FailedOverlayProps {
   onAutoExit?: () => void;
@@ -14,6 +15,7 @@ export function FailedOverlay({
   reducedMotion = false, 
   duration = 2000
 }: FailedOverlayProps) {
+  const t = useTranslations();
   useEffect(() => {
     // Haptic feedback pattern for failure
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -96,9 +98,9 @@ export function FailedOverlay({
         className="text-center mb-12"
       >
         <h1 className="text-4xl md:text-6xl font-orbitron font-bold tracking-wider text-[#DA3633]">
-          MISSION
+          {t("game.overlays.mission")}
           <br />
-          ÉCHOUÉE
+          {t("game.overlays.failed")}
         </h1>
       </motion.div>
 
