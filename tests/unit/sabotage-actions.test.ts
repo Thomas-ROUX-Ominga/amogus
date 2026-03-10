@@ -22,7 +22,7 @@ vi.mock("@/lib/redis/auth-utils", () => ({
 
 import { redis } from "@/lib/redis/client";
 import { verifyPlayerSession } from "@/lib/redis/auth-utils";
-import { refreshGame, scanSabotage } from "@/lib/redis/actions";
+import { refreshGame, scanSabotage, triggerSabotage } from "@/lib/redis/actions";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { GameState } from "@/types/game";
 
@@ -45,6 +45,7 @@ describe("Sabotage actions", () => {
         ],
         sabotages: {
             communications: { qrId: "comms-qr", location: "Hall" },
+            lights: { qrId: "lights-qr", location: "Electrical" },
             reactor: [
                 { qrId: "reactor-a", location: "Garage" },
                 { qrId: "reactor-b", location: "Kitchen" },
@@ -55,6 +56,7 @@ describe("Sabotage actions", () => {
             reactor: null,
             cooldowns: {
                 communicationsAvailableAt: 0,
+                lightsAvailableAt: 0,
                 reactorAvailableAt: 0,
             },
         },
@@ -74,15 +76,24 @@ describe("Sabotage actions", () => {
         expect(result.data?.handled).toBe(false);
     });
 
-    it("allows alive impostor to activate communications sabotage", async () => {
+    it("allows alive impostor to activate communications sabotage via trigger action", async () => {
         mockAtomicUpdate(baseState);
 
-        const result = await scanSabotage("game-1", "imp-1", "comms-qr");
+        const result = await triggerSabotage("game-1", "imp-1", "COMMUNICATIONS");
 
         expect(result.success).toBe(true);
-        expect(result.data?.handled).toBe(true);
         expect(result.data?.event).toBe("COMMUNICATIONS_ACTIVATED");
         expect(result.data?.gameState?.sabotageState?.active).toBe("COMMUNICATIONS");
+    });
+
+    it("allows alive impostor to activate lights sabotage via trigger action", async () => {
+        mockAtomicUpdate(baseState);
+
+        const result = await triggerSabotage("game-1", "imp-1", "LIGHTS");
+
+        expect(result.success).toBe(true);
+        expect(result.data?.event).toBe("LIGHTS_ACTIVATED");
+        expect(result.data?.gameState?.sabotageState?.active).toBe("LIGHTS");
     });
 
     it("allows alive crewmate to repair communications when active", async () => {
@@ -105,7 +116,7 @@ describe("Sabotage actions", () => {
         ).toBe(true);
     });
 
-    it("prevents activating reactor while another sabotage is active", async () => {
+    it("prevents triggering reactor while another sabotage is active", async () => {
         const state: GameState = {
             ...baseState,
             sabotageState: {
@@ -115,11 +126,10 @@ describe("Sabotage actions", () => {
         };
         mockAtomicUpdate(state);
 
-        const result = await scanSabotage("game-1", "imp-1", "reactor-a");
+        const result = await triggerSabotage("game-1", "imp-1", "REACTOR");
 
         expect(result.success).toBe(false);
         expect(result.code).toBe(ERROR_CODES.ERR_SABOTAGE_ALREADY_ACTIVE);
-        expect(result.data?.handled).toBe(true);
     });
 
     it("prevents same crewmate from validating both reactor QR codes", async () => {

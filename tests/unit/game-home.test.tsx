@@ -191,7 +191,7 @@ describe("GameHome", () => {
             sabotageState: {
                 active: "COMMUNICATIONS",
                 reactor: null,
-                cooldowns: { communicationsAvailableAt: 0, reactorAvailableAt: 0 },
+                cooldowns: { communicationsAvailableAt: 0, lightsAvailableAt: 0, reactorAvailableAt: 0 },
             },
         };
 

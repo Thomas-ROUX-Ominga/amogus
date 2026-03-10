@@ -30,6 +30,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
   );
   const [sabotageLocations, setSabotageLocations] = useState({
     communications: batch.sabotages?.communications.location || "",
+    lights: batch.sabotages?.lights?.location || "",
     reactorA: batch.sabotages?.reactor[0]?.location || "",
     reactorB: batch.sabotages?.reactor[1]?.location || "",
   });
@@ -447,6 +448,24 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
                 value={sabotageLocations.communications}
                 onChange={(e) =>
                   setSabotageLocations((prev) => ({ ...prev, communications: e.target.value }))
+                }
+                placeholder={t("admin.batchDetail.enterLocation")}
+                className="w-full bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
+              />
+            </div>
+
+            <div className="p-4 border border-primary/10 bg-black/30">
+              <div className="text-[10px] text-primary uppercase tracking-widest mb-2">
+                {t("admin.batchDetail.sabotageLights")}
+              </div>
+              <div className="text-[8px] text-muted-foreground uppercase tracking-widest mb-3 font-mono">
+                {batch.sabotages.lights?.qrId || "-"}
+              </div>
+              <input
+                type="text"
+                value={sabotageLocations.lights}
+                onChange={(e) =>
+                  setSabotageLocations((prev) => ({ ...prev, lights: e.target.value }))
                 }
                 placeholder={t("admin.batchDetail.enterLocation")}
                 className="w-full bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"

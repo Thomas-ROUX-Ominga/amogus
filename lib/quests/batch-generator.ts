@@ -81,6 +81,10 @@ export function generateBatch(input: BatchCreateInput): Batch {
       qrId: globalThis.crypto.randomUUID(),
       location: "",
     },
+    lights: {
+      qrId: globalThis.crypto.randomUUID(),
+      location: "",
+    },
     reactor: [
       { qrId: globalThis.crypto.randomUUID(), location: "" },
       { qrId: globalThis.crypto.randomUUID(), location: "" },

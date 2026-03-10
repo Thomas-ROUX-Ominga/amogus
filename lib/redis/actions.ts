@@ -15,7 +15,7 @@ import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { getBatchData } from "./batch-actions";
 import { getTotalQuestGamesCount } from "@/lib/constants/quest-pool";
 import { generateShortCode } from "@/lib/utils/short-code.server";
-import { Quest, BatchSabotages } from "@/types/quest";
+import { Quest, BatchSabotages, SabotageType } from "@/types/quest";
 import { assignQuestsFromBatch } from "@/lib/quests/quest-assignment";
 
 import { verifySession, createPlayerSession, verifyPlayerSession } from "./auth-utils";
@@ -31,6 +31,7 @@ function getDefaultSabotageState(): SabotageState {
         reactor: null,
         cooldowns: {
             communicationsAvailableAt: 0,
+            lightsAvailableAt: 0,
             reactorAvailableAt: 0,
         },
     };
@@ -45,6 +46,7 @@ function getNormalizedSabotageState(state: GameState): SabotageState {
         reactor: current.reactor ?? null,
         cooldowns: {
             communicationsAvailableAt: current.cooldowns?.communicationsAvailableAt ?? 0,
+            lightsAvailableAt: current.cooldowns?.lightsAvailableAt ?? 0,
             reactorAvailableAt: current.cooldowns?.reactorAvailableAt ?? 0,
         },
     };
@@ -306,7 +308,17 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
             }
 
             questsTotal = availableQuests;
-            batchSabotages = batchResponse.data.sabotages;
+            batchSabotages = batchResponse.data.sabotages
+                ? {
+                      ...batchResponse.data.sabotages,
+                      lights: {
+                          qrId:
+                              (batchResponse.data.sabotages as Partial<BatchSabotages>).lights?.qrId ?? "",
+                          location:
+                              (batchResponse.data.sabotages as Partial<BatchSabotages>).lights?.location ?? "",
+                      },
+                  }
+                : undefined;
         }
 
         // Get admin session info to add admin as first player
@@ -648,6 +660,15 @@ export async function completeQuest(
                 return null;
             }
 
+            if (player.role === "CREWMATE" && workingState.sabotageState?.active === "COMMUNICATIONS") {
+                validationError = {
+                    success: false,
+                    error: "Communications sabotage is active. Crewmates cannot complete quests.",
+                    code: ERROR_CODES.ERR_SABOTAGE_COMMUNICATIONS_QUESTS_BLOCKED,
+                };
+                return null;
+            }
+
             // Story 11.3: Game Settings from Batch - Validate quest is in player's assigned quests
             // CRITICAL: If game is from a batch, player MUST have assignedQuests
             if (workingState.batchId) {
@@ -763,12 +784,182 @@ export async function refreshGame(
     }
 }
 
+export interface TriggerSabotageResult {
+    event?: "COMMUNICATIONS_ACTIVATED" | "LIGHTS_ACTIVATED" | "REACTOR_ACTIVATED";
+    reactorProgress?: {
+        scanned: number;
+        total: number;
+        remainingMs: number;
+    };
+    gameState?: GameState;
+}
+
+export async function triggerSabotage(
+    gameId: string,
+    userId: string,
+    type: SabotageType
+): Promise<ActionResponse<TriggerSabotageResult>> {
+    try {
+        const sessionCheck = await verifyPlayerSession(userId, gameId);
+        if (!sessionCheck.success) {
+            return {
+                success: false,
+                error: sessionCheck.error || "Session verification failed",
+                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+            };
+        }
+
+        const stateKey = `game:${gameId}:state`;
+        let validationError: ActionResponse<TriggerSabotageResult> | null = null;
+        let triggerResult: TriggerSabotageResult | null = null;
+        const now = Date.now();
+
+        await redis.atomicUpdate<GameState>(stateKey, (state) => {
+            if (!state) {
+                validationError = {
+                    success: false,
+                    error: "Game session not found.",
+                    code: ERROR_CODES.GAME_NOT_FOUND,
+                };
+                return null;
+            }
+
+            let workingState = resolveMeetingIfExpired(state, now);
+            workingState = resolveSabotageIfExpired(workingState, now);
+
+            if (workingState.status !== "IN_PROGRESS") {
+                validationError = {
+                    success: false,
+                    error: "Cannot trigger sabotage: game is not in progress.",
+                    code: ERROR_CODES.ERR_INVALID_STATE,
+                };
+                return null;
+            }
+
+            const player = workingState.players.find((entry) => entry.id === userId);
+            if (!player) {
+                validationError = {
+                    success: false,
+                    error: "Player not found in game.",
+                    code: ERROR_CODES.ERR_INVALID_SIGNATURE,
+                };
+                return null;
+            }
+
+            if (!player.isAlive || player.role !== "IMPOSTOR") {
+                validationError = {
+                    success: false,
+                    error: "Only alive impostors can trigger sabotage.",
+                    code: ERROR_CODES.ERR_SABOTAGE_FORBIDDEN,
+                };
+                return null;
+            }
+
+            const sabotageState = getNormalizedSabotageState(workingState);
+            if (sabotageState.active) {
+                validationError = {
+                    success: false,
+                    error: "A sabotage is already active.",
+                    code: ERROR_CODES.ERR_SABOTAGE_ALREADY_ACTIVE,
+                };
+                return null;
+            }
+
+            const sabotageConfig = workingState.sabotages;
+            const hasLightsQr = Boolean(
+                (workingState.sabotages as (Partial<BatchSabotages> & { lights?: { qrId: string } }) | undefined)
+                    ?.lights?.qrId
+            );
+            if (!sabotageConfig || (type === "LIGHTS" && !hasLightsQr)) {
+                validationError = {
+                    success: false,
+                    error: "This sabotage is not configured for this game.",
+                    code: ERROR_CODES.ERR_SABOTAGE_FORBIDDEN,
+                };
+                return null;
+            }
+
+            const cooldownMap = {
+                COMMUNICATIONS: sabotageState.cooldowns.communicationsAvailableAt,
+                LIGHTS: sabotageState.cooldowns.lightsAvailableAt,
+                REACTOR: sabotageState.cooldowns.reactorAvailableAt,
+            } as const;
+            if (now < cooldownMap[type]) {
+                validationError = {
+                    success: false,
+                    error: "Sabotage is on cooldown.",
+                    code: ERROR_CODES.ERR_SABOTAGE_COOLDOWN,
+                };
+                return null;
+            }
+
+            const updatedState: GameState =
+                type === "REACTOR"
+                    ? {
+                          ...workingState,
+                          sabotageState: {
+                              ...sabotageState,
+                              active: "REACTOR",
+                              reactor: {
+                                  startedAt: now,
+                                  endsAt: now + REACTOR_SABOTAGE_DURATION_MS,
+                                  scannedByQrId: [],
+                                  scannedUserIds: [],
+                              },
+                          },
+                      }
+                    : {
+                          ...workingState,
+                          sabotageState: {
+                              ...sabotageState,
+                              active: type,
+                              reactor: null,
+                          },
+                      };
+
+            triggerResult = {
+                event:
+                    type === "COMMUNICATIONS"
+                        ? "COMMUNICATIONS_ACTIVATED"
+                        : type === "LIGHTS"
+                        ? "LIGHTS_ACTIVATED"
+                        : "REACTOR_ACTIVATED",
+                reactorProgress:
+                    type === "REACTOR"
+                        ? {
+                              scanned: 0,
+                              total: 2,
+                              remainingMs: REACTOR_SABOTAGE_DURATION_MS,
+                          }
+                        : undefined,
+                gameState: updatedState,
+            };
+            return updatedState;
+        }, GAME_TTL_SECONDS);
+
+        if (validationError) {
+            return validationError;
+        }
+
+        return {
+            success: true,
+            data: triggerResult ?? {},
+        };
+    } catch (error) {
+        console.error("Failed to trigger sabotage:", error);
+        return {
+            success: false,
+            error: "Failed to trigger sabotage.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
+}
+
 export interface ScanSabotageResult {
     handled: boolean;
     event?:
-        | "COMMUNICATIONS_ACTIVATED"
         | "COMMUNICATIONS_REPAIRED"
-        | "REACTOR_ACTIVATED"
+        | "LIGHTS_REPAIRED"
         | "REACTOR_PROGRESS"
         | "REACTOR_REPAIRED"
         | "REACTOR_ALREADY_SCANNED"
@@ -816,9 +1007,12 @@ export async function scanSabotage(
 
             const sabotages = workingState.sabotages;
             const isCommsQr = sabotages?.communications.qrId === qrId;
+            const isLightsQr = (
+                workingState.sabotages as (Partial<BatchSabotages> & { lights?: { qrId: string } }) | undefined
+            )?.lights?.qrId === qrId;
             const reactorIndex = sabotages?.reactor.findIndex((entry) => entry.qrId === qrId) ?? -1;
             const isReactorQr = reactorIndex >= 0;
-            const isSabotageQr = isCommsQr || isReactorQr;
+            const isSabotageQr = isCommsQr || isLightsQr || isReactorQr;
 
             if (!isSabotageQr) {
                 validationError = {
@@ -861,218 +1055,139 @@ export async function scanSabotage(
 
             const sabotageState = getNormalizedSabotageState(workingState);
 
-            if (isCommsQr) {
-                if (player.role === "IMPOSTOR") {
-                    if (sabotageState.active) {
-                        validationError = {
-                            success: false,
-                            error: "A sabotage is already active.",
-                            code: ERROR_CODES.ERR_SABOTAGE_ALREADY_ACTIVE,
-                            data: { handled: true },
-                        };
-                        return null;
-                    }
-
-                    if (now < sabotageState.cooldowns.communicationsAvailableAt) {
-                        validationError = {
-                            success: false,
-                            error: "Communications sabotage is on cooldown.",
-                            code: ERROR_CODES.ERR_SABOTAGE_COOLDOWN,
-                            data: { handled: true },
-                        };
-                        return null;
-                    }
-
-                    const updatedState: GameState = {
-                        ...workingState,
-                        sabotageState: {
-                            ...sabotageState,
-                            active: "COMMUNICATIONS",
-                        },
+            if (isCommsQr || isLightsQr) {
+                if (player.role !== "CREWMATE") {
+                    validationError = {
+                        success: false,
+                        error: "Only crewmates can repair this sabotage.",
+                        code: ERROR_CODES.ERR_SABOTAGE_FORBIDDEN,
+                        data: { handled: true },
                     };
-
-                    scanResult = {
-                        handled: true,
-                        event: "COMMUNICATIONS_ACTIVATED",
-                        gameState: updatedState,
-                    };
-                    return updatedState;
+                    return null;
                 }
 
-                if (player.role === "CREWMATE") {
-                    if (sabotageState.active !== "COMMUNICATIONS") {
-                        validationError = {
-                            success: false,
-                            error: "Communications sabotage is not active.",
-                            code: ERROR_CODES.ERR_SABOTAGE_NOT_ACTIVE,
-                            data: { handled: true },
-                        };
-                        return null;
-                    }
-
-                    const updatedState: GameState = {
-                        ...workingState,
-                        sabotageState: {
-                            ...sabotageState,
-                            active: null,
-                            cooldowns: {
-                                ...sabotageState.cooldowns,
-                                communicationsAvailableAt: now + SABOTAGE_COOLDOWN_MS,
-                            },
-                        },
+                const type: SabotageType = isCommsQr ? "COMMUNICATIONS" : "LIGHTS";
+                if (sabotageState.active !== type) {
+                    validationError = {
+                        success: false,
+                        error: `${type} sabotage is not active.`,
+                        code: ERROR_CODES.ERR_SABOTAGE_NOT_ACTIVE,
+                        data: { handled: true },
                     };
-
-                    scanResult = {
-                        handled: true,
-                        event: "COMMUNICATIONS_REPAIRED",
-                        gameState: updatedState,
-                    };
-                    return updatedState;
+                    return null;
                 }
 
-                validationError = {
-                    success: false,
-                    error: "You are not allowed to use communications sabotage.",
-                    code: ERROR_CODES.ERR_SABOTAGE_FORBIDDEN,
-                    data: { handled: true },
+                const updatedState: GameState = {
+                    ...workingState,
+                    sabotageState: {
+                        ...sabotageState,
+                        active: null,
+                        cooldowns: {
+                            ...sabotageState.cooldowns,
+                            communicationsAvailableAt: isCommsQr
+                                ? now + SABOTAGE_COOLDOWN_MS
+                                : sabotageState.cooldowns.communicationsAvailableAt,
+                            lightsAvailableAt: isLightsQr
+                                ? now + SABOTAGE_COOLDOWN_MS
+                                : sabotageState.cooldowns.lightsAvailableAt,
+                        },
+                    },
                 };
-                return null;
+
+                scanResult = {
+                    handled: true,
+                    event: isCommsQr ? "COMMUNICATIONS_REPAIRED" : "LIGHTS_REPAIRED",
+                    gameState: updatedState,
+                };
+                return updatedState;
             }
 
             if (isReactorQr) {
-                if (player.role === "IMPOSTOR") {
-                    if (sabotageState.active) {
-                        validationError = {
-                            success: false,
-                            error: "A sabotage is already active.",
-                            code: ERROR_CODES.ERR_SABOTAGE_ALREADY_ACTIVE,
-                            data: { handled: true },
-                        };
-                        return null;
-                    }
-
-                    if (now < sabotageState.cooldowns.reactorAvailableAt) {
-                        validationError = {
-                            success: false,
-                            error: "Reactor sabotage is on cooldown.",
-                            code: ERROR_CODES.ERR_SABOTAGE_COOLDOWN,
-                            data: { handled: true },
-                        };
-                        return null;
-                    }
-
-                    const updatedState: GameState = {
-                        ...workingState,
-                        sabotageState: {
-                            ...sabotageState,
-                            active: "REACTOR",
-                            reactor: {
-                                startedAt: now,
-                                endsAt: now + REACTOR_SABOTAGE_DURATION_MS,
-                                scannedByQrId: [],
-                                scannedUserIds: [],
-                            },
-                        },
+                if (player.role !== "CREWMATE") {
+                    validationError = {
+                        success: false,
+                        error: "Only crewmates can repair reactor sabotage.",
+                        code: ERROR_CODES.ERR_SABOTAGE_FORBIDDEN,
+                        data: { handled: true },
                     };
-
-                    scanResult = {
-                        handled: true,
-                        event: "REACTOR_ACTIVATED",
-                        reactorProgress: {
-                            scanned: 0,
-                            total: 2,
-                            remainingMs: REACTOR_SABOTAGE_DURATION_MS,
-                        },
-                        gameState: updatedState,
-                    };
-                    return updatedState;
+                    return null;
                 }
 
-                if (player.role === "CREWMATE") {
-                    if (sabotageState.active !== "REACTOR" || !sabotageState.reactor) {
-                        validationError = {
-                            success: false,
-                            error: "Reactor sabotage is not active.",
-                            code: ERROR_CODES.ERR_SABOTAGE_NOT_ACTIVE,
-                            data: { handled: true },
-                        };
-                        return null;
-                    }
-
-                    const currentReactor = sabotageState.reactor as ReactorSabotageState;
-                    if (currentReactor.scannedByQrId.includes(qrId)) {
-                        scanResult = {
-                            handled: true,
-                            event: "REACTOR_ALREADY_SCANNED",
-                            reactorProgress: {
-                                scanned: currentReactor.scannedByQrId.length,
-                                total: 2,
-                                remainingMs: Math.max(0, currentReactor.endsAt - now),
-                            },
-                            gameState: workingState,
-                        };
-                        return workingState;
-                    }
-
-                    if (currentReactor.scannedUserIds.includes(userId)) {
-                        scanResult = {
-                            handled: true,
-                            event: "REACTOR_DISTINCT_CREWMATE_REQUIRED",
-                            reactorProgress: {
-                                scanned: currentReactor.scannedByQrId.length,
-                                total: 2,
-                                remainingMs: Math.max(0, currentReactor.endsAt - now),
-                            },
-                            gameState: workingState,
-                        };
-                        return workingState;
-                    }
-
-                    const scannedByQrId = [...currentReactor.scannedByQrId, qrId];
-                    const scannedUserIds = [...currentReactor.scannedUserIds, userId];
-                    const repaired = scannedByQrId.length >= 2;
-
-                    const updatedState: GameState = {
-                        ...workingState,
-                        sabotageState: {
-                            ...sabotageState,
-                            active: repaired ? null : "REACTOR",
-                            reactor: repaired
-                                ? null
-                                : {
-                                      ...currentReactor,
-                                      scannedByQrId,
-                                      scannedUserIds,
-                                  },
-                            cooldowns: {
-                                ...sabotageState.cooldowns,
-                                reactorAvailableAt: repaired
-                                    ? now + SABOTAGE_COOLDOWN_MS
-                                    : sabotageState.cooldowns.reactorAvailableAt,
-                            },
-                        },
+                if (sabotageState.active !== "REACTOR" || !sabotageState.reactor) {
+                    validationError = {
+                        success: false,
+                        error: "Reactor sabotage is not active.",
+                        code: ERROR_CODES.ERR_SABOTAGE_NOT_ACTIVE,
+                        data: { handled: true },
                     };
-
-                    scanResult = {
-                        handled: true,
-                        event: repaired ? "REACTOR_REPAIRED" : "REACTOR_PROGRESS",
-                        reactorProgress: {
-                            scanned: scannedByQrId.length,
-                            total: 2,
-                            remainingMs: repaired ? 0 : Math.max(0, currentReactor.endsAt - now),
-                        },
-                        gameState: updatedState,
-                    };
-                    return updatedState;
+                    return null;
                 }
 
-                validationError = {
-                    success: false,
-                    error: "You are not allowed to use reactor sabotage.",
-                    code: ERROR_CODES.ERR_SABOTAGE_FORBIDDEN,
-                    data: { handled: true },
+                const currentReactor = sabotageState.reactor as ReactorSabotageState;
+                if (currentReactor.scannedByQrId.includes(qrId)) {
+                    scanResult = {
+                        handled: true,
+                        event: "REACTOR_ALREADY_SCANNED",
+                        reactorProgress: {
+                            scanned: currentReactor.scannedByQrId.length,
+                            total: 2,
+                            remainingMs: Math.max(0, currentReactor.endsAt - now),
+                        },
+                        gameState: workingState,
+                    };
+                    return workingState;
+                }
+
+                if (currentReactor.scannedUserIds.includes(userId)) {
+                    scanResult = {
+                        handled: true,
+                        event: "REACTOR_DISTINCT_CREWMATE_REQUIRED",
+                        reactorProgress: {
+                            scanned: currentReactor.scannedByQrId.length,
+                            total: 2,
+                            remainingMs: Math.max(0, currentReactor.endsAt - now),
+                        },
+                        gameState: workingState,
+                    };
+                    return workingState;
+                }
+
+                const scannedByQrId = [...currentReactor.scannedByQrId, qrId];
+                const scannedUserIds = [...currentReactor.scannedUserIds, userId];
+                const repaired = scannedByQrId.length >= 2;
+
+                const updatedState: GameState = {
+                    ...workingState,
+                    sabotageState: {
+                        ...sabotageState,
+                        active: repaired ? null : "REACTOR",
+                        reactor: repaired
+                            ? null
+                            : {
+                                  ...currentReactor,
+                                  scannedByQrId,
+                                  scannedUserIds,
+                              },
+                        cooldowns: {
+                            ...sabotageState.cooldowns,
+                            reactorAvailableAt: repaired
+                                ? now + SABOTAGE_COOLDOWN_MS
+                                : sabotageState.cooldowns.reactorAvailableAt,
+                        },
+                    },
                 };
-                return null;
+
+                scanResult = {
+                    handled: true,
+                    event: repaired ? "REACTOR_REPAIRED" : "REACTOR_PROGRESS",
+                    reactorProgress: {
+                        scanned: scannedByQrId.length,
+                        total: 2,
+                        remainingMs: repaired ? 0 : Math.max(0, currentReactor.endsAt - now),
+                    },
+                    gameState: updatedState,
+                };
+                return updatedState;
             }
 
             validationError = {

@@ -87,6 +87,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     });
 
     const communicationsSabotaged = gameState.sabotageState?.active === "COMMUNICATIONS";
+    const lightsSabotaged = gameState.sabotageState?.active === "LIGHTS";
 
     const sabotageCodes = new Set([
         "ERR_SABOTAGE_FORBIDDEN",
@@ -94,6 +95,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         "ERR_SABOTAGE_COOLDOWN",
         "ERR_SABOTAGE_NOT_ACTIVE",
         "ERR_SABOTAGE_COMMUNICATIONS_ACTIVE",
+        "ERR_SABOTAGE_COMMUNICATIONS_QUESTS_BLOCKED",
     ]);
 
     // Wrapper for handleScan to intercept sabotage QR first
@@ -107,14 +109,11 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                 if (sabotageResponse.success && sabotageResponse.data) {
                     const event = sabotageResponse.data.event;
                     switch (event) {
-                        case "COMMUNICATIONS_ACTIVATED":
-                            setScanFeedback(t("game.sabotage.messages.communicationsActivated"));
-                            break;
                         case "COMMUNICATIONS_REPAIRED":
                             setScanFeedback(t("game.sabotage.messages.communicationsRepaired"));
                             break;
-                        case "REACTOR_ACTIVATED":
-                            setScanFeedback(t("game.sabotage.messages.reactorActivated"));
+                        case "LIGHTS_REPAIRED":
+                            setScanFeedback(t("game.sabotage.messages.lightsRepaired"));
                             break;
                         case "REACTOR_PROGRESS":
                             if (sabotageResponse.data.reactorProgress) {
@@ -162,6 +161,11 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         fallback: sabotageResponse.error,
                     }),
                 );
+                return;
+            }
+
+            if (currentPlayer.role === "CREWMATE" && communicationsSabotaged) {
+                setScanFeedback(t("game.sabotage.messages.communicationsQuestBlocked"));
                 return;
             }
 
@@ -283,6 +287,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         batchId={gameState.batchId}
                         currentPlayerId={currentPlayer.id}
                         communicationsSabotaged={currentPlayer.role === "CREWMATE" && communicationsSabotaged}
+                        lightsSabotaged={currentPlayer.role === "CREWMATE" && lightsSabotaged}
                         gameStateOverride={gameState}
                     />
 

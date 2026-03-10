@@ -23,6 +23,7 @@ describe('Batch Generator', () => {
 
       expect(batch.sabotages).toBeDefined();
       expect(batch.sabotages?.communications.qrId).toBeTruthy();
+      expect(batch.sabotages?.lights.qrId).toBeTruthy();
       expect(batch.sabotages?.reactor).toHaveLength(2);
       expect(batch.sabotages?.reactor[0].qrId).toBeTruthy();
       expect(batch.sabotages?.reactor[1].qrId).toBeTruthy();

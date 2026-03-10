@@ -34,6 +34,7 @@ export async function generateQuestPDF(quests: Quest[], sabotages?: BatchSabotag
   }));
 
   if (sabotages) {
+    const lights = (sabotages as Partial<BatchSabotages>).lights;
     printables.push(
       {
         qrId: sabotages.communications.qrId,
@@ -51,6 +52,14 @@ export async function generateQuestPDF(quests: Quest[], sabotages?: BatchSabotag
         label: "SABOTAGE • REACTOR B",
       }
     );
+
+    if (lights?.qrId) {
+      printables.push({
+        qrId: lights.qrId,
+        location: lights.location,
+        label: "SABOTAGE • LIGHTS",
+      });
+    }
   }
   
   for (let i = 0; i < printables.length; i++) {

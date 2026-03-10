@@ -34,6 +34,10 @@ export function ReactorSabotageAlert({ gameState }: ReactorSabotageAlertProps) {
 
     const scanned = reactorState.scannedByQrId.length;
     const remainingMs = Math.max(0, reactorState.endsAt - now);
+    const locationA =
+        gameState.sabotages?.reactor[0]?.location?.trim() || t("game.sabotage.locationUnknown");
+    const locationB =
+        gameState.sabotages?.reactor[1]?.location?.trim() || t("game.sabotage.locationUnknown");
 
     return (
         <div className="border-2 border-red-500/50 bg-red-950/40 p-4 animate-pulse">
@@ -52,6 +56,12 @@ export function ReactorSabotageAlert({ gameState }: ReactorSabotageAlertProps) {
                 {t("game.sabotage.reactorProgress", {
                     scanned: String(scanned),
                     total: String(2),
+                })}
+            </div>
+            <div className="mt-2 text-xs text-red-100/80 font-rajdhani uppercase tracking-widest">
+                {t("game.sabotage.reactorPositions", {
+                    locationA,
+                    locationB,
                 })}
             </div>
         </div>

@@ -1,7 +1,7 @@
 export type QuestType = "true-false" | "qcm" | "single-input" | "number-input" | "intrus" | "mini-game";
 
 export type QuestDuration = "short" | "medium" | "long";
-export type SabotageType = "COMMUNICATIONS" | "REACTOR";
+export type SabotageType = "COMMUNICATIONS" | "LIGHTS" | "REACTOR";
 
 export interface SabotageLocation {
     qrId: string;
@@ -10,6 +10,7 @@ export interface SabotageLocation {
 
 export interface BatchSabotages {
     communications: SabotageLocation;
+    lights: SabotageLocation;
     reactor: [SabotageLocation, SabotageLocation];
 }
 

@@ -250,6 +250,7 @@ describe('Batch Actions', () => {
         ],
         sabotages: {
           communications: { qrId: 'comms-1', location: 'Old Comms' },
+          lights: { qrId: 'lights-1', location: 'Old Lights' },
           reactor: [
             { qrId: 'reactor-a', location: 'Old A' },
             { qrId: 'reactor-b', location: 'Old B' },
@@ -266,6 +267,7 @@ describe('Batch Actions', () => {
         { 'quest-1': 'Zone X' },
         {
           communications: 'Salon',
+          lights: 'Couloir',
           reactorA: 'Garage',
           reactorB: 'Cuisine',
         },
@@ -273,6 +275,7 @@ describe('Batch Actions', () => {
 
       expect(result.success).toBe(true);
       expect(result.data?.sabotages?.communications.location).toBe('Salon');
+      expect(result.data?.sabotages?.lights.location).toBe('Couloir');
       expect(result.data?.sabotages?.reactor[0].location).toBe('Garage');
       expect(result.data?.sabotages?.reactor[1].location).toBe('Cuisine');
     });

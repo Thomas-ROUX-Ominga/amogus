@@ -8,6 +8,10 @@ vi.mock("@/lib/store/game-store", () => ({
     useGameStore: mockUseGameStore,
 }));
 
+vi.mock("@/lib/redis/actions", () => ({
+    triggerSabotage: vi.fn(),
+}));
+
 describe("QuestProgress", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -25,6 +29,7 @@ describe("QuestProgress", () => {
                     reactor: null,
                     cooldowns: {
                         communicationsAvailableAt: 0,
+                        lightsAvailableAt: 0,
                         reactorAvailableAt: 0,
                     },
                 },
@@ -52,6 +57,7 @@ describe("QuestProgress", () => {
                 ],
                 sabotages: {
                     communications: { qrId: "comms-1", location: "Salon" },
+                    lights: { qrId: "lights-1", location: "Électrique" },
                     reactor: [
                         { qrId: "reactor-a", location: "Garage" },
                         { qrId: "reactor-b", location: "Cuisine" },
@@ -67,6 +73,7 @@ describe("QuestProgress", () => {
                     },
                     cooldowns: {
                         communicationsAvailableAt: 0,
+                        lightsAvailableAt: 0,
                         reactorAvailableAt: 0,
                     },
                 },
@@ -85,21 +92,22 @@ describe("QuestProgress", () => {
         expect(screen.getByText("Panneau sabotage imposteur")).toBeTruthy();
         expect(screen.getByText("Bravo")).toBeTruthy();
         expect(screen.getByText("Salon")).toBeTruthy();
-        expect(screen.getByText("Garage")).toBeTruthy();
+        expect(screen.getByText("Électrique")).toBeTruthy();
+        expect(screen.getByText(/Garage/)).toBeTruthy();
         expect(screen.getAllByText("Réacteur 1/2").length).toBeGreaterThan(0);
     });
 
-    it("hides crewmate quest list during communications sabotage", () => {
+    it("hides crewmate quest list during lights sabotage", () => {
         render(
             <QuestProgress
                 role="CREWMATE"
                 completed={1}
                 total={3}
-                communicationsSabotaged
+                lightsSabotaged
             />,
         );
 
-        expect(screen.getByText("COMMUNICATIONS SABOTÉES")).toBeTruthy();
+        expect(screen.getByText("LUMIÈRES SABOTÉES")).toBeTruthy();
     });
 
     it("renders progress bar with correct attributes for crewmates", () => {

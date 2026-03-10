@@ -55,6 +55,7 @@ export interface ReactorSabotageState {
 
 export interface SabotageCooldownState {
     communicationsAvailableAt: number;
+    lightsAvailableAt: number;
     reactorAvailableAt: number;
 }
 

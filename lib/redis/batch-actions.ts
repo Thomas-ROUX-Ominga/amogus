@@ -2,7 +2,7 @@
 
 import { redis } from "./client";
 import { ActionResponse } from "@/types/game";
-import { Batch, BatchCreateInput, BatchListItem } from "@/types/quest";
+import { Batch, BatchCreateInput, BatchListItem, BatchSabotages } from "@/types/quest";
 import { generateBatch } from "@/lib/quests/batch-generator";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { verifyAdminSession } from "@/lib/redis/auth-utils";
@@ -247,6 +247,7 @@ export async function updateQuestsLocations(
   locations: Record<string, string>,
   sabotageLocations?: {
     communications?: string;
+    lights?: string;
     reactorA?: string;
     reactorB?: string;
   }
@@ -306,6 +307,15 @@ export async function updateQuestsLocations(
             communications: {
               ...batch.sabotages.communications,
               location: sabotageLocations?.communications ?? batch.sabotages.communications.location,
+            },
+            lights: {
+              qrId:
+                (batch.sabotages as Partial<BatchSabotages>).lights?.qrId ||
+                globalThis.crypto.randomUUID(),
+              location:
+                sabotageLocations?.lights ??
+                (batch.sabotages as Partial<BatchSabotages>).lights?.location ??
+                "",
             },
             reactor: [
               {

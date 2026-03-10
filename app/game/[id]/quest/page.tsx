@@ -269,6 +269,19 @@ function QuestPageContent() {
             );
         }
 
+        if (currentPlayer.role === "CREWMATE" && gameState.sabotageState?.active === "COMMUNICATIONS") {
+            return (
+                <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
+                    <ErrorView
+                        title={t("game.questPage.missionInactiveTitle")}
+                        message={t("errors.codes.ERR_SABOTAGE_COMMUNICATIONS_QUESTS_BLOCKED")}
+                        code={ERROR_CODES.ERR_SABOTAGE_COMMUNICATIONS_QUESTS_BLOCKED}
+                        onRetry={() => { router.push(`/game/${gameId}`); }}
+                    />
+                </main>
+            );
+        }
+
         if (gameState.meeting?.status === "ACTIVE") {
             return (
                 <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">

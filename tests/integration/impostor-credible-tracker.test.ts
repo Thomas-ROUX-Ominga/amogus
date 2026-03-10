@@ -17,6 +17,7 @@ vi.mock("@/hooks/use-camera-scanner", () => ({
 
 vi.mock("@/lib/redis/actions", () => ({
     scanSabotage: vi.fn().mockResolvedValue({ success: true, data: { handled: false } }),
+    triggerSabotage: vi.fn().mockResolvedValue({ success: true, data: {} }),
 }));
 
 describe("Impostor Sabotage Panel Integration", () => {
@@ -40,6 +41,7 @@ describe("Impostor Sabotage Panel Integration", () => {
             questsPerPlayer: { short: 1, medium: 1, long: 1 },
             sabotages: {
                 communications: { qrId: "comms-qr", location: "Hall" },
+                lights: { qrId: "lights-qr", location: "Electrical" },
                 reactor: [
                     { qrId: "reactor-a", location: "Garage" },
                     { qrId: "reactor-b", location: "Kitchen" },
@@ -50,6 +52,7 @@ describe("Impostor Sabotage Panel Integration", () => {
                 reactor: null,
                 cooldowns: {
                     communicationsAvailableAt: 0,
+                    lightsAvailableAt: 0,
                     reactorAvailableAt: 0,
                 },
             },
@@ -82,8 +85,8 @@ describe("Impostor Sabotage Panel Integration", () => {
         expect(screen.getByText("Panneau sabotage imposteur")).toBeInTheDocument();
         expect(screen.getByText("Bravo")).toBeInTheDocument();
         expect(screen.getByText("Hall")).toBeInTheDocument();
-        expect(screen.getByText("Garage")).toBeInTheDocument();
-        expect(screen.getByText("Kitchen")).toBeInTheDocument();
+        expect(screen.getByText(/Garage/)).toBeInTheDocument();
+        expect(screen.getByText(/Kitchen/)).toBeInTheDocument();
     });
 
     it("shows reactor progress state when reactor sabotage is active", () => {
@@ -97,6 +100,7 @@ describe("Impostor Sabotage Panel Integration", () => {
             },
             cooldowns: {
                 communicationsAvailableAt: 0,
+                lightsAvailableAt: 0,
                 reactorAvailableAt: 0,
             },
         };
