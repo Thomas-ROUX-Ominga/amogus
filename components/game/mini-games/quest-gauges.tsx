@@ -126,8 +126,8 @@ export function QuestGauges({ duration, onSuccess, onError }: QuestGaugesProps) 
                 </p>
                 <p className="font-rajdhani text-xs text-foreground/70" aria-live="polite">
                     {t("game.miniGames.gaugesAligned", {
-                        aligned: alignedCount,
-                        total: gauges.length,
+                        aligned: String(alignedCount),
+                        total: String(gauges.length),
                     })}
                 </p>
             </div>

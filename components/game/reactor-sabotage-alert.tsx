@@ -49,7 +49,10 @@ export function ReactorSabotageAlert({ gameState }: ReactorSabotageAlertProps) {
                 </span>
             </div>
             <div className="mt-2 text-sm text-red-100 font-rajdhani uppercase tracking-widest">
-                {t("game.sabotage.reactorProgress", { scanned, total: 2 })}
+                {t("game.sabotage.reactorProgress", {
+                    scanned: String(scanned),
+                    total: String(2),
+                })}
             </div>
         </div>
     );

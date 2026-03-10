@@ -195,8 +195,8 @@ export default function MeetingPage() {
                             </div>
                             <div className="text-sm text-muted-foreground font-rajdhani tracking-wide">
                                 {t("game.meeting.questsCompleted", {
-                                    completed: snapshot.progress.completed,
-                                    total: snapshot.progress.total,
+                                    completed: String(snapshot.progress.completed),
+                                    total: String(snapshot.progress.total),
                                 })}
                             </div>
                         </div>
@@ -209,8 +209,8 @@ export default function MeetingPage() {
                                 {meeting && (
                                     <div className="text-[10px] text-primary/60 uppercase tracking-widest">
                                         {t("game.meeting.votesCount", {
-                                            votes: meeting.totalVotes,
-                                            eligible: meeting.totalEligibleVoters,
+                                            votes: String(meeting.totalVotes),
+                                            eligible: String(meeting.totalEligibleVoters),
                                         })}
                                     </div>
                                 )}

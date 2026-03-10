@@ -174,7 +174,7 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
                     {formatDate(batch.createdAt)}
                   </div>
                   <div className="text-[8px] text-muted-foreground uppercase tracking-widest">
-                    {t("admin.batchDetail.questsCount", { count: batch.questCount })}
+                    {t("admin.batchDetail.questsCount", { count: String(batch.questCount) })}
                   </div>
                 </div>
               </div>
@@ -246,10 +246,10 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
       
       <div className="mt-6 pt-4 border-t border-primary/10">
         <div className="flex justify-between items-center text-[8px] text-muted-foreground uppercase tracking-widest">
-          <span>{t("admin.batches.totalBatches", { count: batches.length })}</span>
+          <span>{t("admin.batches.totalBatches", { count: String(batches.length) })}</span>
           <span>
             {t("admin.batches.totalQuests", {
-              count: batches.reduce((sum, batch) => sum + batch.questCount, 0),
+              count: String(batches.reduce((sum, batch) => sum + batch.questCount, 0)),
             })}
           </span>
         </div>

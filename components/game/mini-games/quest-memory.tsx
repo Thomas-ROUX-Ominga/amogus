@@ -168,8 +168,8 @@ export function QuestMemory({ duration, onSuccess, onError }: QuestMemoryProps) 
                 </p>
                 <p className="font-rajdhani text-xs text-foreground/70" aria-live="polite">
                     {t("game.miniGames.memoryPairsFound", {
-                        found: matchedPairsCount,
-                        total: pairCount,
+                        found: String(matchedPairsCount),
+                        total: String(pairCount),
                     })}
                 </p>
             </div>
@@ -190,7 +190,7 @@ export function QuestMemory({ duration, onSuccess, onError }: QuestMemoryProps) 
                                 data-testid={`memory-card-${index}`}
                                 data-icon-key={card.iconKey}
                                 data-state={card.isMatched ? "matched" : isRevealed ? "flipped" : "hidden"}
-                                aria-label={t("game.miniGames.memoryCardAria", { index: index + 1 })}
+                                aria-label={t("game.miniGames.memoryCardAria", { index: String(index + 1) })}
                                 aria-pressed={isRevealed}
                                 disabled={isLocked || card.isMatched}
                                 className={`aspect-square min-h-[44px] rounded-sm border transition-all ${

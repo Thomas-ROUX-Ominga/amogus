@@ -25,7 +25,7 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
                     {t("admin.playerList.title")}
                 </h2>
                 <div className="text-[10px] text-primary/50 tracking-widest">
-                    {t("admin.playerList.members", { count: players.length })}
+                    {t("admin.playerList.members", { count: String(players.length) })}
                 </div>
             </div>
 

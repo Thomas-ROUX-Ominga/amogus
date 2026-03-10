@@ -171,8 +171,8 @@ export function QuestRings({ duration, onSuccess, onError }: QuestRingsProps) {
                 </p>
                 <p className="font-rajdhani text-xs text-foreground/70" aria-live="polite">
                     {t("game.miniGames.ringsProgress", {
-                        current: activeDisplayIndex,
-                        total: totalRings,
+                        current: String(activeDisplayIndex),
+                        total: String(totalRings),
                     })}
                 </p>
             </div>

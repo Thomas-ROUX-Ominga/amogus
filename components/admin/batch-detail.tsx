@@ -133,8 +133,8 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
     if (totalQuests > batch.questCount) {
       setError(
         t("admin.batchDetail.tooManyQuests", {
-          selected: totalQuests,
-          available: batch.questCount,
+          selected: String(totalQuests),
+          available: String(batch.questCount),
         }),
       );
       setIsLaunching(false);
@@ -218,7 +218,7 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
               BATCH-{batch.id.slice(-8).toUpperCase()}
             </h1>
             <div className="flex items-center gap-4 text-[8px] text-muted-foreground uppercase tracking-widest">
-              <span>{t("admin.batchDetail.questsCount", { count: batch.questCount })}</span>
+              <span>{t("admin.batchDetail.questsCount", { count: String(batch.questCount) })}</span>
               <span>•</span>
               <span>{t("admin.batchDetail.createdAt", { date: formatDate(batch.createdAt) })}</span>
             </div>
@@ -320,8 +320,10 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
               : "text-muted-foreground"
           }`}>
             {t("admin.batchDetail.totalPerPlayer", {
-              selected: questDistribution.short + questDistribution.medium + questDistribution.long,
-              available: batch.questCount,
+              selected: String(
+                questDistribution.short + questDistribution.medium + questDistribution.long,
+              ),
+              available: String(batch.questCount),
             })}
           </div>
         </div>

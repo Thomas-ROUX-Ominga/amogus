@@ -133,7 +133,7 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
               </span>
               <span className="flex items-center gap-1">
                 <Users size={10} />
-                {t("admin.dashboard.players", { count: gameState.players.length })}
+                {t("admin.dashboard.players", { count: String(gameState.players.length) })}
               </span>
               <span className="px-2 py-1 bg-primary/10 border border-primary/30 rounded text-primary">
                 {gameState.status}

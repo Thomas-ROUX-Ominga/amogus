@@ -65,7 +65,7 @@ export function QuestList({ quests, isLoading = false }: QuestListProps) {
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs text-primary/60 uppercase tracking-widest font-rajdhani">
-                                {t("game.questList.questLabel", { index: index + 1 })}
+                                {t("game.questList.questLabel", { index: String(index + 1) })}
                             </span>
                             <span className={`text-xs px-2 py-1 rounded-full font-rajdhani ${
                                 quest.duration === 'short'

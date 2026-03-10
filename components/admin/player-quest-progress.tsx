@@ -31,8 +31,8 @@ export function PlayerQuestProgress({
                     <CheckCircle className="w-3 h-3 text-green-500" />
                     <span className="text-primary/80">
                         {t("game.questProgress.completed", {
-                            completed: completedCount,
-                            total: totalCount,
+                            completed: String(completedCount),
+                            total: String(totalCount),
                         })}
                     </span>
                 </div>

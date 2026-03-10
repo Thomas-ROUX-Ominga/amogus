@@ -1,6 +1,6 @@
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 
-const ERROR_CODE_TO_MESSAGE_KEY: Partial<Record<string, string>> = {
+const ERROR_CODE_TO_MESSAGE_KEY = {
   [ERROR_CODES.GAME_NOT_FOUND]: "errors.codes.GAME_NOT_FOUND",
   [ERROR_CODES.ERR_SIGNAL_LOST]: "errors.codes.ERR_SIGNAL_LOST",
   [ERROR_CODES.ERR_FULL_CAPACITY]: "errors.codes.ERR_FULL_CAPACITY",
@@ -32,19 +32,25 @@ const ERROR_CODE_TO_MESSAGE_KEY: Partial<Record<string, string>> = {
   [ERROR_CODES.ERR_SABOTAGE_NOT_ACTIVE]: "errors.codes.ERR_SABOTAGE_NOT_ACTIVE",
   [ERROR_CODES.ERR_SABOTAGE_COMMUNICATIONS_ACTIVE]:
     "errors.codes.ERR_SABOTAGE_COMMUNICATIONS_ACTIVE",
-};
+} as const satisfies Record<string, `errors.codes.${string}`>;
 
-type TranslationFn = (key: string) => string;
+type ErrorCode = keyof typeof ERROR_CODE_TO_MESSAGE_KEY;
+type ErrorCodeMessageKey = (typeof ERROR_CODE_TO_MESSAGE_KEY)[ErrorCode];
+type TranslationKey = ErrorCodeMessageKey | "errors.genericMessage";
+type TranslationFn = (key: TranslationKey) => string;
 
 export function getLocalizedErrorMessage(input: {
   t: TranslationFn;
   code?: string | null;
   fallback?: string | null;
-  defaultKey?: string;
+  defaultKey?: TranslationKey;
 }): string {
   const { t, code, fallback, defaultKey = "errors.genericMessage" } = input;
 
-  const translationKey = code ? ERROR_CODE_TO_MESSAGE_KEY[code] : undefined;
+  const translationKey =
+    code && code in ERROR_CODE_TO_MESSAGE_KEY
+      ? ERROR_CODE_TO_MESSAGE_KEY[code as ErrorCode]
+      : undefined;
   if (translationKey) {
     return t(translationKey);
   }

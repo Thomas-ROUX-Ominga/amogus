@@ -161,8 +161,8 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
                 </p>
                 <p className="font-rajdhani text-xs text-foreground/70" aria-live="polite">
                     {t("game.miniGames.wiresConnected", {
-                        connected: connectedCount,
-                        total: totalWires,
+                        connected: String(connectedCount),
+                        total: String(totalWires),
                     })}
                 </p>
             </div>

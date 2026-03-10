@@ -126,7 +126,7 @@ export default function CreateGamePage() {
                   <option key={batch.id} value={batch.id}>
                     {t("organizer.gamesCreate.batchOption", {
                       batchId: batch.id.substring(0, 8),
-                      questCount: batch.questCount,
+                      questCount: String(batch.questCount),
                     })}
                   </option>
                 ))}
@@ -204,7 +204,11 @@ export default function CreateGamePage() {
             
             <p className="text-[10px] text-primary/60 mt-4">
               {t("organizer.gamesCreate.totalPerPlayer", {
-                count: questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long,
+                count: String(
+                  questsPerPlayer.short +
+                    questsPerPlayer.medium +
+                    questsPerPlayer.long,
+                ),
               })}
               {questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long < 3 && (
                 <span className="text-destructive block mt-1">

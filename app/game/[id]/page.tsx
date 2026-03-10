@@ -236,7 +236,7 @@ export default function LobbyPage() {
 
                             <div className="space-y-4">
                                 <label className="text-[8px] text-primary/50 uppercase block tracking-widest">
-                                    {t("game.lobby.crewManifest", { count: currentPlayerCount })}
+                                    {t("game.lobby.crewManifest", { count: String(currentPlayerCount) })}
                                 </label>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                     {currentGameState?.players.map((player, index) => {

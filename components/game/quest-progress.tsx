@@ -143,7 +143,9 @@ export function QuestProgress({
                                     ? ("medium" as const)
                                     : ("long" as const),
                             location: isCompleted
-                                ? t("game.questProgress.locationLabel", { index: index + 1 })
+                                ? t("game.questProgress.locationLabel", {
+                                      index: String(index + 1),
+                                  })
                                 : undefined,
                             completed: isCompleted,
                         };
@@ -253,8 +255,8 @@ export function QuestProgress({
                             <div className="text-xs uppercase tracking-widest text-red-200/80 mt-1">
                                 {reactorActive
                                     ? t("game.sabotage.reactorProgress", {
-                                          scanned: reactorProgress,
-                                          total: 2,
+                                          scanned: String(reactorProgress),
+                                          total: String(2),
                                       })
                                     : reactorCooldownMs > 0
                                     ? t("game.sabotage.statusCooldown", {
@@ -275,8 +277,8 @@ export function QuestProgress({
                             <div className="text-xs uppercase tracking-widest text-red-200/80 mt-1">
                                 {reactorActive
                                     ? t("game.sabotage.reactorProgress", {
-                                          scanned: reactorProgress,
-                                          total: 2,
+                                          scanned: String(reactorProgress),
+                                          total: String(2),
                                       })
                                     : reactorCooldownMs > 0
                                     ? t("game.sabotage.statusCooldown", {
@@ -316,8 +318,8 @@ export function QuestProgress({
                     <span className="animate-pulse">{t("game.questProgress.loading")}</span>
                 ) : total > 0 ? (
                     t("game.questProgress.completedOutOf", {
-                        completed,
-                        total,
+                        completed: String(completed),
+                        total: String(total),
                         scope: role === "ADMIN" ? t("game.questProgress.completedScopeTotal") : "",
                     })
                 ) : (

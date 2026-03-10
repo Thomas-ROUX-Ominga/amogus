@@ -88,16 +88,6 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
 
     const communicationsSabotaged = gameState.sabotageState?.active === "COMMUNICATIONS";
 
-    const sabotageEventToMessageKey: Record<string, string> = {
-        COMMUNICATIONS_ACTIVATED: "game.sabotage.messages.communicationsActivated",
-        COMMUNICATIONS_REPAIRED: "game.sabotage.messages.communicationsRepaired",
-        REACTOR_ACTIVATED: "game.sabotage.messages.reactorActivated",
-        REACTOR_PROGRESS: "game.sabotage.messages.reactorProgress",
-        REACTOR_REPAIRED: "game.sabotage.messages.reactorRepaired",
-        REACTOR_ALREADY_SCANNED: "game.sabotage.messages.reactorAlreadyScanned",
-        REACTOR_DISTINCT_CREWMATE_REQUIRED: "game.sabotage.messages.reactorDistinctCrewmateRequired",
-    };
-
     const sabotageCodes = new Set([
         "ERR_SABOTAGE_FORBIDDEN",
         "ERR_SABOTAGE_ALREADY_ACTIVE",
@@ -116,21 +106,39 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
             if (wasHandled) {
                 if (sabotageResponse.success && sabotageResponse.data) {
                     const event = sabotageResponse.data.event;
-                    const translationKey = event ? sabotageEventToMessageKey[event] : null;
-
-                    if (translationKey) {
-                        if (event === "REACTOR_PROGRESS" && sabotageResponse.data.reactorProgress) {
-                            setScanFeedback(
-                                t(translationKey, {
-                                    scanned: sabotageResponse.data.reactorProgress.scanned,
-                                    total: sabotageResponse.data.reactorProgress.total,
-                                }),
-                            );
-                        } else {
-                            setScanFeedback(t(translationKey));
-                        }
-                    } else {
-                        setScanFeedback(t("game.sabotage.messages.scanHandled"));
+                    switch (event) {
+                        case "COMMUNICATIONS_ACTIVATED":
+                            setScanFeedback(t("game.sabotage.messages.communicationsActivated"));
+                            break;
+                        case "COMMUNICATIONS_REPAIRED":
+                            setScanFeedback(t("game.sabotage.messages.communicationsRepaired"));
+                            break;
+                        case "REACTOR_ACTIVATED":
+                            setScanFeedback(t("game.sabotage.messages.reactorActivated"));
+                            break;
+                        case "REACTOR_PROGRESS":
+                            if (sabotageResponse.data.reactorProgress) {
+                                setScanFeedback(
+                                    t("game.sabotage.messages.reactorProgress", {
+                                        scanned: String(sabotageResponse.data.reactorProgress.scanned),
+                                        total: String(sabotageResponse.data.reactorProgress.total),
+                                    }),
+                                );
+                            } else {
+                                setScanFeedback(t("game.sabotage.messages.scanHandled"));
+                            }
+                            break;
+                        case "REACTOR_REPAIRED":
+                            setScanFeedback(t("game.sabotage.messages.reactorRepaired"));
+                            break;
+                        case "REACTOR_ALREADY_SCANNED":
+                            setScanFeedback(t("game.sabotage.messages.reactorAlreadyScanned"));
+                            break;
+                        case "REACTOR_DISTINCT_CREWMATE_REQUIRED":
+                            setScanFeedback(t("game.sabotage.messages.reactorDistinctCrewmateRequired"));
+                            break;
+                        default:
+                            setScanFeedback(t("game.sabotage.messages.scanHandled"));
                     }
                 } else {
                     setScanFeedback(
@@ -282,7 +290,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     {gameState.creatorId === userId && (
                         <div className="p-6 border border-primary/20 bg-black/30">
                             <div className="text-xs text-primary/60 uppercase tracking-widest mb-4 font-rajdhani">
-                            {t("game.home.connectedPlayers", { count: gameState.players.length })}
+                            {t("game.home.connectedPlayers", { count: String(gameState.players.length) })}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             {gameState.players
