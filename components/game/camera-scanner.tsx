@@ -10,7 +10,7 @@ import { EliminatedScreen } from "@/components/game/eliminated-screen";
 export interface CameraScannerProps {
     isOpen: boolean;
     onClose: () => void;
-    onScan: (questId: string) => void;
+    onScan: (questId: string) => void | boolean | Promise<void | boolean>;
     isPlayerEliminated?: boolean;
     playerRole?: string;
 }
@@ -81,21 +81,32 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                         hasScannedRef.current = true;
                         scanCooldownUntilRef.current = now + 1000;
 
-                        // Immediately stop/clear scanner to prevent multiple triggers
-                        cleanupScanner();
-                        
-                        // Vibrate on successful scan
-                        try {
-                            if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-                                navigator.vibrate([50, 30, 50]);
+                        void (async () => {
+                            // Vibrate on successful scan
+                            try {
+                                if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+                                    navigator.vibrate([50, 30, 50]);
+                                }
+                            } catch {
+                                // Ignore haptic failures
                             }
-                        } catch {
-                            // Ignore haptic failures
-                        }
 
-                        // Trigger callback immediately
-                        onScan(questId);
-                        onClose();
+                            try {
+                                const shouldClose = await onScan(questId);
+                                if (shouldClose !== false) {
+                                    cleanupScanner();
+                                    onClose();
+                                    return;
+                                }
+
+                                // Keep scanner open for a quick retry (e.g. wrong QR during communications sabotage)
+                                hasScannedRef.current = false;
+                            } catch (scanError) {
+                                console.error("Scan handler error:", scanError);
+                                cleanupScanner();
+                                onClose();
+                            }
+                        })();
                     }
                 },
                 undefined // Ignore constant scan errors while searching

@@ -140,6 +140,29 @@ describe('CameraScanner', () => {
     expect(navigator.vibrate).toHaveBeenCalledWith([50, 30, 50]);
   });
 
+  it('keeps scanner open when scan handler returns false', async () => {
+    mockOnScan.mockResolvedValueOnce(false);
+
+    render(
+      <CameraScanner
+        isOpen={true}
+        onClose={mockOnClose}
+        onScan={mockOnScan}
+      />
+    );
+
+    await waitFor(() => expect(mockStart).toHaveBeenCalled(), { timeout: 4000 });
+    const successCallback = mockStart.mock.calls[mockStart.mock.calls.length - 1][2];
+
+    await act(async () => {
+      successCallback('https://amog.us/quest/123');
+      await Promise.resolve();
+    });
+
+    expect(mockOnScan).toHaveBeenCalledWith('123');
+    expect(mockOnClose).not.toHaveBeenCalled();
+  });
+
   it('calls onClose when close button is clicked', () => {
     render(
       <CameraScanner

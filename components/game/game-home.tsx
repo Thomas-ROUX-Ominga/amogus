@@ -99,7 +99,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     ]);
 
     // Wrapper for handleScan to intercept sabotage QR first
-    const handleScan = async (questId: string) => {
+    const handleScan = async (questId: string): Promise<boolean> => {
         setScanFeedback(null);
         try {
             const sabotageResponse = await scanSabotage(gameState.id, userId, questId);
@@ -150,7 +150,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                 }
 
                 await refreshGameData(gameState.id, userId);
-                return;
+                return true;
             }
 
             if (!sabotageResponse.success && sabotageCodes.has(sabotageResponse.code || "")) {
@@ -161,18 +161,20 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         fallback: sabotageResponse.error,
                     }),
                 );
-                return;
+                return true;
             }
 
             if (currentPlayer.role === "CREWMATE" && communicationsSabotaged) {
                 setScanFeedback(t("game.sabotage.messages.communicationsQuestBlocked"));
-                return;
+                return false;
             }
 
             await originalHandleScan(questId);
+            return true;
         } catch (error) {
             console.error("Failed to process scan:", error);
             setScanFeedback(t("errors.codes.ERR_SIGNAL_LOST"));
+            return true;
         }
     };
     
