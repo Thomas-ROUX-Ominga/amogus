@@ -24,6 +24,14 @@ function getSignature() {
     return `${left.join(",")}|${right.join(",")}`;
 }
 
+function getRowY(index: number, total: number) {
+    const topY = 84;
+    const bottomY = 516;
+    if (total <= 1) return (topY + bottomY) / 2;
+    const gap = (bottomY - topY) / (total - 1);
+    return topY + index * gap;
+}
+
 describe("QuestWires", () => {
     const onSuccess = vi.fn();
     const onError = vi.fn();
@@ -134,5 +142,38 @@ describe("QuestWires", () => {
 
         expect(onSuccess).toHaveBeenCalledTimes(1);
         expect(onError).not.toHaveBeenCalled();
+    });
+
+    it("supports touch-style drop by releasing on board near right connector", () => {
+        render(<QuestWires duration="short" onSuccess={onSuccess} onError={onError} />);
+
+        const board = screen.getByTestId("wires-board");
+        vi.spyOn(board, "getBoundingClientRect").mockReturnValue({
+            x: 0,
+            y: 0,
+            top: 0,
+            left: 0,
+            bottom: 600,
+            right: 1000,
+            width: 1000,
+            height: 600,
+            toJSON: () => ({}),
+        });
+
+        const leftButtons = getLeftButtons();
+        const rightButtons = getRightButtons();
+        const leftColor = leftButtons[0].getAttribute("data-wire-color");
+        const rightIndex = rightButtons.findIndex((button) => button.getAttribute("data-wire-color") === leftColor);
+
+        expect(rightIndex).toBeGreaterThanOrEqual(0);
+
+        fireEvent.pointerDown(leftButtons[0], { clientX: 140, clientY: 84 });
+        fireEvent.pointerUp(board, {
+            clientX: 900,
+            clientY: getRowY(rightIndex, rightButtons.length),
+        });
+
+        expect(onError).not.toHaveBeenCalled();
+        expect(getLeftButtons()[0]).toBeDisabled();
     });
 });

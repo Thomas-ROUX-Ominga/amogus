@@ -14,6 +14,7 @@ const LEFT_X = 140;
 const RIGHT_X = 860;
 const TOP_Y = 84;
 const BOTTOM_Y = 516;
+const RIGHT_DROP_X_THRESHOLD = RIGHT_X - 140;
 
 interface WireColor {
     id: string;
@@ -105,6 +106,27 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
         onError();
     }, [onError, showFailed]);
 
+    const connectWireToRightIndex = useCallback((rightIndex: number) => {
+        if (!dragging || showFailed) return;
+
+        const leftIndex = dragging.leftIndex;
+        const isRightAlreadyUsed = rightToLeft.has(rightIndex);
+        const isColorMatch = round.left[leftIndex].id === round.right[rightIndex].id;
+
+        if (isRightAlreadyUsed || !isColorMatch) {
+            failRound();
+            return;
+        }
+
+        const nextConnections = { ...connections, [leftIndex]: rightIndex };
+        setConnections(nextConnections);
+        setDragging(null);
+
+        if (Object.keys(nextConnections).length === totalWires) {
+            onSuccess();
+        }
+    }, [dragging, showFailed, rightToLeft, round.left, round.right, failRound, connections, totalWires, onSuccess]);
+
     const handleLeftPointerDown = useCallback((leftIndex: number) => {
         if (showFailed || connections[leftIndex] !== undefined) return;
 
@@ -126,32 +148,45 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
         setDragging((prev) => prev ? { ...prev, currentX: x, currentY: y } : prev);
     }, [dragging, showFailed]);
 
-    const handleBoardPointerUp = useCallback(() => {
+    const handleBoardPointerUp = useCallback((event: PointerEvent<HTMLDivElement>) => {
         if (!dragging || showFailed) return;
+
+        const rect = event.currentTarget.getBoundingClientRect();
+        if (rect.width && rect.height) {
+            const x = ((event.clientX - rect.left) / rect.width) * VIEWBOX_WIDTH;
+            const y = ((event.clientY - rect.top) / rect.height) * VIEWBOX_HEIGHT;
+
+            if (x >= RIGHT_DROP_X_THRESHOLD) {
+                let closestRightIndex = 0;
+                let closestDistance = Number.POSITIVE_INFINITY;
+
+                for (let index = 0; index < totalWires; index++) {
+                    const rowY = getRowY(index, totalWires);
+                    const distance = Math.abs(y - rowY);
+                    if (distance < closestDistance) {
+                        closestDistance = distance;
+                        closestRightIndex = index;
+                    }
+                }
+
+                // Keep the drop zone forgiving on touch, but still tied to a right-side row.
+                const rowGap = totalWires > 1 ? (BOTTOM_Y - TOP_Y) / (totalWires - 1) : VIEWBOX_HEIGHT;
+                const maxDistance = Math.max(28, rowGap * 0.45);
+
+                if (closestDistance <= maxDistance) {
+                    connectWireToRightIndex(closestRightIndex);
+                    return;
+                }
+            }
+        }
+
         setDragging(null);
-    }, [dragging, showFailed]);
+    }, [dragging, showFailed, totalWires, connectWireToRightIndex]);
 
     const handleRightPointerUp = useCallback((rightIndex: number, event: PointerEvent<HTMLButtonElement>) => {
         event.stopPropagation();
-        if (!dragging || showFailed) return;
-
-        const leftIndex = dragging.leftIndex;
-        const isRightAlreadyUsed = rightToLeft.has(rightIndex);
-        const isColorMatch = round.left[leftIndex].id === round.right[rightIndex].id;
-
-        if (isRightAlreadyUsed || !isColorMatch) {
-            failRound();
-            return;
-        }
-
-        const nextConnections = { ...connections, [leftIndex]: rightIndex };
-        setConnections(nextConnections);
-        setDragging(null);
-
-        if (Object.keys(nextConnections).length === totalWires) {
-            onSuccess();
-        }
-    }, [dragging, showFailed, rightToLeft, round.left, round.right, failRound, connections, totalWires, onSuccess]);
+        connectWireToRightIndex(rightIndex);
+    }, [connectWireToRightIndex]);
 
     return (
         <div className="space-y-4">
