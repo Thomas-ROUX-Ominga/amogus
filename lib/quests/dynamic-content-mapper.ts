@@ -1,6 +1,6 @@
 import { QuestGame, QuestType, QuestDuration, QuestContentResult } from "@/types/quest";
 import { getQuestGamesByDuration } from "@/lib/constants/quest-pool";
-import { getQuestMetadata, getPlayerFailedQuests, getGame } from "@/lib/redis/actions";
+import { getQuestMetadata, getPlayerFailedQuests } from "@/lib/redis/actions";
 
 /**
  * Dynamic Content Mapper for Story 8.2
@@ -20,20 +20,12 @@ export class DynamicContentMapper {
         userId: string
     ): Promise<QuestContentResult | null> {
         try {
-            // Story 9.1: Early role check to prevent content loading for impostors
-            const gameResponse = await getGame(gameId);
-            if (gameResponse.success && gameResponse.data) {
-                const currentPlayer = gameResponse.data.players.find(p => p.id === userId);
-                const isImpostor = currentPlayer?.role === "IMPOSTOR";
-                
-                if (isImpostor) {
-                    // Don't load any content for impostors - Story 9.1
-                    return null;
-                }
-            }
+            // Fetch metadata and failed history in parallel to keep quest load latency low.
+            const [metadataResponse, failedQuestsResponse] = await Promise.all([
+                getQuestMetadata(questId, gameId),
+                getPlayerFailedQuests(gameId, userId),
+            ]);
 
-            // Step 1: Get quest metadata (Format/Type) from Redis
-            const metadataResponse = await getQuestMetadata(questId, gameId);
             if (!metadataResponse.success || !metadataResponse.data) {
                 console.error(`Failed to get metadata for quest ${questId}:`, metadataResponse.error);
                 return null;
@@ -41,8 +33,6 @@ export class DynamicContentMapper {
 
             const questMeta = metadataResponse.data;
 
-            // Step 2: Get player's failed quest history
-            const failedQuestsResponse = await getPlayerFailedQuests(gameId, userId);
             if (!failedQuestsResponse.success) {
                 console.error(`Failed to get failed quests for user ${userId}:`, failedQuestsResponse.error);
                 // CRITICAL: Don't continue without failed quest data as this violates idempotency

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { GameState, PlayerRole } from "@/types/game";
 import { QuestList } from "./quest-list";
@@ -25,6 +25,7 @@ interface QuestProgressProps {
 
 const EMPTY_ARRAY: string[] = [];
 const EMPTY_QUESTS: Quest[] = [];
+const QUEST_CATALOG_RETRY_MS = 10000;
 
 function formatCooldown(ms: number): string {
     if (ms <= 0) return "00:00";
@@ -78,6 +79,7 @@ export function QuestProgress({
     const [isCrewQuestsLoading, setIsCrewQuestsLoading] = useState(false);
     const [isTriggeringSabotage, setIsTriggeringSabotage] = useState<SabotageType | null>(null);
     const [sabotageFeedback, setSabotageFeedback] = useState<string | null>(null);
+    const lastQuestCatalogFetchRef = useRef<{ gameId: string; at: number } | null>(null);
 
     const triggerImpostorSabotage = async (type: SabotageType) => {
         if (!currentPlayerId || !activeGameState?.id) return;
@@ -125,16 +127,23 @@ export function QuestProgress({
                 let assignedList: Array<Quest & { completed: boolean; location?: string }> = [];
 
                 if (batchId) {
-                    if (
-                        resolvedGameQuests.length === 0 &&
-                        gameState?.id &&
-                        !isGameQuestsLoading &&
-                        fetchGameQuests
-                    ) {
-                        await fetchGameQuests(gameState.id);
-                    }
+                    let allQuests = resolvedGameQuests;
+                    const activeGameId = activeGameState?.id;
 
-                    const allQuests = resolvedGameQuests;
+                    if (allQuests.length === 0 && activeGameId && !isGameQuestsLoading && fetchGameQuests) {
+                        const nowTs = Date.now();
+                        const lastFetch = lastQuestCatalogFetchRef.current;
+                        const shouldFetch =
+                            !lastFetch ||
+                            lastFetch.gameId !== activeGameId ||
+                            nowTs - lastFetch.at >= QUEST_CATALOG_RETRY_MS;
+
+                        if (shouldFetch) {
+                            lastQuestCatalogFetchRef.current = { gameId: activeGameId, at: nowTs };
+                            await fetchGameQuests(activeGameId);
+                            allQuests = useGameStore.getState().gameQuests ?? EMPTY_QUESTS;
+                        }
+                    }
 
                     if (allQuests.length > 0) {
                         if (assignedQuests.length > 0) {
@@ -169,10 +178,13 @@ export function QuestProgress({
 
                             assignedList = [...completedQ, ...remainingQ];
                         }
+                    } else {
+                        setCrewQuests([]);
+                        return;
                     }
                 }
 
-                if (assignedList.length === 0 && total > 0) {
+                if (!batchId && assignedList.length === 0 && total > 0) {
                     assignedList = Array.from({ length: total }, (_, index) => {
                         const isCompleted = index < completed;
                         return {
@@ -211,9 +223,10 @@ export function QuestProgress({
         total,
         completed,
         resolvedGameQuests.length,
-        gameState?.id,
+        activeGameState?.id,
         isGameQuestsLoading,
         fetchGameQuests,
+        t,
     ]);
 
     if (role === "IMPOSTOR") {

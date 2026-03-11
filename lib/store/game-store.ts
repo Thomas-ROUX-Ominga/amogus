@@ -26,6 +26,7 @@ export type SyncStatus = "connected" | "reconnecting" | "degraded";
 const SYNC_SSE_RECONNECT_DELAY_MS = 1500;
 const SYNC_FALLBACK_POLL_INTERVAL_MS = 2000;
 const SYNC_FAILURES_FOR_DEGRADED = 3;
+const pendingQuestContentRequests = new Map<string, Promise<QuestContentResult | null>>();
 
 interface SnapshotApiResponse {
     success: boolean;
@@ -55,7 +56,7 @@ function shouldApplyIncomingGameState(current: GameState | null, incoming: GameS
     }
 
     if (incoming.revision === current.revision) {
-        return incoming.updatedAt >= current.updatedAt;
+        return incoming.updatedAt > current.updatedAt;
     }
 
     return false;
@@ -910,8 +911,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
             return;
         }
 
+        const requestKey = `${gameId}:${userId}:${questId}`;
+        set((state) => {
+            if (state.currentQuestContent && state.currentQuestContent.questId !== questId) {
+                return { currentQuestContent: null };
+            }
+            return {};
+        });
+
         try {
-            const contentResult = await DynamicContentMapper.getQuestContent(questId, gameId, userId);
+            let request = pendingQuestContentRequests.get(requestKey);
+            if (!request) {
+                request = DynamicContentMapper.getQuestContent(questId, gameId, userId);
+                pendingQuestContentRequests.set(requestKey, request);
+                void request.finally(() => {
+                    pendingQuestContentRequests.delete(requestKey);
+                });
+            }
+
+            const contentResult = await request;
             set((state) => {
                 const activeQuestId = state.currentQuest?.id;
                 if (activeQuestId && activeQuestId !== questId) {

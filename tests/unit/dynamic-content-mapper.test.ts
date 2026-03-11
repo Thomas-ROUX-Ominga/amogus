@@ -1,5 +1,5 @@
 import { DynamicContentMapper } from "@/lib/quests/dynamic-content-mapper";
-import { getGame, getQuestMetadata, getPlayerFailedQuests } from "@/lib/redis/actions";
+import { getQuestMetadata, getPlayerFailedQuests } from "@/lib/redis/actions";
 import { getQuestGamesByDuration } from "@/lib/constants/quest-pool";
 import { Quest, QuestDuration, QuestGame, QuestType } from "@/types/quest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,7 +8,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/redis/actions");
 vi.mock("@/lib/constants/quest-pool");
 
-const mockGetGame = vi.mocked(getGame);
 const mockGetQuestMetadata = vi.mocked(getQuestMetadata);
 const mockGetPlayerFailedQuests = vi.mocked(getPlayerFailedQuests);
 const mockGetQuestGamesByDuration = vi.mocked(getQuestGamesByDuration);
@@ -81,53 +80,10 @@ describe("DynamicContentMapper", () => {
             success: true,
             data: {}
         });
-        // Mock game state with non-impostor player by default
-        mockGetGame.mockResolvedValue({
-            success: true,
-            data: {
-                id: mockGameId,
-                status: "IN_PROGRESS",
-                players: [
-                    {
-                        id: mockUserId,
-                        name: "Test Player",
-                        isAlive: true,
-                        role: "CREWMATE"
-                    }
-                ],
-                createdAt: Date.now(),
-                revision: 1,
-                updatedAt: Date.now(),
-                questsTotal: 10,
-                questsPerPlayer: { short: 1, medium: 1, long: 1 }
-            }
-        });
     });
 
     describe("getQuestContent", () => {
-        it("should return null immediately for impostor users", async () => {
-            // Arrange - Mock game state with impostor player
-            mockGetGame.mockResolvedValue({
-                success: true,
-                data: {
-                    id: mockGameId,
-                    status: "IN_PROGRESS",
-                    players: [
-                        {
-                            id: mockUserId,
-                            name: "Impostor Player",
-                            isAlive: true,
-                            role: "IMPOSTOR"
-                        }
-                    ],
-                    createdAt: Date.now(),
-                    revision: 1,
-                    updatedAt: Date.now(),
-                    questsTotal: 10,
-                    questsPerPlayer: { short: 1, medium: 1, long: 1 }
-                }
-            });
-
+        it("should resolve content from metadata and failed history", async () => {
             // Act
             const result = await DynamicContentMapper.getQuestContent(
                 mockQuestId,
@@ -136,10 +92,10 @@ describe("DynamicContentMapper", () => {
             );
 
             // Assert
-            expect(result).toBeNull();
-            // Should not attempt to load metadata or failed quests for impostors
-            expect(mockGetQuestMetadata).not.toHaveBeenCalled();
-            expect(mockGetPlayerFailedQuests).not.toHaveBeenCalled();
+            expect(result).not.toBeNull();
+            expect(result!.questId).toBe(mockQuestId);
+            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId);
+            expect(mockGetPlayerFailedQuests).toHaveBeenCalledWith(mockGameId, mockUserId);
         });
 
         it("should return content when quest metadata exists and no failed quests", async () => {

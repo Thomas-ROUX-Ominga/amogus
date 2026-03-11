@@ -195,9 +195,11 @@ function resolveMeetingState(
 
         const maxVotes = ranked[0]?.votes ?? 0;
         if (maxVotes > 0) {
-            const topPlayers = ranked.filter((entry) => entry.votes === maxVotes).map((entry) => entry.playerId);
-            const selectedIndex = Math.floor(Math.random() * topPlayers.length);
-            eliminatedPlayerId = topPlayers[selectedIndex];
+            const topPlayers = ranked
+                .filter((entry) => entry.votes === maxVotes)
+                .map((entry) => entry.playerId)
+                .sort((left, right) => left.localeCompare(right));
+            eliminatedPlayerId = topPlayers[0];
 
             const targetPlayer = state.players.find((player) => player.id === eliminatedPlayerId);
             if (targetPlayer) {
@@ -913,27 +915,52 @@ export async function getGameSnapshot(
     gameId: string,
     userId?: string
 ): Promise<ActionResponse<GameState>> {
-    const refreshed = await refreshGame(gameId);
-    if (!refreshed.success || !refreshed.data) {
-        return refreshed;
-    }
-
-    if (userId) {
-        const playerExists = refreshed.data.players.some((player) => player.id === userId);
-        const canReadLobbySnapshot = refreshed.data.status === "LOBBY";
-        if (!playerExists && !canReadLobbySnapshot) {
+    try {
+        const state = await readGameState(gameId);
+        if (!state) {
             return {
                 success: false,
-                error: "Player not found in game.",
-                code: ERROR_CODES.ERR_INVALID_SIGNATURE,
+                error: "Game module not found or decommissioned.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
             };
         }
-    }
 
-    return {
-        success: true,
-        data: normalizeGameState(refreshed.data),
-    };
+        // Snapshot reads are intentionally non-mutating to avoid write contention
+        // under multi-client SSE polling.
+        const resolvedSnapshot = resolveRuntimeTransitions(state, Date.now());
+        const syntheticUpdatedAt = state.updatedAt + 1;
+        const snapshot = areGameStatesEquivalent(state, resolvedSnapshot)
+            ? state
+            : normalizeGameState({
+                  ...resolvedSnapshot,
+                  revision: state.revision + 1,
+                  updatedAt: syntheticUpdatedAt,
+              });
+
+        if (userId) {
+            const playerExists = snapshot.players.some((player) => player.id === userId);
+            const canReadLobbySnapshot = snapshot.status === "LOBBY";
+            if (!playerExists && !canReadLobbySnapshot) {
+                return {
+                    success: false,
+                    error: "Player not found in game.",
+                    code: ERROR_CODES.ERR_INVALID_SIGNATURE,
+                };
+            }
+        }
+
+        return {
+            success: true,
+            data: normalizeGameState(snapshot),
+        };
+    } catch (error) {
+        console.error("Failed to fetch game snapshot:", error);
+        return {
+            success: false,
+            error: "Failed to fetch game snapshot.",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
 }
 
 export interface TriggerSabotageResult {

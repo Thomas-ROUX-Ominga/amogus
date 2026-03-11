@@ -149,8 +149,10 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
             // Not a valid URL, ignore and fall through
         }
 
-        // 2. Direct extraction from string (formats like "quest:ABC-123", "id=456", or just "ABC-123")
-        const questMatch = qrData.match(/(?:quest|id)[\s:_-]?([a-zA-Z0-9_-]+)/i) || qrData.match(/^([a-zA-Z0-9_-]+)$/i);
+        // 2. Direct extraction from string (formats like "quest:ABC-123", "id=456", JSON keys, or just "ABC-123")
+        const questMatch =
+            qrData.match(/(?:^|\b)(?:questId|quest|id)[\s:=_-]+([a-zA-Z0-9_-]+)/i) ||
+            qrData.match(/^([a-zA-Z0-9_-]+)$/i);
         if (questMatch && questMatch[1]) {
             return questMatch[1];
         }

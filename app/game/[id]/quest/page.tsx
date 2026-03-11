@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Check } from "lucide-react";
@@ -61,6 +61,7 @@ function QuestPageContent() {
     } = useGameStore();
 
     const gameId = id as string;
+    const contentLoadInFlightRef = useRef<string | null>(null);
 
     useRealTimeGamePolling(gameId, userId ?? undefined, Boolean(userId));
 
@@ -90,6 +91,8 @@ function QuestPageContent() {
             if (currentQuestContent.questId !== questId) {
                 return;
             }
+
+            contentLoadInFlightRef.current = null;
 
             // If currentQuest is null, or it's out of sync with content
             if (!currentQuest || currentQuest.id !== questId || 
@@ -138,9 +141,16 @@ function QuestPageContent() {
         }
 
         if (questId) {
-            if (currentQuest?.id !== questId || currentQuestContent?.questId !== questId) {
+            const hasMatchingContent = currentQuestContent?.questId === questId;
+            const isContentLoading = contentLoadInFlightRef.current === questId;
+            if (!hasMatchingContent && !isContentLoading) {
+                contentLoadInFlightRef.current = questId;
                 // Story 8.2: Use dynamic content mapper for questId-based content
-                loadDynamicQuestContent(questId, gameId, userId);
+                void loadDynamicQuestContent(questId, gameId, userId).finally(() => {
+                    if (contentLoadInFlightRef.current === questId) {
+                        contentLoadInFlightRef.current = null;
+                    }
+                });
                 
                 // Haptic feedback on successful quest load initiation
                 try {
