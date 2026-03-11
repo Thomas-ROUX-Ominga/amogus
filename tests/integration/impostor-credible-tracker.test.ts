@@ -37,6 +37,8 @@ describe("Impostor Sabotage Panel Integration", () => {
                 { id: "crew-1", name: "Charlie", role: "CREWMATE", isAlive: true },
             ],
             createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             questsTotal: 3,
             questsPerPlayer: { short: 1, medium: 1, long: 1 },
             sabotages: {

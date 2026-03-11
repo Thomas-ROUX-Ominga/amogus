@@ -79,6 +79,7 @@ export interface PlayerState {
 }
 
 export interface QuestContentResult {
+    questId: string;
     content: QuestGame;
     contentId: string;
     isRotation: boolean; // true if this is a rotation due to previous failure

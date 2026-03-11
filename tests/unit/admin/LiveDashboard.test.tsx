@@ -16,6 +16,7 @@ vi.mock("@/app/(organizer)/dashboard/actions", () => ({
 }));
 
 describe("LiveDashboard", () => {
+  const now = Date.now();
   const mockGameState: GameState = {
     id: "TEST123",
     status: "IN_PROGRESS",
@@ -35,7 +36,9 @@ describe("LiveDashboard", () => {
         role: "IMPOSTOR",
       },
     ],
-    createdAt: Date.now(),
+    createdAt: now,
+    revision: 1,
+    updatedAt: now,
     questsPerPlayer: {
       short: 1,
       medium: 1,

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useGameStore } from "@/lib/store/game-store";
+import { useGameStore, useRealTimeGamePolling } from "@/lib/store/game-store";
 import { useAuth } from "@/hooks/use-auth";
 import { ErrorView } from "@/components/game/error-view";
 import { QuestView } from "@/components/game/quest-view";
@@ -50,18 +50,19 @@ function QuestPageContent() {
     const {
         gameState,
         isLoading,
-        error,
-        errorCode,
+        fatalError,
+        fatalErrorCode,
         currentQuest,
         currentQuestContent,
         setCurrentQuest,
         fetchGame = async () => {},
-        refreshGameData = async () => {},
         loadDynamicQuestContent = async () => {},
         loadFailedQuests = async () => {},
     } = useGameStore();
 
     const gameId = id as string;
+
+    useRealTimeGamePolling(gameId, userId ?? undefined, Boolean(userId));
 
     // Story 11.1: Synchronous stale check to prevent flicker
     // If we have a questId in URL but the store has a different quest,
@@ -76,15 +77,6 @@ function QuestPageContent() {
         }
     }, [id, userId, fetchGame]);
 
-    useEffect(() => {
-        if (!id || !userId) return;
-        const interval = setInterval(() => {
-            refreshGameData(id as string, userId);
-        }, 2000);
-
-        return () => clearInterval(interval);
-    }, [id, userId, refreshGameData]);
-
     // Load failed quests when game and user are available
     useEffect(() => {
         if (gameState && userId && gameState.status === "IN_PROGRESS") {
@@ -95,6 +87,10 @@ function QuestPageContent() {
     // Update quest metadata when dynamic content loads
     useEffect(() => {
         if (currentQuestContent && questId) {
+            if (currentQuestContent.questId !== questId) {
+                return;
+            }
+
             // If currentQuest is null, or it's out of sync with content
             if (!currentQuest || currentQuest.id !== questId || 
                 currentQuest.type !== currentQuestContent.content.type ||
@@ -123,7 +119,7 @@ function QuestPageContent() {
     }, [duration, questId, t]);
 
     useEffect(() => {
-        if (!gameState) return;
+        if (!gameState || !userId) return;
 
         // Role check for Impostors - Story 4.1
         const currentPlayer = gameState.players.find((p) => p.id === userId);
@@ -142,9 +138,9 @@ function QuestPageContent() {
         }
 
         if (questId) {
-            if (currentQuest?.id !== questId) {
+            if (currentQuest?.id !== questId || currentQuestContent?.questId !== questId) {
                 // Story 8.2: Use dynamic content mapper for questId-based content
-                loadDynamicQuestContent(questId, gameId, userId!);
+                loadDynamicQuestContent(questId, gameId, userId);
                 
                 // Haptic feedback on successful quest load initiation
                 try {
@@ -178,7 +174,19 @@ function QuestPageContent() {
                 }
             }
         }
-    }, [gameState, duration, questId, currentQuest?.id, currentQuest?.duration, setCurrentQuest, userId, gameId, loadDynamicQuestContent, t]);
+    }, [
+        gameState,
+        duration,
+        questId,
+        currentQuest?.id,
+        currentQuest?.duration,
+        currentQuestContent?.questId,
+        setCurrentQuest,
+        userId,
+        gameId,
+        loadDynamicQuestContent,
+        t,
+    ]);
 
     if (isStale || isLoading || !userId) {
         return (
@@ -193,17 +201,17 @@ function QuestPageContent() {
     }
 
     // Game fetch error
-    if (error) {
+    if (fatalError) {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <ErrorView
-                    title={errorCode === ERROR_CODES.GAME_NOT_FOUND ? t("game.questPage.sessionNotFoundTitle") : t("game.questPage.signalLostTitle")}
+                    title={fatalErrorCode === ERROR_CODES.GAME_NOT_FOUND ? t("game.questPage.sessionNotFoundTitle") : t("game.questPage.signalLostTitle")}
                     message={getLocalizedErrorMessage({
                         t,
-                        code: errorCode,
-                        fallback: error,
+                        code: fatalErrorCode,
+                        fallback: fatalError,
                     })}
-                    code={errorCode || ERROR_CODES.ERR_QUEST_LOAD_FAILED}
+                    code={fatalErrorCode || ERROR_CODES.ERR_QUEST_LOAD_FAILED}
                     onRetry={() => { if (id) fetchGame(gameId); }}
                 />
             </main>

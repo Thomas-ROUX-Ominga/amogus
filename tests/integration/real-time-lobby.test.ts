@@ -1,201 +1,131 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook } from '@testing-library/react';
-import { useRealTimeGamePolling } from '@/lib/store/game-store';
-import { GameState, Player } from '@/types/game';
-import useSWR from 'swr';
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { GameState } from "@/types/game";
+import { useGameStore, useRealTimeGamePolling } from "@/lib/store/game-store";
 
-// Mock SWR and dependencies
-vi.mock('swr');
-vi.mock('@/lib/store/game-store', async () => {
-    const actual = await vi.importActual('@/lib/store/game-store');
-    return {
-        ...actual,
-        useGameStore: vi.fn(),
-    };
+type MockListener = (event: globalThis.MessageEvent<string>) => void;
+
+class MockEventSource {
+    static instances: MockEventSource[] = [];
+    static CONNECTING = 0;
+    static OPEN = 1;
+    static CLOSED = 2;
+
+    readyState = 0;
+    private listeners = new Map<string, Set<MockListener>>();
+
+    constructor(_url: string) {
+        MockEventSource.instances.push(this);
+    }
+
+    addEventListener(type: string, listener: MockListener) {
+        const listeners = this.listeners.get(type) ?? new Set<MockListener>();
+        listeners.add(listener);
+        this.listeners.set(type, listeners);
+    }
+
+    close() {
+        this.readyState = 2;
+    }
+
+    emit(type: string, payload?: unknown) {
+        const listeners = this.listeners.get(type);
+        if (!listeners) return;
+        const data = payload === undefined ? undefined : JSON.stringify(payload);
+        const event = new globalThis.MessageEvent(type, { data });
+        listeners.forEach((listener) => listener(event));
+    }
+}
+
+const now = Date.now();
+
+const createGameState = (players: GameState["players"], revision: number, status: GameState["status"] = "LOBBY"): GameState => ({
+    id: "test-game-123",
+    status,
+    players,
+    createdAt: now,
+    revision,
+    updatedAt: now + revision,
 });
 
-vi.mock('@/lib/redis/actions', () => ({
-    refreshGame: vi.fn(),
-}));
-
-import { useGameStore } from '@/lib/store/game-store';
-import { refreshGame } from '@/lib/redis/actions';
-
-const mockUseSWR = vi.mocked(useSWR);
-const mockUseGameStore = vi.mocked(useGameStore);
-const mockRefreshGame = vi.mocked(refreshGame);
-
-describe('Real-time Lobby Integration Tests', () => {
-    let mockGameState: GameState;
-    let mockPlayers: Player[];
-
+describe("Real-time Lobby Integration", () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        
-        mockPlayers = [
-            { id: 'user1', name: 'Player 1', isAlive: true, completedQuests: [] },
-            { id: 'user2', name: 'Player 2', isAlive: true, completedQuests: [] }
-        ];
+        MockEventSource.instances = [];
+        useGameStore.getState().reset();
 
-        mockGameState = {
-            id: 'test-game-123',
-            status: 'LOBBY',
-            players: mockPlayers,
-            createdAt: Date.now()
-        };
+        vi.stubGlobal("EventSource", MockEventSource as unknown as typeof globalThis.EventSource);
 
-        mockUseGameStore.mockReturnValue({
-            refreshGameData: vi.fn().mockResolvedValue(undefined),
-            getState: vi.fn().mockReturnValue({ gameState: mockGameState })
-        } as unknown as ReturnType<typeof useGameStore>);
+        const initialState = createGameState(
+            [
+                { id: "user1", name: "Player 1", isAlive: true, completedQuests: [] },
+                { id: "user2", name: "Player 2", isAlive: true, completedQuests: [] },
+            ],
+            1,
+        );
 
-        mockRefreshGame.mockResolvedValue({
-            success: true,
-            data: mockGameState
+        useGameStore.setState({ gameState: initialState });
+
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                json: vi.fn().mockResolvedValue({ success: true, data: initialState }),
+            } as unknown as Response)
+        );
+    });
+
+    it("reflects player count updates from SSE", async () => {
+        const { result } = renderHook(() => useRealTimeGamePolling("test-game-123", "user1"));
+        const source = MockEventSource.instances[0];
+
+        await act(async () => {
+            source.emit("open");
+            source.emit("state", {
+                gameState: createGameState(
+                    [
+                        { id: "user1", name: "Player 1", isAlive: true, completedQuests: [] },
+                        { id: "user2", name: "Player 2", isAlive: true, completedQuests: [] },
+                        { id: "user3", name: "Player 3", isAlive: true, completedQuests: [] },
+                    ],
+                    2,
+                ),
+                revision: 2,
+                updatedAt: now + 2,
+            });
         });
 
-        // Default SWR mock
-        mockUseSWR.mockReturnValue({
-            data: {
-                ...mockGameState,
-                newPlayers: [],
-                playerCount: 2,
-                isGameInProgress: false
-            },
-            error: null,
-            isLoading: false,
-            mutate: vi.fn()
-        } as unknown as ReturnType<typeof useSWR>);
+        await waitFor(() => {
+            expect(result.current.playerCount).toBe(3);
+            expect(result.current.newPlayers.some((player) => player.id === "user3")).toBe(true);
+            expect(result.current.isConnected).toBe(true);
+        });
     });
 
-    it('should simulate multi-player lobby scenario', () => {
-        const { result } = renderHook(() => 
-            useRealTimeGamePolling('test-game-123', 'user1')
-        );
+    it("tracks in-progress transition for redirect flows", async () => {
+        const { result } = renderHook(() => useRealTimeGamePolling("test-game-123", "user1"));
+        const source = MockEventSource.instances[0];
 
-        // Verify initial player count
-        expect(result.current.playerCount).toBe(2);
-        expect(result.current.isGameInProgress).toBe(false);
-        expect(result.current.isConnected).toBe(true);
-    });
+        await act(async () => {
+            source.emit("open");
+            source.emit("state", {
+                gameState: createGameState(
+                    [
+                        { id: "user1", name: "Player 1", isAlive: true, role: "CREWMATE", completedQuests: [] },
+                        { id: "user2", name: "Player 2", isAlive: true, completedQuests: [] },
+                    ],
+                    3,
+                    "IN_PROGRESS",
+                ),
+                revision: 3,
+                updatedAt: now + 3,
+            });
+        });
 
-    it('should handle new player joining simulation', () => {
-        // Mock new player joining
-        const newPlayer: Player = { id: 'user3', name: 'Player 3', isAlive: true, completedQuests: [] };
-        const updatedGameState = {
-            ...mockGameState,
-            players: [...mockGameState.players, newPlayer]
-        };
-
-        // Mock SWR to return updated state with new player
-        mockUseSWR.mockReturnValue({
-            data: {
-                ...updatedGameState,
-                newPlayers: [newPlayer],
-                playerCount: 3,
-                isGameInProgress: false
-            },
-            error: null,
-            isLoading: false,
-            mutate: vi.fn()
-        } as unknown as ReturnType<typeof useSWR>);
-
-        const { result } = renderHook(() => 
-            useRealTimeGamePolling('test-game-123', 'user1')
-        );
-
-        // The hook should detect the new player
-        expect(result.current.newPlayers).toContainEqual(newPlayer);
-        expect(result.current.playerCount).toBe(3);
-    });
-
-    it('should simulate game start and player redirect flow', () => {
-        // Mock game state transition to IN_PROGRESS
-        const inProgressGameState = {
-            ...mockGameState,
-            status: 'IN_PROGRESS' as const,
-            players: mockPlayers.map(p => ({ ...p, role: p.id === 'user1' ? 'CREWMATE' as const : undefined }))
-        };
-
-        mockUseSWR.mockReturnValue({
-            data: {
-                ...inProgressGameState,
-                newPlayers: [],
-                playerCount: 2,
-                isGameInProgress: true
-            },
-            error: null,
-            isLoading: false,
-            mutate: vi.fn()
-        } as unknown as ReturnType<typeof useSWR>);
-
-        const { result } = renderHook(() => 
-            useRealTimeGamePolling('test-game-123', 'user1')
-        );
-
-        // Should detect game in progress
-        expect(result.current.isGameInProgress).toBe(true);
-        expect(result.current.gameState?.status).toBe('IN_PROGRESS');
-    });
-
-    it('should handle connection failures gracefully', () => {
-        // Mock network error
-        mockUseSWR.mockReturnValue({
-            data: null,
-            error: new Error('Network error'),
-            isLoading: false,
-            mutate: vi.fn()
-        } as unknown as ReturnType<typeof useSWR>);
-
-        const { result } = renderHook(() => 
-            useRealTimeGamePolling('test-game-123', 'user1')
-        );
-
-        // Should show disconnected status
-        expect(result.current.isConnected).toBe(false);
-        expect(result.current.error).toBeTruthy();
-    });
-
-    it('should maintain proper cleanup on unmount', () => {
-        const { unmount } = renderHook(() => 
-            useRealTimeGamePolling('test-game-123', 'user1')
-        );
-
-        // Should not throw when unmounting
-        expect(() => unmount()).not.toThrow();
-    });
-
-    it('should handle rapid player join scenarios', () => {
-        // Simulate multiple players joining quickly
-        const players = [
-            { id: 'user3', name: 'Player 3', isAlive: true, completedQuests: [] },
-            { id: 'user4', name: 'Player 4', isAlive: true, completedQuests: [] },
-            { id: 'user5', name: 'Player 5', isAlive: true, completedQuests: [] }
-        ];
-
-        const finalGameState = {
-            ...mockGameState,
-            players: [...mockGameState.players, ...players]
-        };
-
-        mockUseSWR.mockReturnValue({
-            data: {
-                ...finalGameState,
-                newPlayers: players,
-                playerCount: 5,
-                isGameInProgress: false
-            },
-            error: null,
-            isLoading: false,
-            mutate: vi.fn()
-        } as unknown as ReturnType<typeof useSWR>);
-
-        const { result } = renderHook(() => 
-            useRealTimeGamePolling('test-game-123', 'user1')
-        );
-
-        // Should handle multiple new players
-        expect(result.current.playerCount).toBe(5);
-        expect(result.current.newPlayers.length).toBeGreaterThanOrEqual(0);
+        await waitFor(() => {
+            expect(result.current.isGameInProgress).toBe(true);
+            expect(result.current.gameState?.status).toBe("IN_PROGRESS");
+        });
     });
 });

@@ -1,6 +1,6 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { Serwist } from "serwist";
+import { NetworkOnly, Serwist } from "serwist";
 
 declare global {
     interface ServiceWorkerGlobalScope extends SerwistGlobalConfig {
@@ -15,7 +15,15 @@ const serwist = new Serwist({
     skipWaiting: true,
     clientsClaim: true,
     navigationPreload: true,
-    runtimeCaching: defaultCache,
+    runtimeCaching: [
+        {
+            // Never cache real-time game synchronization endpoints.
+            matcher: /\/api\/game\/[^/]+\/(events|snapshot)(\?.*)?$/,
+            handler: new NetworkOnly(),
+            method: "GET",
+        },
+        ...defaultCache,
+    ],
 });
 
 serwist.addEventListeners();

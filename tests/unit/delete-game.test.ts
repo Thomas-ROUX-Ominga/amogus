@@ -33,9 +33,9 @@ describe('deleteGame', () => {
   it('should delete a game and all its associated keys successfully', async () => {
     const gameId = 'TEST-123';
     const associatedKeys = [
-      `game:${gameId}:state`,
-      `game:${gameId}:player:p1:failed-quests`,
-      `game:${gameId}:player:p2:failed-quests`,
+      `game:v2:${gameId}:state`,
+      `game:v2:${gameId}:player:p1:failed-quests`,
+      `game:v2:${gameId}:player:p2:failed-quests`,
     ];
 
     (redis.keys as any).mockResolvedValue(associatedKeys);
@@ -44,7 +44,7 @@ describe('deleteGame', () => {
     const result = await deleteGame(gameId);
 
     expect(result.success).toBe(true);
-    expect(redis.keys).toHaveBeenCalledWith(`game:${gameId}:*`);
+    expect(redis.keys).toHaveBeenCalledWith(`game:v2:${gameId}:*`);
     expect(redis.del).toHaveBeenCalledTimes(associatedKeys.length);
     associatedKeys.forEach(key => {
       expect(redis.del).toHaveBeenCalledWith(key);

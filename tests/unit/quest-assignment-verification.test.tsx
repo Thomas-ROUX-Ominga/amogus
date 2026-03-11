@@ -61,6 +61,8 @@ describe("Quest Assignment Verification", () => {
                 batchId: "batch-456",
                 players: [{ id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true, assignedQuests: ["q1", "q2"] }],
                 createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             },
             currentQuest: {
                 id: "q3", // Not in assignedQuests
@@ -88,6 +90,8 @@ describe("Quest Assignment Verification", () => {
                 batchId: "batch-456",
                 players: [{ id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true, assignedQuests: ["q1", "q2"] }],
                 createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             },
             currentQuest: {
                 id: "q1", // Is in assignedQuests
@@ -115,6 +119,8 @@ describe("Quest Assignment Verification", () => {
                 batchId: undefined, // No batch
                 players: [{ id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true, assignedQuests: [] }],
                 createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             },
             currentQuest: {
                 id: "q_random",
@@ -141,6 +147,8 @@ describe("Quest Assignment Verification", () => {
                 batchId: "batch-456",
                 players: [{ id: "user-1", name: "Alice", role: "IMPOSTOR", isAlive: true, assignedQuests: ["fake1", "fake2"] }],
                 createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             },
             currentQuest: {
                 id: "real_quest_id", // Scanning something not in fake list

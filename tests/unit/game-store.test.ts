@@ -36,7 +36,7 @@ describe("game-store", () => {
     });
 
     it("should update state on successful fetchGame", async () => {
-        const mockGame: GameState = { id: "game-123", status: "LOBBY", players: [], createdAt: Date.now() };
+        const mockGame: GameState = { id: "game-123", status: "LOBBY", players: [], createdAt: Date.now(), revision: 1, updatedAt: Date.now() };
         vi.mocked(getGame).mockResolvedValueOnce({ success: true, data: mockGame });
 
         await useGameStore.getState().fetchGame("game-123");
@@ -58,7 +58,7 @@ describe("game-store", () => {
     });
 
     it("should update state on successful join", async () => {
-        const mockGame: GameState = { id: "game-123", status: "LOBBY", players: [{ id: "u1", name: "Omi", isAlive: true }], createdAt: Date.now() };
+        const mockGame: GameState = { id: "game-123", status: "LOBBY", players: [{ id: "u1", name: "Omi", isAlive: true }], createdAt: Date.now(), revision: 1, updatedAt: Date.now() };
         vi.mocked(joinGame).mockResolvedValueOnce({ success: true, data: mockGame });
 
         await useGameStore.getState().join("game-123", "Omi", "u1");
@@ -69,7 +69,7 @@ describe("game-store", () => {
     });
 
     it("should update state on successful launch", async () => {
-        const mockGame: GameState = { id: "game-123", status: "IN_PROGRESS", players: [{ id: "u1", name: "Omi", isAlive: true }], createdAt: Date.now() };
+        const mockGame: GameState = { id: "game-123", status: "IN_PROGRESS", players: [{ id: "u1", name: "Omi", isAlive: true }], createdAt: Date.now(), revision: 1, updatedAt: Date.now() };
         vi.mocked(startGame).mockResolvedValueOnce({ success: true, data: mockGame });
 
         const result = await useGameStore.getState().launch("game-123");
@@ -113,6 +113,31 @@ describe("game-store", () => {
             useGameStore.getState().setQuestAnswered(true);
             useGameStore.getState().clearQuest();
             expect(useGameStore.getState().questAnswered).toBe(false);
+        });
+
+        it("should clear dynamic quest content when clearQuest is called", () => {
+            useGameStore.setState({
+                currentQuest: { id: "q1", type: "true-false", duration: "short" },
+                currentQuestContent: {
+                    questId: "q1",
+                    contentId: "content-1",
+                    isRotation: false,
+                    content: {
+                        id: "content-1",
+                        type: "true-false",
+                        duration: "short",
+                        title: "Test",
+                        instruction: "Test",
+                        data: {
+                            choices: [{ id: "a", label: "A" }],
+                            answerIds: ["a"],
+                        },
+                    },
+                },
+            });
+
+            useGameStore.getState().clearQuest();
+            expect(useGameStore.getState().currentQuestContent).toBeNull();
         });
 
         it("should reset questAnswered when reset is called", () => {
@@ -191,6 +216,8 @@ describe("game-store", () => {
                     { id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true, completedQuests: ["s1", "s2"] },
                 ],
                 createdAt: Date.now(),
+               revision: 1,
+               updatedAt: Date.now(),
             };
             vi.mocked(getGame).mockResolvedValueOnce({ success: true, data: mockGame });
 
@@ -211,6 +238,8 @@ describe("game-store", () => {
                     { id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true },
                 ],
                 createdAt: Date.now(),
+               revision: 1,
+               updatedAt: Date.now(),
             };
             vi.mocked(getGame).mockResolvedValueOnce({ success: true, data: mockGame });
 

@@ -38,6 +38,8 @@ describe("GameStore - Role Selection", () => {
                 status: "IN_PROGRESS",
                 players: [{ id: "user-456", name: "Test", role: "CREWMATE", isAlive: true }],
                 createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             },
         });
 
@@ -63,6 +65,8 @@ describe("GameStore - Role Selection", () => {
                 status: "IN_PROGRESS",
                 players: [{ id: "user-456", name: "Test", role: "IMPOSTOR", isAlive: true }],
                 createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             },
         });
 
@@ -91,6 +95,8 @@ describe("GameStore - Role Selection", () => {
                 status: "IN_PROGRESS",
                 players: [{ id: "user-456", name: "Test", role: "CREWMATE", isAlive: true }],
                 createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             },
         });
 
@@ -128,6 +134,8 @@ describe("GameStore - Role Selection", () => {
                 status: "IN_PROGRESS",
                 players: [{ id: "user-456", name: "Test", role: "CREWMATE", isAlive: true }],
                 createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             },
         });
 

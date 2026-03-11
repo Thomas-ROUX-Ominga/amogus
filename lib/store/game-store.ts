@@ -20,7 +20,61 @@ import {
 } from "@/lib/redis/actions";
 import { getTotalQuests } from "@/lib/utils/quest-calculations";
 import { DynamicContentMapper } from "@/lib/quests/dynamic-content-mapper";
-import useSWR from "swr";
+
+export type SyncStatus = "connected" | "reconnecting" | "degraded";
+
+const SYNC_SSE_RECONNECT_DELAY_MS = 1500;
+const SYNC_FALLBACK_POLL_INTERVAL_MS = 2000;
+const SYNC_FAILURES_FOR_DEGRADED = 3;
+
+interface SnapshotApiResponse {
+    success: boolean;
+    data?: GameState;
+    error?: string;
+    code?: string;
+}
+
+interface HookStateEventPayload {
+    gameState?: GameState;
+    revision?: number;
+    updatedAt?: number;
+}
+
+interface HookErrorEventPayload {
+    error?: string;
+    code?: string;
+}
+
+function shouldApplyIncomingGameState(current: GameState | null, incoming: GameState): boolean {
+    if (!current || current.id !== incoming.id) {
+        return true;
+    }
+
+    if (incoming.revision > current.revision) {
+        return true;
+    }
+
+    if (incoming.revision === current.revision) {
+        return incoming.updatedAt >= current.updatedAt;
+    }
+
+    return false;
+}
+
+function getQuestStatsForUser(gameState: GameState, userId?: string): Pick<GameStore, "questsCompleted" | "questsTotal"> {
+    if (!userId) {
+        return {
+            questsCompleted: 0,
+            questsTotal: getTotalQuests(gameState),
+        };
+    }
+
+    const player = gameState.players.find((entry) => entry.id === userId);
+    return {
+        questsCompleted: player?.completedQuests?.length ?? 0,
+        questsTotal: player?.assignedQuests?.length ?? getTotalQuests(gameState),
+    };
+}
 
 interface GameStore {
     gameState: GameState | null;
@@ -30,6 +84,10 @@ interface GameStore {
     isSelectingRole: boolean;
     isCompletingQuest: boolean;
     isRefreshing: boolean;
+    syncStatus: SyncStatus;
+    consecutiveSyncFailures: number;
+    fatalError: string | null;
+    fatalErrorCode: string | null;
     error: string | null;
     errorCode: string | null;
     launchError: string | null;
@@ -72,6 +130,12 @@ interface GameStore {
     fetchGame: (id: string, userId?: string) => Promise<void>;
     fetchGameQuests: (gameId: string) => Promise<void>;
     refreshGameData: (id: string, userId?: string) => Promise<void>;
+    applyRealtimeState: (state: GameState, userId?: string) => void;
+    setSyncStatus: (status: SyncStatus) => void;
+    recordSyncFailure: () => void;
+    resetSyncFailures: () => void;
+    setFatalError: (error: string | null, code?: string | null) => void;
+    clearFatalError: () => void;
     join: (gameId: string, playerName: string, userId: string) => Promise<void>;
     launch: (gameId: string) => Promise<boolean>;
     chooseRole: (gameId: string, userId: string, role: PlayerRole) => Promise<boolean>;
@@ -105,79 +169,327 @@ interface GameStore {
     cancelMeetingVoteAction: (gameId: string, userId: string) => Promise<boolean>;
 }
 
-// Real-time polling hook for lobby updates
-export function useRealTimeGamePolling(gameId: string, userId?: string, enabled = true) {
-    const { refreshGameData } = useGameStore();
-    const previousPlayerIds = React.useRef<Set<string>>(new Set());
-    
-    // Reactively get elimination status to stop polling at the SWR key level
-    const gameStateFromStore = useGameStore(state => state.gameState);
-    const currentPlayer = gameStateFromStore?.players.find(p => p.id === userId);
-    const isEliminated = currentPlayer ? !currentPlayer.isAlive : false;
-    
-    const fetcher = async () => {
-        if (!gameId) return null;
-        
-        await refreshGameData(gameId, userId);
-        const updatedState = useGameStore.getState().gameState;
-        
-        if (!updatedState) return null;
-        
-        // Detect new players by comparing with previous state
-        const currentPlayerIds = new Set(updatedState.players.map(p => p.id));
-        const newPlayerIds = Array.from(currentPlayerIds).filter(id => !previousPlayerIds.current.has(id));
-        const newPlayers = updatedState.players.filter(p => newPlayerIds.includes(p.id));
-        
-        // Update previous player IDs for next comparison
-        previousPlayerIds.current = currentPlayerIds;
-        
-        return {
-            ...updatedState,
-            newPlayers,
-            playerCount: updatedState.players.length,
-            isGameInProgress: updatedState.status === 'IN_PROGRESS'
-        };
-    };
+function parseStateEventPayload(raw: string): HookStateEventPayload | null {
+    try {
+        const parsed = JSON.parse(raw) as HookStateEventPayload;
+        if (!parsed || typeof parsed !== "object") {
+            return null;
+        }
+        return parsed;
+    } catch (error) {
+        console.error("Failed to parse state SSE payload:", error);
+        return null;
+    }
+}
 
-    // Story 11.5: Only stop polling for eliminated Impostors or when game is finished.
-    // Crewmates in Ghost Mode still need real-time updates.
+function parseErrorEventPayload(raw: string): HookErrorEventPayload | null {
+    try {
+        const parsed = JSON.parse(raw) as HookErrorEventPayload;
+        if (!parsed || typeof parsed !== "object") {
+            return null;
+        }
+        return parsed;
+    } catch {
+        return null;
+    }
+}
+
+function isFatalSyncCode(code?: string): boolean {
+    return code === "GAME_NOT_FOUND" || code === "ERR_INVALID_SIGNATURE";
+}
+
+// Real-time sync hook (SSE + polling fallback)
+export function useRealTimeGamePolling(gameId: string, userId?: string, enabled = true) {
+    const {
+        gameState: gameStateFromStore,
+        syncStatus,
+        fatalError,
+        applyRealtimeState,
+        refreshGameData,
+        setSyncStatus,
+        recordSyncFailure,
+        resetSyncFailures,
+        setFatalError,
+        clearFatalError,
+    } = useGameStore();
+
+    const [isLoading, setIsLoading] = React.useState<boolean>(Boolean(enabled && gameId));
+    const [syncError, setSyncError] = React.useState<Error | null>(null);
+    const [newPlayers, setNewPlayers] = React.useState<GameState["players"]>([]);
+    const previousPlayerIds = React.useRef<Set<string>>(new Set());
+
+    const currentPlayer = gameStateFromStore?.players.find((player) => player.id === userId);
+    const isEliminated = currentPlayer ? !currentPlayer.isAlive : false;
     const shouldStopPolling = isEliminated && currentPlayer?.role === "IMPOSTOR";
     const isGameFinished = gameStateFromStore?.status === "FINISHED" && gameStateFromStore?.id === gameId;
-    
-    const {
-        data,
-        error,
-        isLoading,
-        mutate
-    } = useSWR(
-        enabled && gameId && !shouldStopPolling && !isGameFinished ? `game:${gameId}:poll` : null,
-        fetcher,
-        {
-            refreshInterval: 2000, // 2-second polling
-            revalidateOnFocus: true,
-            revalidateOnReconnect: true,
-            errorRetryCount: 3,
-            errorRetryInterval: 1000,
-        }
-    );
 
-    // Cleanup previous player IDs when hook unmounts or gameId changes
+    React.useEffect(() => {
+        if (!gameStateFromStore || gameStateFromStore.id !== gameId) {
+            setNewPlayers([]);
+            return;
+        }
+
+        const currentPlayerIds = new Set(gameStateFromStore.players.map((player) => player.id));
+        const freshlyJoined = gameStateFromStore.players.filter(
+            (player) => !previousPlayerIds.current.has(player.id)
+        );
+        previousPlayerIds.current = currentPlayerIds;
+        setNewPlayers(freshlyJoined);
+    }, [gameStateFromStore, gameId]);
+
     React.useEffect(() => {
         if (!enabled || !gameId) {
             previousPlayerIds.current.clear();
+            setNewPlayers([]);
+            setIsLoading(false);
+            setSyncError(null);
+            return;
         }
-    }, [gameId, enabled]);
+
+        if (!userId) {
+            previousPlayerIds.current.clear();
+            setNewPlayers([]);
+            setIsLoading(false);
+            setSyncError(null);
+            return;
+        }
+
+        if (shouldStopPolling || isGameFinished) {
+            setIsLoading(false);
+            setSyncError(null);
+            return;
+        }
+
+        let disposed = false;
+        let eventSource: globalThis.EventSource | null = null;
+        let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+        let fallbackTimer: ReturnType<typeof setInterval> | null = null;
+
+        const closeEventSource = () => {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+        };
+
+        const clearReconnectTimer = () => {
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+        };
+
+        const stopFallbackPolling = () => {
+            if (fallbackTimer) {
+                clearInterval(fallbackTimer);
+                fallbackTimer = null;
+            }
+        };
+
+        const fetchSnapshot = async (markAsDegraded = false): Promise<boolean> => {
+            if (!userId) {
+                return false;
+            }
+
+            try {
+                const response = await fetch(
+                    `/api/game/${gameId}/snapshot?userId=${encodeURIComponent(userId)}`,
+                    {
+                        method: "GET",
+                        cache: "no-store",
+                    }
+                );
+                const payload = (await response.json()) as SnapshotApiResponse;
+
+                if (!response.ok || !payload.success || !payload.data) {
+                    const code = payload.code ?? "ERR_SIGNAL_LOST";
+                    const errorMessage = payload.error ?? "Failed to fetch game snapshot.";
+                    if (isFatalSyncCode(code)) {
+                        setFatalError(errorMessage, code);
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                applyRealtimeState(payload.data, userId);
+                resetSyncFailures();
+                setSyncStatus(markAsDegraded ? "degraded" : "connected");
+                setIsLoading(false);
+                setSyncError(null);
+                clearFatalError();
+                return true;
+            } catch (error) {
+                console.error("Snapshot fallback failed:", error);
+                setSyncError(error as Error);
+                recordSyncFailure();
+                return false;
+            }
+        };
+
+        const startFallbackPolling = () => {
+            if (fallbackTimer) return;
+            fallbackTimer = setInterval(() => {
+                void fetchSnapshot(true).then((ok) => {
+                    if (!ok && !disposed) {
+                        const { consecutiveSyncFailures } = useGameStore.getState();
+                        setSyncStatus(
+                            consecutiveSyncFailures >= SYNC_FAILURES_FOR_DEGRADED
+                                ? "degraded"
+                                : "reconnecting"
+                        );
+                    }
+                });
+            }, SYNC_FALLBACK_POLL_INTERVAL_MS);
+        };
+
+        const scheduleReconnect = () => {
+            if (disposed || reconnectTimer) return;
+            reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                if (!disposed) {
+                    connectSse();
+                }
+            }, SYNC_SSE_RECONNECT_DELAY_MS);
+        };
+
+        const handleStateEvent = (event: globalThis.MessageEvent<string>) => {
+            const payload = parseStateEventPayload(event.data);
+            if (!payload?.gameState) {
+                return;
+            }
+
+            applyRealtimeState(payload.gameState, userId);
+            resetSyncFailures();
+            setSyncStatus("connected");
+            setIsLoading(false);
+            setSyncError(null);
+            clearFatalError();
+            stopFallbackPolling();
+        };
+
+        const connectSse = () => {
+            if (!userId || disposed) {
+                return;
+            }
+
+            setSyncStatus("reconnecting");
+            closeEventSource();
+
+            try {
+                eventSource = new globalThis.EventSource(
+                    `/api/game/${gameId}/events?userId=${encodeURIComponent(userId)}`
+                );
+            } catch (error) {
+                console.error("Failed to initialize SSE:", error);
+                setSyncError(error as Error);
+                startFallbackPolling();
+                scheduleReconnect();
+                return;
+            }
+
+            eventSource.addEventListener("open", () => {
+                if (disposed) return;
+                setSyncStatus("connected");
+                resetSyncFailures();
+                setIsLoading(false);
+                setSyncError(null);
+                stopFallbackPolling();
+            });
+
+            eventSource.addEventListener("snapshot", (event) =>
+                handleStateEvent(event as globalThis.MessageEvent<string>)
+            );
+            eventSource.addEventListener("state", (event) =>
+                handleStateEvent(event as globalThis.MessageEvent<string>)
+            );
+            eventSource.addEventListener("heartbeat", () => {
+                if (disposed) return;
+                if (useGameStore.getState().syncStatus !== "connected") {
+                    setSyncStatus("connected");
+                }
+            });
+
+            eventSource.addEventListener("error", (event) => {
+                if (disposed) return;
+
+                const withData = event as unknown as globalThis.MessageEvent<string>;
+                const payload = withData.data ? parseErrorEventPayload(withData.data) : null;
+                if (payload?.code && isFatalSyncCode(payload.code)) {
+                    setFatalError(payload.error ?? "Game sync failed.", payload.code);
+                }
+
+                setSyncError(
+                    new Error(payload?.error ?? "Connection lost. Attempting to reconnect...")
+                );
+                recordSyncFailure();
+                setSyncStatus("reconnecting");
+                startFallbackPolling();
+
+                if (!eventSource || eventSource.readyState === globalThis.EventSource.CLOSED) {
+                    closeEventSource();
+                    scheduleReconnect();
+                }
+            });
+        };
+
+        setIsLoading(true);
+        clearFatalError();
+        void fetchSnapshot(false);
+        connectSse();
+
+        const handleOnline = () => {
+            if (disposed) return;
+            setSyncStatus("reconnecting");
+            void refreshGameData(gameId, userId);
+            connectSse();
+        };
+
+        window.addEventListener("online", handleOnline);
+
+        return () => {
+            disposed = true;
+            window.removeEventListener("online", handleOnline);
+            clearReconnectTimer();
+            stopFallbackPolling();
+            closeEventSource();
+        };
+    }, [
+        enabled,
+        gameId,
+        userId,
+        shouldStopPolling,
+        isGameFinished,
+        applyRealtimeState,
+        refreshGameData,
+        setSyncStatus,
+        recordSyncFailure,
+        resetSyncFailures,
+        setFatalError,
+        clearFatalError,
+    ]);
+
+    React.useEffect(() => {
+        if (fatalError) {
+            setIsLoading(false);
+        }
+    }, [fatalError]);
+
+    const effectiveGameState =
+        enabled && gameId && gameStateFromStore?.id === gameId ? gameStateFromStore : null;
 
     return {
-        gameState: data,
-        error,
+        gameState: effectiveGameState,
+        error: syncError,
         isLoading,
-        mutate,
-        isConnected: !error && !isLoading,
-        playerCount: data?.players.length ?? 0,
-        isGameInProgress: data?.status === 'IN_PROGRESS',
-        isGameFinished: data?.status === 'FINISHED',
-        newPlayers: data?.newPlayers ?? []
+        mutate: async () => {
+            if (!gameId || !userId) return;
+            await refreshGameData(gameId, userId);
+        },
+        isConnected: syncStatus === "connected",
+        syncStatus,
+        playerCount: effectiveGameState?.players.length ?? 0,
+        isGameInProgress: effectiveGameState?.status === "IN_PROGRESS",
+        isGameFinished: effectiveGameState?.status === "FINISHED",
+        newPlayers: effectiveGameState ? newPlayers : [],
     };
 }
 
@@ -189,6 +501,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     isSelectingRole: false,
     isCompletingQuest: false,
     isRefreshing: false,
+    syncStatus: "reconnecting",
+    consecutiveSyncFailures: 0,
+    fatalError: null,
+    fatalErrorCode: null,
     error: null,
     errorCode: null,
     launchError: null,
@@ -226,30 +542,74 @@ export const useGameStore = create<GameStore>((set, get) => ({
     meetingError: null,
     meetingErrorCode: null,
 
+    applyRealtimeState: (incomingState: GameState, userId?: string) => {
+        set((state) => {
+            if (!shouldApplyIncomingGameState(state.gameState, incomingState)) {
+                return {};
+            }
+
+            return {
+                gameState: incomingState,
+                ...getQuestStatsForUser(incomingState, userId),
+            };
+        });
+    },
+
+    setSyncStatus: (status: SyncStatus) => {
+        set({ syncStatus: status });
+    },
+
+    recordSyncFailure: () => {
+        set((state) => {
+            const nextFailures = state.consecutiveSyncFailures + 1;
+            return {
+                consecutiveSyncFailures: nextFailures,
+                syncStatus: nextFailures >= SYNC_FAILURES_FOR_DEGRADED ? "degraded" : "reconnecting",
+            };
+        });
+    },
+
+    resetSyncFailures: () => {
+        set({ consecutiveSyncFailures: 0, syncStatus: "connected" });
+    },
+
+    setFatalError: (fatalError: string | null, fatalErrorCode: string | null = null) => {
+        set({
+            fatalError,
+            fatalErrorCode,
+        });
+    },
+
+    clearFatalError: () => {
+        set({
+            fatalError: null,
+            fatalErrorCode: null,
+        });
+    },
+
     fetchGame: async (id: string, userId?: string) => {
-        set({ isLoading: true, error: null, errorCode: null });
+        set({
+            isLoading: true,
+            error: null,
+            errorCode: null,
+            fatalError: null,
+            fatalErrorCode: null,
+        });
         const response = await getGame(id);
 
         if (response.success && response.data) {
-            const updates: Partial<GameStore> = { gameState: response.data, isLoading: false };
-
-            if (userId) {
-                const player = response.data.players.find((p) => p.id === userId);
-                updates.questsCompleted = player?.completedQuests?.length ?? 0;
-                
-                // Priority for total quests: 
-                // 1. Player's assigned quests length
-                // 2. Game's configured distribution
-                // 3. Global pool (fallback)
-                updates.questsTotal = player?.assignedQuests?.length ?? 
-                                    getTotalQuests(response.data);
-            }
-
-            set(updates);
+            get().applyRealtimeState(response.data, userId);
+            set({
+                isLoading: false,
+                syncStatus: "connected",
+                consecutiveSyncFailures: 0,
+            });
         } else {
             set({
                 error: response.error || "Unknown error",
                 errorCode: response.code || null,
+                fatalError: response.error || "Unknown error",
+                fatalErrorCode: response.code || null,
                 isLoading: false
             });
         }
@@ -268,36 +628,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
     },
 
     refreshGameData: async (id: string, userId?: string) => {
-        set({ isRefreshing: true, error: null, errorCode: null });
+        set({ isRefreshing: true });
         const response = await refreshGame(id);
 
         if (response.success && response.data) {
-            const updates: Partial<GameStore> = { 
-                gameState: response.data, 
-                isRefreshing: false 
-            };
-
-            // Update quest counts for current user if available
-            if (userId) {
-                const updatedPlayer = response.data.players.find((p) => p.id === userId);
-                if (updatedPlayer) {
-                    updates.questsCompleted = updatedPlayer.completedQuests?.length ?? 0;
-                    
-                    // Priority for total quests: 
-                    // 1. Player's assigned quests length
-                    // 2. Game's configured distribution
-                    // 3. Global pool (fallback)
-                    updates.questsTotal = updatedPlayer?.assignedQuests?.length ?? 
-                                        getTotalQuests(response.data);
-                }
-            }
-
-            set(updates);
-        } else {
+            get().applyRealtimeState(response.data, userId);
             set({
-                error: response.error || "Unknown error",
-                errorCode: response.code || null,
-                isRefreshing: false
+                isRefreshing: false,
+                syncStatus: "connected",
+                consecutiveSyncFailures: 0,
+            });
+        } else {
+            set((state) => {
+                const nextFailures = state.consecutiveSyncFailures + 1;
+                return {
+                    isRefreshing: false,
+                    consecutiveSyncFailures: nextFailures,
+                    syncStatus:
+                        nextFailures >= SYNC_FAILURES_FOR_DEGRADED ? "degraded" : "reconnecting",
+                };
             });
         }
     },
@@ -311,14 +660,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const response = await getMeetingView(gameId, userId);
 
         if (response.success && response.data) {
-            set((state) => ({
+            set(() => ({
                 isMeetingLoading: false,
                 meetingView: response.data!,
                 meetingError: null,
                 meetingErrorCode: null,
-                gameState: state.gameState && state.gameState.id === gameId
-                    ? { ...state.gameState, meeting: response.data!.meeting ?? undefined }
-                    : state.gameState,
             }));
             return;
         }
@@ -335,14 +681,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const response = await triggerMeeting(gameId, userId);
 
         if (response.success && response.data) {
-            set((state) => ({
+            set(() => ({
                 isTriggeringMeeting: false,
                 meetingView: response.data!,
                 meetingError: null,
                 meetingErrorCode: null,
-                gameState: state.gameState && state.gameState.id === gameId
-                    ? { ...state.gameState, meeting: response.data!.meeting ?? undefined }
-                    : state.gameState,
             }));
             return true;
         }
@@ -360,14 +703,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const response = await castMeetingVote(gameId, userId, targetId);
 
         if (response.success && response.data) {
-            set((state) => ({
+            set(() => ({
                 isMeetingVoting: false,
                 meetingView: response.data!,
                 meetingError: null,
                 meetingErrorCode: null,
-                gameState: state.gameState && state.gameState.id === gameId
-                    ? { ...state.gameState, meeting: response.data!.meeting ?? undefined }
-                    : state.gameState,
             }));
             return true;
         }
@@ -385,14 +725,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const response = await cancelMeetingVote(gameId, userId);
 
         if (response.success && response.data) {
-            set((state) => ({
+            set(() => ({
                 isMeetingVoting: false,
                 meetingView: response.data!,
                 meetingError: null,
                 meetingErrorCode: null,
-                gameState: state.gameState && state.gameState.id === gameId
-                    ? { ...state.gameState, meeting: response.data!.meeting ?? undefined }
-                    : state.gameState,
             }));
             return true;
         }
@@ -410,7 +747,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const response = await joinGame(gameId, playerName, userId);
 
         if (response.success && response.data) {
-            set({ gameState: response.data, isJoining: false });
+            get().applyRealtimeState(response.data, userId);
+            set({ isJoining: false });
         } else {
             set({
                 error: response.error || "Unknown error",
@@ -425,7 +763,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const response = await startGame(gameId);
 
         if (response.success && response.data) {
-            set({ gameState: response.data, isLaunching: false, launchError: null });
+            get().applyRealtimeState(response.data);
+            set({ isLaunching: false, launchError: null });
             return true;
         } else {
             set({
@@ -445,11 +784,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
             const gameResponse = await getGame(gameId);
             
             if (gameResponse.success && gameResponse.data) {
+                get().applyRealtimeState(gameResponse.data, userId);
                 set({
                     selectedRole: response.data.role,
                     isSelectingRole: false,
                     roleError: null,
-                    gameState: gameResponse.data,
                 });
             } else {
                 // Fallback: update locally if fetch fails
@@ -477,7 +816,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
     },
 
-    setCurrentQuest: (quest: Quest) => set({ currentQuest: quest }),
+    setCurrentQuest: (quest: Quest) =>
+        set((state) => ({
+            currentQuest: quest,
+            currentQuestContent:
+                state.currentQuestContent?.questId === quest.id ? state.currentQuestContent : null,
+        })),
 
     completeQuestAction: async (gameId: string, userId: string, questId: string) => {
         set({ isCompletingQuest: true, completionError: null, completionErrorCode: null });
@@ -501,7 +845,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
     },
 
-    clearQuest: () => set({ currentQuest: null, questAnswered: false, isCompletingQuest: false, completionError: null, completionErrorCode: null }),
+    clearQuest: () => set({
+        currentQuest: null,
+        currentQuestContent: null,
+        questAnswered: false,
+        isCompletingQuest: false,
+        completionError: null,
+        completionErrorCode: null,
+    }),
 
     setQuestAnswered: (answered: boolean) => set({ questAnswered: answered }),
 
@@ -513,6 +864,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
         isSelectingRole: false,
         isCompletingQuest: false,
         isRefreshing: false,
+        syncStatus: "reconnecting",
+        consecutiveSyncFailures: 0,
+        fatalError: null,
+        fatalErrorCode: null,
         error: null, 
         errorCode: null, 
         launchError: null,
@@ -557,11 +912,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
         try {
             const contentResult = await DynamicContentMapper.getQuestContent(questId, gameId, userId);
-            if (contentResult) {
-                set({ currentQuestContent: contentResult });
-            } else {
-                set({ currentQuestContent: null });
-            }
+            set((state) => {
+                const activeQuestId = state.currentQuest?.id;
+                if (activeQuestId && activeQuestId !== questId) {
+                    return {};
+                }
+
+                if (!contentResult || contentResult.questId !== questId) {
+                    return { currentQuestContent: null };
+                }
+
+                return { currentQuestContent: contentResult };
+            });
         } catch (error) {
             console.error("Failed to load dynamic quest content:", error);
             set({ currentQuestContent: null });
@@ -698,11 +1060,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
             const gameResponse = await getGame(gameId);
             
             if (gameResponse.success && gameResponse.data) {
+                get().applyRealtimeState(gameResponse.data, userId);
                 set({
                     isEliminating: false,
                     eliminationError: null,
                     eliminationErrorCode: null,
-                    gameState: gameResponse.data,
                 });
             } else {
                 // Fallback: update locally if fetch fails

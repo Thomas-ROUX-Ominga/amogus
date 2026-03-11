@@ -23,6 +23,8 @@ describe("QuestProgress", () => {
                 id: "game-1",
                 status: "IN_PROGRESS",
                 createdAt: Date.now(),
+                revision: 1,
+                updatedAt: Date.now(),
                 players: [],
                 sabotageState: {
                     active: null,
@@ -51,6 +53,8 @@ describe("QuestProgress", () => {
                 id: "game-1",
                 status: "IN_PROGRESS",
                 createdAt: Date.now(),
+                revision: 1,
+                updatedAt: Date.now(),
                 players: [
                     { id: "i1", name: "Alpha", role: "IMPOSTOR", isAlive: true },
                     { id: "i2", name: "Bravo", role: "IMPOSTOR", isAlive: true },

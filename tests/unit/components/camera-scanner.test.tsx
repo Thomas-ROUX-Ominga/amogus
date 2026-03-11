@@ -88,19 +88,6 @@ describe('CameraScanner', () => {
   });
 
   it('extracts quest IDs from various alphanumeric formats', async () => {
-    render(
-      <CameraScanner
-        isOpen={true}
-        onClose={mockOnClose}
-        onScan={mockOnScan}
-      />
-    );
-
-    await waitFor(() => expect(mockStart).toHaveBeenCalled(), { timeout: 4000 });
-    
-    // Get the most recent success callback
-    const successCallback = mockStart.mock.calls[mockStart.mock.calls.length - 1][2];
-
     const testCases = [
       { input: 'https://amog.us/quest/ABC-123', expected: 'ABC-123' },
       { input: 'https://amog.us/game/XY78/quest/Q-99', expected: 'Q-99' },
@@ -111,11 +98,26 @@ describe('CameraScanner', () => {
     ];
 
     for (const { input, expected } of testCases) {
+      mockStart.mockClear();
+      const { unmount } = render(
+        <CameraScanner
+          isOpen={true}
+          onClose={mockOnClose}
+          onScan={mockOnScan}
+        />
+      );
+
+      await waitFor(() => expect(mockStart).toHaveBeenCalled(), { timeout: 4000 });
+      const successCallback = mockStart.mock.calls[mockStart.mock.calls.length - 1][2];
+
       await act(async () => {
         successCallback(input);
       });
+
       expect(mockOnScan).toHaveBeenCalledWith(expected);
       mockOnScan.mockClear();
+      mockOnClose.mockClear();
+      unmount();
     }
   });
 

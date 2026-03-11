@@ -66,6 +66,8 @@ const mockGameState = {
         }
     ],
     createdAt: Date.now(),
+    revision: 1,
+    updatedAt: Date.now(),
     questsTotal: 10,
     questsPerPlayer: { short: 2, medium: 2, long: 2 }
 };

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { joinGame, createGame, startGame } from '@/lib/redis/actions';
+import { joinGame, createGame } from '@/lib/redis/actions';
 import { verifySession, createPlayerSession } from '@/lib/redis/auth-utils';
 
 // Mock dependencies
@@ -44,7 +44,7 @@ describe('Task 2: Fix Admin Role Assignment on Game Launch', () => {
 
       expect(result.success).toBe(true);
       expect(redis.set).toHaveBeenCalledWith(
-        expect.stringContaining('game:TEST123:state'),
+        expect.stringContaining('game:v2:TEST123:state'),
         expect.objectContaining({
           creatorId: 'admin-user-id',
           players: expect.arrayContaining([
@@ -73,28 +73,33 @@ describe('Task 2: Fix Admin Role Assignment on Game Launch', () => {
         status: 'LOBBY',
         players: [],
         createdAt: Date.now(),
+        revision: 1,
+        updatedAt: Date.now(),
         creatorId: 'admin-user-id',
       };
 
       const { redis } = await import('@/lib/redis/client');
       vi.mocked(redis.get).mockResolvedValue(mockGameState);
-      vi.mocked(redis.set).mockResolvedValue(undefined);
+      vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
+        return updater(mockGameState as typeof mockGameState);
+      });
       vi.mocked(createPlayerSession).mockResolvedValue({ success: true });
 
       const result = await joinGame('TEST123', 'RegularPlayer', 'player-user-id');
 
       expect(result.success).toBe(true);
-      expect(redis.set).toHaveBeenCalledWith(
-        expect.stringContaining('game:TEST123:state'),
-        expect.objectContaining({
-          players: expect.arrayContaining([
-            expect.objectContaining({
-              id: 'player-user-id',
-              name: 'RegularPlayer',
-              // No role assigned for regular players
-            })
-          ])
-        })
+      expect(redis.atomicUpdate).toHaveBeenCalledWith(
+        'game:v2:TEST123:state',
+        expect.any(Function),
+        86400
+      );
+      expect(result.data?.players).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: 'player-user-id',
+            name: 'RegularPlayer',
+          }),
+        ])
       );
     });
   });

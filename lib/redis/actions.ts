@@ -17,6 +17,12 @@ import { getTotalQuestGamesCount } from "@/lib/constants/quest-pool";
 import { generateShortCode } from "@/lib/utils/short-code.server";
 import { Quest, BatchSabotages, SabotageType } from "@/types/quest";
 import { assignQuestsFromBatch } from "@/lib/quests/quest-assignment";
+import {
+    getFailedQuestsKey,
+    getGameNamespacePattern,
+    getGameStateKey,
+    getMeetingVoteKey,
+} from "./game-state-keys";
 
 import { verifySession, createPlayerSession, verifyPlayerSession } from "./auth-utils";
 import { getGlobalQuestStats } from "@/lib/utils/quest-calculations";
@@ -24,6 +30,87 @@ import { getGlobalQuestStats } from "@/lib/utils/quest-calculations";
 const MEETING_DURATION_MS = 5 * 60 * 1000;
 const REACTOR_SABOTAGE_DURATION_MS = 90 * 1000;
 const SABOTAGE_COOLDOWN_MS = 120 * 1000;
+
+function isWatchConflictError(error: unknown): boolean {
+    if (!error || typeof error !== "object") {
+        return false;
+    }
+
+    const candidate = error as { name?: unknown; message?: unknown };
+    if (candidate.name === "WatchError") {
+        return true;
+    }
+
+    if (typeof candidate.message !== "string") {
+        return false;
+    }
+
+    const message = candidate.message.toLowerCase();
+    return message.includes("watched keys") && message.includes("changed");
+}
+
+function normalizeGameState(state: GameState): GameState {
+    return {
+        ...state,
+        revision: typeof state.revision === "number" ? state.revision : 0,
+        updatedAt: typeof state.updatedAt === "number" ? state.updatedAt : state.createdAt,
+    };
+}
+
+function withGameStateRevision(currentState: GameState, nextState: GameState): GameState {
+    if (areGameStatesEquivalent(currentState, nextState)) {
+        return currentState;
+    }
+
+    return {
+        ...nextState,
+        revision: currentState.revision + 1,
+        updatedAt: Date.now(),
+    };
+}
+
+function areGameStatesEquivalent(left: GameState, right: GameState): boolean {
+    const currentWithoutMeta = {
+        ...left,
+        revision: 0,
+        updatedAt: 0,
+    };
+    const nextWithoutMeta = {
+        ...right,
+        revision: 0,
+        updatedAt: 0,
+    };
+
+    return JSON.stringify(currentWithoutMeta) === JSON.stringify(nextWithoutMeta);
+}
+
+async function readGameState(gameId: string): Promise<GameState | null> {
+    const state = await redis.get<GameState>(getGameStateKey(gameId));
+    return state ? normalizeGameState(state) : null;
+}
+
+async function mutateGameState(
+    gameId: string,
+    updater: (state: GameState) => GameState | null
+): Promise<GameState | null> {
+    const stateKey = getGameStateKey(gameId);
+    const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
+        if (!state) {
+            return null;
+        }
+
+        const normalizedState = normalizeGameState(state);
+        const nextState = updater(normalizedState);
+        if (!nextState) {
+            return null;
+        }
+
+        const normalizedNext = normalizeGameState(nextState);
+        return withGameStateRevision(normalizedState, normalizedNext);
+    }, GAME_TTL_SECONDS);
+
+    return result ? normalizeGameState(result) : null;
+}
 
 function getDefaultSabotageState(): SabotageState {
     return {
@@ -50,10 +137,6 @@ function getNormalizedSabotageState(state: GameState): SabotageState {
             reactorAvailableAt: current.cooldowns?.reactorAvailableAt ?? 0,
         },
     };
-}
-
-function createMeetingVoteKey(gameId: string, meetingId: string, voterId: string): string {
-    return `game:${gameId}:meeting:${meetingId}:vote:${voterId}`;
 }
 
 function getEligibleMeetingVoterIds(state: GameState): string[] {
@@ -204,6 +287,12 @@ function resolveSabotageIfExpired(state: GameState, now: number): GameState {
     };
 }
 
+function resolveRuntimeTransitions(state: GameState, now: number): GameState {
+    let resolved = resolveMeetingIfExpired(state, now);
+    resolved = resolveSabotageIfExpired(resolved, now);
+    return resolved;
+}
+
 async function buildMeetingViewData(gameId: string, userId: string, state: GameState): Promise<MeetingView> {
     const meeting = state.meeting ?? null;
     if (!meeting || meeting.status !== "ACTIVE" || !meeting.eligibleVoterIds.includes(userId)) {
@@ -213,7 +302,7 @@ async function buildMeetingViewData(gameId: string, userId: string, state: GameS
         };
     }
 
-    const voteKey = createMeetingVoteKey(gameId, meeting.id, userId);
+    const voteKey = getMeetingVoteKey(gameId, meeting.id, userId);
     const myVoteTargetId = await redis.get<string>(voteKey);
     const isValidTarget = myVoteTargetId ? meeting.eligibleVoterIds.includes(myVoteTargetId) : false;
 
@@ -331,6 +420,7 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
             };
         }
 
+        const now = Date.now();
         const initialState: GameState = {
             id: shortCode,
             status: "LOBBY",
@@ -342,7 +432,9 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
                     isAlive: true,
                 }
             ],
-            createdAt: Date.now(),
+            createdAt: now,
+            revision: 1,
+            updatedAt: now,
             creatorId: adminSession.data.userId,
             batchId,
             questsTotal,
@@ -352,7 +444,7 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
         };
 
         // Store game state in Redis with 24h TTL using short code key pattern
-        await redis.set(`game:${shortCode}:state`, initialState, GAME_TTL_SECONDS);
+        await redis.set(getGameStateKey(shortCode), initialState, GAME_TTL_SECONDS);
 
         return {
             success: true,
@@ -370,7 +462,7 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
 
 export async function getGame(id: string): Promise<ActionResponse<GameState>> {
     try {
-        const state = await redis.get<GameState>(`game:${id}:state`);
+        const state = await readGameState(id);
 
         if (!state) {
             return {
@@ -408,12 +500,10 @@ export async function startGame(
             };
         }
 
-        const stateKey = `game:${gameId}:state`;
-
         // Use a validation result holder to communicate errors from the updater
         let validationError: ActionResponse<GameState> | null = null;
 
-        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
+        const result = await mutateGameState(gameId, (state) => {
             if (!state) {
                 validationError = {
                     success: false,
@@ -460,7 +550,7 @@ export async function startGame(
             }
 
             return { ...state, status: "IN_PROGRESS" };
-        }, GAME_TTL_SECONDS);
+        });
 
         // If updater returned null, check why
         if (validationError) {
@@ -469,10 +559,17 @@ export async function startGame(
 
         // If result is null (shouldn't happen with current logic), get current state
         if (!result) {
-            const currentState = await redis.get<GameState>(stateKey);
+            const currentState = await readGameState(gameId);
+            if (!currentState) {
+                return {
+                    success: false,
+                    error: "Game session not found.",
+                    code: ERROR_CODES.GAME_NOT_FOUND,
+                };
+            }
             return {
                 success: true,
-                data: currentState!,
+                data: currentState,
             };
         }
 
@@ -508,10 +605,9 @@ export async function joinGame(
     }
 
     try {
-        const stateKey = `game:${gameId}:state`;
-        const state = await redis.get<GameState>(stateKey);
+        const preloadedState = await readGameState(gameId);
 
-        if (!state) {
+        if (!preloadedState) {
             return {
                 success: false,
                 error: "Game session not found.",
@@ -519,25 +615,11 @@ export async function joinGame(
             };
         }
 
-        // 2. Concurrency check (Check for existing player again before mutation)
-        const existingPlayer = state.players.find((p) => p.id === userId);
-        if (existingPlayer) {
-            return {
-                success: true,
-                data: state,
-            };
-        }
-
-        // 3. Prevent overflow
-        if (state.players.length >= 10) {
-            return { success: false, error: "Cockpit at maximum capacity.", code: ERROR_CODES.ERR_FULL_CAPACITY };
-        }
-
         // Story 11.3: Game Settings from Batch - Assign quests from batch
         let assignedQuestIds: string[] | undefined = undefined;
 
-        if (state.batchId) {
-            const assignedQuests = await assignQuestsFromBatch(state);
+        if (preloadedState.batchId) {
+            const assignedQuests = await assignQuestsFromBatch(preloadedState);
 
             // If we have a batch but failed to assign quests, treat as an error
             // (Unless the intended distribution was 0 total, which we validated above as 1 min)
@@ -551,20 +633,59 @@ export async function joinGame(
             assignedQuestIds = assignedQuests.map(a => a.questId);
         }
 
-        // Add new player with assigned quests
-        const newPlayer = {
-            id: userId,
-            name: sanitizedName,
-            isAlive: true,
-            assignedQuests: assignedQuestIds,
-        };
+        let validationError: ActionResponse<GameState> | null = null;
+        const updatedState = await mutateGameState(gameId, (state) => {
+            if (!state) {
+                validationError = {
+                    success: false,
+                    error: "Game session not found.",
+                    code: ERROR_CODES.GAME_NOT_FOUND,
+                };
+                return null;
+            }
 
-        const updatedState: GameState = {
-            ...state,
-            players: [...state.players, newPlayer],
-        };
+            const normalizedState = normalizeGameState(state);
 
-        await redis.set(stateKey, updatedState);
+            const existingPlayer = normalizedState.players.find((p) => p.id === userId);
+            if (existingPlayer) {
+                return normalizedState;
+            }
+
+            if (normalizedState.players.length >= 10) {
+                validationError = {
+                    success: false,
+                    error: "Cockpit at maximum capacity.",
+                    code: ERROR_CODES.ERR_FULL_CAPACITY,
+                };
+                return null;
+            }
+
+            const newPlayer = {
+                id: userId,
+                name: sanitizedName,
+                isAlive: true,
+                assignedQuests: assignedQuestIds,
+            };
+
+            const candidateState: GameState = {
+                ...normalizedState,
+                players: [...normalizedState.players, newPlayer],
+            };
+
+            return candidateState;
+        });
+
+        if (validationError) {
+            return validationError;
+        }
+
+        if (!updatedState) {
+            return {
+                success: false,
+                error: "Game session not found.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
+            };
+        }
 
         // Secure the player's identity moving forward
         const sessionResult = await createPlayerSession(userId, gameId);
@@ -574,7 +695,7 @@ export async function joinGame(
 
         return {
             success: true,
-            data: updatedState,
+            data: normalizeGameState(updatedState),
         };
     } catch (error) {
         console.error("Failed to join game:", error);
@@ -601,23 +722,11 @@ export async function completeQuest(
             };
         }
 
-        const stateKey = `game:${gameId}:state`;
-
         let validationError: ActionResponse<{ completedQuests: string[]; questsCompleted: number }> | null = null;
 
-        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
-            if (!state) {
-                validationError = {
-                    success: false,
-                    error: "Game session not found.",
-                    code: ERROR_CODES.GAME_NOT_FOUND,
-                };
-                return null;
-            }
-
+        const result = await mutateGameState(gameId, (state) => {
             const now = Date.now();
-            let workingState = resolveMeetingIfExpired(state, now);
-            workingState = resolveSabotageIfExpired(workingState, now);
+            const workingState = resolveRuntimeTransitions(state, now);
 
             if (workingState.meeting?.status === "ACTIVE") {
                 validationError = {
@@ -716,10 +825,18 @@ export async function completeQuest(
                 ...workingState,
                 players: updatedPlayers,
             };
-        }, GAME_TTL_SECONDS);
+        });
 
         if (validationError) {
             return validationError;
+        }
+
+        if (!result) {
+            return {
+                success: false,
+                error: "Game session not found.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
+            };
         }
 
         // Extract updated player data from result
@@ -747,34 +864,42 @@ export async function refreshGame(
     gameId: string
 ): Promise<ActionResponse<GameState>> {
     try {
-        const stateKey = `game:${gameId}:state`;
-        let validationError: ActionResponse<GameState> | null = null;
-
-        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
-            if (!state) {
-                validationError = {
-                    success: false,
-                    error: "Game module not found or decommissioned.",
-                    code: ERROR_CODES.GAME_NOT_FOUND,
-                };
-                return null;
-            }
-
-            const now = Date.now();
-            let workingState = resolveMeetingIfExpired(state, now);
-            workingState = resolveSabotageIfExpired(workingState, now);
-            return workingState;
-        }, GAME_TTL_SECONDS);
-
-        if (validationError) {
-            return validationError;
+        const state = await readGameState(gameId);
+        if (!state) {
+            return {
+                success: false,
+                error: "Game module not found or decommissioned.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
+            };
         }
+
+        const resolved = resolveRuntimeTransitions(state, Date.now());
+        if (areGameStatesEquivalent(state, resolved)) {
+            return {
+                success: true,
+                data: state,
+            };
+        }
+
+        const persisted = await mutateGameState(gameId, (currentState) =>
+            resolveRuntimeTransitions(currentState, Date.now())
+        );
 
         return {
             success: true,
-            data: result!,
+            data: persisted ?? resolved,
         };
     } catch (error) {
+        if (isWatchConflictError(error)) {
+            const latestState = await readGameState(gameId);
+            if (latestState) {
+                return {
+                    success: true,
+                    data: latestState,
+                };
+            }
+        }
+
         console.error("Failed to refresh game:", error);
         return {
             success: false,
@@ -782,6 +907,33 @@ export async function refreshGame(
             code: ERROR_CODES.ERR_SIGNAL_LOST,
         };
     }
+}
+
+export async function getGameSnapshot(
+    gameId: string,
+    userId?: string
+): Promise<ActionResponse<GameState>> {
+    const refreshed = await refreshGame(gameId);
+    if (!refreshed.success || !refreshed.data) {
+        return refreshed;
+    }
+
+    if (userId) {
+        const playerExists = refreshed.data.players.some((player) => player.id === userId);
+        const canReadLobbySnapshot = refreshed.data.status === "LOBBY";
+        if (!playerExists && !canReadLobbySnapshot) {
+            return {
+                success: false,
+                error: "Player not found in game.",
+                code: ERROR_CODES.ERR_INVALID_SIGNATURE,
+            };
+        }
+    }
+
+    return {
+        success: true,
+        data: normalizeGameState(refreshed.data),
+    };
 }
 
 export interface TriggerSabotageResult {
@@ -809,23 +961,12 @@ export async function triggerSabotage(
             };
         }
 
-        const stateKey = `game:${gameId}:state`;
         let validationError: ActionResponse<TriggerSabotageResult> | null = null;
         let triggerResult: TriggerSabotageResult | null = null;
         const now = Date.now();
 
-        await redis.atomicUpdate<GameState>(stateKey, (state) => {
-            if (!state) {
-                validationError = {
-                    success: false,
-                    error: "Game session not found.",
-                    code: ERROR_CODES.GAME_NOT_FOUND,
-                };
-                return null;
-            }
-
-            let workingState = resolveMeetingIfExpired(state, now);
-            workingState = resolveSabotageIfExpired(workingState, now);
+        const updatedState = await mutateGameState(gameId, (state) => {
+            const workingState = resolveRuntimeTransitions(state, now);
 
             if (workingState.status !== "IN_PROGRESS") {
                 validationError = {
@@ -935,10 +1076,18 @@ export async function triggerSabotage(
                 gameState: updatedState,
             };
             return updatedState;
-        }, GAME_TTL_SECONDS);
+        });
 
         if (validationError) {
             return validationError;
+        }
+
+        if (!updatedState) {
+            return {
+                success: false,
+                error: "Game session not found.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
+            };
         }
 
         return {
@@ -987,23 +1136,12 @@ export async function scanSabotage(
             };
         }
 
-        const stateKey = `game:${gameId}:state`;
         let validationError: ActionResponse<ScanSabotageResult> | null = null;
         let scanResult: ScanSabotageResult | null = null;
         const now = Date.now();
 
-        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
-            if (!state) {
-                validationError = {
-                    success: false,
-                    error: "Game session not found.",
-                    code: ERROR_CODES.GAME_NOT_FOUND,
-                };
-                return null;
-            }
-
-            let workingState = resolveMeetingIfExpired(state, now);
-            workingState = resolveSabotageIfExpired(workingState, now);
+        const result = await mutateGameState(gameId, (state) => {
+            const workingState = resolveRuntimeTransitions(state, now);
 
             const sabotages = workingState.sabotages;
             const isCommsQr = sabotages?.communications.qrId === qrId;
@@ -1195,10 +1333,18 @@ export async function scanSabotage(
                 data: { handled: false },
             };
             return null;
-        }, GAME_TTL_SECONDS);
+        });
 
         if (validationError) {
             return validationError;
+        }
+
+        if (!result) {
+            return {
+                success: false,
+                error: "Game session not found.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
+            };
         }
 
         return {
@@ -1229,30 +1375,20 @@ export async function getMeetingView(
             };
         }
 
-        const stateKey = `game:${gameId}:state`;
-        let validationError: ActionResponse<MeetingView> | null = null;
-
-        const state = await redis.atomicUpdate<GameState>(stateKey, (currentState) => {
-            if (!currentState) {
-                validationError = {
-                    success: false,
-                    error: "Game session not found.",
-                    code: ERROR_CODES.GAME_NOT_FOUND,
-                };
-                return null;
-            }
-
+        const state = await mutateGameState(gameId, (currentState) => {
             const now = Date.now();
-            let workingState = resolveMeetingIfExpired(currentState, now);
-            workingState = resolveSabotageIfExpired(workingState, now);
-            return workingState;
-        }, GAME_TTL_SECONDS);
+            return resolveRuntimeTransitions(currentState, now);
+        });
 
-        if (validationError) {
-            return validationError;
+        if (!state) {
+            return {
+                success: false,
+                error: "Game session not found.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
+            };
         }
 
-        const data = await buildMeetingViewData(gameId, userId, state!);
+        const data = await buildMeetingViewData(gameId, userId, state);
         return {
             success: true,
             data,
@@ -1281,22 +1417,11 @@ export async function triggerMeeting(
             };
         }
 
-        const stateKey = `game:${gameId}:state`;
         let validationError: ActionResponse<MeetingView> | null = null;
         const now = Date.now();
 
-        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
-            if (!state) {
-                validationError = {
-                    success: false,
-                    error: "Game session not found.",
-                    code: ERROR_CODES.GAME_NOT_FOUND,
-                };
-                return null;
-            }
-
-            let workingState = resolveMeetingIfExpired(state, now);
-            workingState = resolveSabotageIfExpired(workingState, now);
+        const result = await mutateGameState(gameId, (state) => {
+            const workingState = resolveRuntimeTransitions(state, now);
 
             if (workingState.status !== "IN_PROGRESS") {
                 validationError = {
@@ -1395,10 +1520,18 @@ export async function triggerMeeting(
                 players: updatedPlayers,
                 meeting,
             };
-        }, GAME_TTL_SECONDS);
+        });
 
         if (validationError) {
             return validationError;
+        }
+
+        if (!result) {
+            return {
+                success: false,
+                error: "Game session not found.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
+            };
         }
 
         const data = await buildMeetingViewData(gameId, userId, result!);
@@ -1431,7 +1564,7 @@ export async function castMeetingVote(
             };
         }
 
-        const preloadedState = await redis.get<GameState>(`game:${gameId}:state`);
+        const preloadedState = await readGameState(gameId);
         if (!preloadedState) {
             return {
                 success: false,
@@ -1449,25 +1582,14 @@ export async function castMeetingVote(
             };
         }
 
-        const voteKey = createMeetingVoteKey(gameId, activeMeetingId, userId);
+        const voteKey = getMeetingVoteKey(gameId, activeMeetingId, userId);
         const previousVote = await redis.get<string>(voteKey);
 
-        const stateKey = `game:${gameId}:state`;
         let validationError: ActionResponse<MeetingView> | null = null;
 
-        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
-            if (!state) {
-                validationError = {
-                    success: false,
-                    error: "Game session not found.",
-                    code: ERROR_CODES.GAME_NOT_FOUND,
-                };
-                return null;
-            }
-
+        const result = await mutateGameState(gameId, (state) => {
             const now = Date.now();
-            let workingState = resolveMeetingIfExpired(state, now);
-            workingState = resolveSabotageIfExpired(workingState, now);
+            const workingState = resolveRuntimeTransitions(state, now);
             const meeting = workingState.meeting;
 
             if (!meeting || meeting.status !== "ACTIVE") {
@@ -1547,10 +1669,18 @@ export async function castMeetingVote(
             }
 
             return updatedState;
-        }, GAME_TTL_SECONDS);
+        });
 
         if (validationError) {
             return validationError;
+        }
+
+        if (!result) {
+            return {
+                success: false,
+                error: "Game session not found.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
+            };
         }
 
         await redis.set(voteKey, targetId, GAME_TTL_SECONDS);
@@ -1583,7 +1713,7 @@ export async function cancelMeetingVote(
             };
         }
 
-        const preloadedState = await redis.get<GameState>(`game:${gameId}:state`);
+        const preloadedState = await readGameState(gameId);
         if (!preloadedState) {
             return {
                 success: false,
@@ -1601,25 +1731,14 @@ export async function cancelMeetingVote(
             };
         }
 
-        const voteKey = createMeetingVoteKey(gameId, activeMeetingId, userId);
+        const voteKey = getMeetingVoteKey(gameId, activeMeetingId, userId);
         const previousVote = await redis.get<string>(voteKey);
 
-        const stateKey = `game:${gameId}:state`;
         let validationError: ActionResponse<MeetingView> | null = null;
 
-        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
-            if (!state) {
-                validationError = {
-                    success: false,
-                    error: "Game session not found.",
-                    code: ERROR_CODES.GAME_NOT_FOUND,
-                };
-                return null;
-            }
-
+        const result = await mutateGameState(gameId, (state) => {
             const now = Date.now();
-            let workingState = resolveMeetingIfExpired(state, now);
-            workingState = resolveSabotageIfExpired(workingState, now);
+            const workingState = resolveRuntimeTransitions(state, now);
             const meeting = workingState.meeting;
 
             if (!meeting || meeting.status !== "ACTIVE") {
@@ -1666,10 +1785,18 @@ export async function cancelMeetingVote(
                 ...workingState,
                 meeting: updatedMeeting,
             };
-        }, GAME_TTL_SECONDS);
+        });
 
         if (validationError) {
             return validationError;
+        }
+
+        if (!result) {
+            return {
+                success: false,
+                error: "Game session not found.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
+            };
         }
 
         await redis.del(voteKey);
@@ -1712,23 +1839,11 @@ export async function selectRole(
             };
         }
 
-        const stateKey = `game:${gameId}:state`;
-
         let validationError: ActionResponse<{ role: PlayerRole }> | null = null;
 
-        await redis.atomicUpdate<GameState>(stateKey, (state) => {
-            if (!state) {
-                validationError = {
-                    success: false,
-                    error: "Game session not found.",
-                    code: ERROR_CODES.GAME_NOT_FOUND,
-                };
-                return null;
-            }
-
+        const updatedState = await mutateGameState(gameId, (state) => {
             const now = Date.now();
-            let workingState = resolveMeetingIfExpired(state, now);
-            workingState = resolveSabotageIfExpired(workingState, now);
+            const workingState = resolveRuntimeTransitions(state, now);
 
             if (workingState.status !== "IN_PROGRESS") {
                 validationError = {
@@ -1759,10 +1874,18 @@ export async function selectRole(
                 ...workingState,
                 players: updatedPlayers,
             };
-        }, GAME_TTL_SECONDS);
+        });
 
         if (validationError) {
             return validationError;
+        }
+
+        if (!updatedState) {
+            return {
+                success: false,
+                error: "Game session not found.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
+            };
         }
 
         return {
@@ -1814,7 +1937,7 @@ export async function getQuestMetadata(questId: string, gameId: string): Promise
 
 export async function getPlayerFailedQuests(gameId: string, userId: string): Promise<ActionResponse<Record<string, string[]>>> {
     try {
-        const failedQuestsKey = `game:${gameId}:player:${userId}:failed-quests`;
+        const failedQuestsKey = getFailedQuestsKey(gameId, userId);
         const failedQuests = await redis.get<Record<string, string[]>>(failedQuestsKey);
 
         return {
@@ -1838,9 +1961,7 @@ export async function addFailedQuest(
     contentId: string
 ): Promise<ActionResponse<void>> {
     try {
-        const failedQuestsKey = `game:${gameId}:player:${userId}:failed-quests`;
-
-        let validationError: ActionResponse<void> | null = null;
+        const failedQuestsKey = getFailedQuestsKey(gameId, userId);
 
         await redis.atomicUpdate<Record<string, string[]>>(failedQuestsKey, (failedQuests) => {
             const current = failedQuests ?? {};
@@ -1853,10 +1974,6 @@ export async function addFailedQuest(
 
             return current;
         }, GAME_TTL_SECONDS);
-
-        if (validationError) {
-            return validationError;
-        }
 
         return {
             success: true,
@@ -1885,23 +2002,11 @@ export async function eliminatePlayer(
             };
         }
 
-        const stateKey = `game:${gameId}:state`;
-
         let validationError: ActionResponse<{ isAlive: boolean }> | null = null;
 
-        const result = await redis.atomicUpdate<GameState>(stateKey, (state) => {
-            if (!state) {
-                validationError = {
-                    success: false,
-                    error: "Game session not found.",
-                    code: ERROR_CODES.GAME_NOT_FOUND,
-                };
-                return null;
-            }
-
+        const result = await mutateGameState(gameId, (state) => {
             const now = Date.now();
-            let workingState = resolveMeetingIfExpired(state, now);
-            workingState = resolveSabotageIfExpired(workingState, now);
+            const workingState = resolveRuntimeTransitions(state, now);
 
             if (workingState.meeting?.status === "ACTIVE") {
                 validationError = {
@@ -1963,10 +2068,18 @@ export async function eliminatePlayer(
                 ...workingState,
                 players: updatedPlayers,
             };
-        }, GAME_TTL_SECONDS);
+        });
 
         if (validationError) {
             return validationError;
+        }
+
+        if (!result) {
+            return {
+                success: false,
+                error: "Game session not found.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
+            };
         }
 
         // Extract updated player data from result
@@ -1990,8 +2103,7 @@ export async function eliminatePlayer(
 
 export async function getGameQuests(gameId: string): Promise<ActionResponse<Quest[]>> {
     try {
-        const stateKey = `game:${gameId}:state`;
-        const state = await redis.get<GameState>(stateKey);
+        const state = await readGameState(gameId);
 
         if (!state) {
             return {
@@ -2053,9 +2165,9 @@ export async function deleteGame(gameId: string): Promise<ActionResponse<void>> 
 
         // Find all keys associated with this game
         // Patterns used in the codebase:
-        // game:${gameId}:state
-        // game:${gameId}:player:${userId}:failed-quests
-        const gameKeys = await redis.keys(`game:${gameId}:*`);
+        // game:v2:${gameId}:state
+        // game:v2:${gameId}:player:${userId}:failed-quests
+        const gameKeys = await redis.keys(getGameNamespacePattern(gameId));
         
         if (gameKeys.length > 0) {
             const deletePromises = gameKeys.map(key => redis.del(key));

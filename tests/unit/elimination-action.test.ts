@@ -41,7 +41,7 @@ describe('eliminatePlayer', () => {
         expect(result.success).toBe(true);
         expect(result.data).toEqual({ isAlive: false });
         expect(vi.mocked(redis.atomicUpdate)).toHaveBeenCalledWith(
-            'game:test-game:state',
+            'game:v2:test-game:state',
             expect.any(Function),
             expect.any(Number)
         );

@@ -12,6 +12,10 @@ vi.mock("@/lib/redis/client", () => ({
     GAME_TTL_SECONDS: 86400,
 }));
 
+vi.mock("@/lib/redis/auth-utils", () => ({
+    verifyPlayerSession: vi.fn(() => Promise.resolve({ success: true })),
+}));
+
 describe("selectRole", () => {
     const gameId = "test-game-123";
     const userId = "user-456";
@@ -28,6 +32,8 @@ describe("selectRole", () => {
                 { id: userId, name: "Test Player", isAlive: true },
             ],
             createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
         };
 
         const updatedState: GameState = {
@@ -44,7 +50,7 @@ describe("selectRole", () => {
         expect(result.success).toBe(true);
         expect(result.data?.role).toBe("CREWMATE");
         expect(redis.atomicUpdate).toHaveBeenCalledWith(
-            `game:${gameId}:state`,
+            `game:v2:${gameId}:state`,
             expect.any(Function),
             86400
         );
@@ -58,6 +64,8 @@ describe("selectRole", () => {
                 { id: userId, name: "Test Player", isAlive: true },
             ],
             createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
         };
 
         const updatedState: GameState = {
@@ -76,7 +84,7 @@ describe("selectRole", () => {
     });
 
     it("should fail when game does not exist", async () => {
-        vi.mocked(redis.atomicUpdate).mockImplementation(async (key, updater) => {
+        vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
             const result = updater(null);
             return result;
         });
@@ -96,9 +104,11 @@ describe("selectRole", () => {
                 { id: userId, name: "Test Player", isAlive: true },
             ],
             createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
         };
 
-        vi.mocked(redis.atomicUpdate).mockImplementation(async (key, updater) => {
+        vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
             const result = updater(mockState);
             return result;
         });
@@ -118,9 +128,11 @@ describe("selectRole", () => {
                 { id: "other-user", name: "Other Player", isAlive: true },
             ],
             createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
         };
 
-        vi.mocked(redis.atomicUpdate).mockImplementation(async (key, updater) => {
+        vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
             const result = updater(mockState);
             return result;
         });
@@ -140,6 +152,8 @@ describe("selectRole", () => {
                 { id: userId, name: "Test Player", isAlive: true, role: "CREWMATE" },
             ],
             createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
         };
 
         vi.mocked(redis.atomicUpdate).mockResolvedValue(mockState);
@@ -158,6 +172,8 @@ describe("selectRole", () => {
                 { id: userId, name: "Test Player", isAlive: true, role: "CREWMATE" },
             ],
             createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
         };
 
         const updatedState: GameState = {

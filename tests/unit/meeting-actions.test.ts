@@ -52,12 +52,14 @@ import { triggerMeeting, castMeetingVote, getMeetingView, cancelMeetingVote } fr
 import * as redisClientModule from "@/lib/redis/client";
 
 const gameId = "game-meeting";
-const stateKey = `game:${gameId}:state`;
+const stateKey = `game:v2:${gameId}:state`;
 
 const baseGameState = (): GameState => ({
     id: gameId,
     status: "IN_PROGRESS",
     createdAt: Date.now(),
+   revision: 1,
+   updatedAt: Date.now(),
     players: [
         { id: "admin", name: "Admin", role: "ADMIN", isAlive: true },
         { id: "u1", name: "Alice", role: "CREWMATE", isAlive: true, completedQuests: [] },

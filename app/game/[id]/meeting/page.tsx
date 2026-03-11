@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import useSWR from "swr";
 import { useParams } from "next/navigation";
 import { Skull } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/use-auth";
-import { useGameStore } from "@/lib/store/game-store";
+import { useGameStore, useRealTimeGamePolling } from "@/lib/store/game-store";
 import { ErrorView } from "@/components/game/error-view";
 import { ReactorSabotageAlert } from "@/components/game/reactor-sabotage-alert";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
@@ -47,7 +46,6 @@ export default function MeetingPage() {
     const userId = authState.session?.userId;
     const {
         fetchGame,
-        refreshGameData,
         gameState,
         meetingView,
         fetchMeetingView,
@@ -60,25 +58,21 @@ export default function MeetingPage() {
     } = useGameStore();
     const [now, setNow] = useState(Date.now());
 
+    useRealTimeGamePolling(gameId, userId ?? undefined, Boolean(userId));
+
     useEffect(() => {
         if (!gameId || !userId) return;
         fetchGame(gameId, userId);
         fetchMeetingView(gameId, userId);
     }, [gameId, userId, fetchGame, fetchMeetingView]);
 
-    useSWR(
-        userId ? `meeting:${gameId}:${userId}` : null,
-        async () => {
-            if (!userId) return null;
-            await Promise.all([fetchMeetingView(gameId, userId), refreshGameData(gameId, userId)]);
-            return useGameStore.getState().meetingView;
-        },
-        {
-            refreshInterval: 1000,
-            revalidateOnFocus: true,
-            revalidateOnReconnect: true,
+    useEffect(() => {
+        if (!gameId || !userId) return;
+        const activeMeetingId = gameState?.meeting?.status === "ACTIVE" ? gameState.meeting.id : null;
+        if (activeMeetingId && meetingView?.meeting?.id !== activeMeetingId) {
+            fetchMeetingView(gameId, userId);
         }
-    );
+    }, [gameId, userId, gameState?.meeting?.id, gameState?.meeting?.status, meetingView?.meeting?.id, fetchMeetingView]);
 
     useEffect(() => {
         const interval = setInterval(() => setNow(Date.now()), 1000);
@@ -116,7 +110,7 @@ export default function MeetingPage() {
         );
     }
 
-    const meeting = meetingView?.meeting ?? gameState?.meeting ?? null;
+    const meeting = gameState?.meeting ?? meetingView?.meeting ?? null;
     const snapshot = meeting?.snapshot;
     const active = meeting?.status === "ACTIVE";
     const completed = meeting?.status === "COMPLETED";

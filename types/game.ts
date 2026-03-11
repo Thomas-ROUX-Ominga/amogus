@@ -81,6 +81,8 @@ export interface GameState {
     status: GameStatus;
     players: Player[];
     createdAt: number;
+    revision: number;
+    updatedAt: number;
     creatorId?: string; // First player to join is considered the organizer
     batchId?: string; // Linked batch for quest data
     questsTotal?: number; // Total number of quests in this game (from batch or pool)

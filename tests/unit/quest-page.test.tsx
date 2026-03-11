@@ -47,6 +47,8 @@ const baseStoreState = {
     isLaunching: false,
     isSelectingRole: false,
     isCompletingQuest: false,
+    fatalError: null,
+    fatalErrorCode: null,
     error: null,
     errorCode: null,
     launchError: null,
@@ -106,8 +108,8 @@ describe("QuestPage", () => {
         vi.mocked(useGameStore).mockReturnValue({
             ...baseStoreState,
             isLoading: false,
-            error: "Game not found",
-            errorCode: "GAME_NOT_FOUND",
+            fatalError: "Game not found",
+            fatalErrorCode: "GAME_NOT_FOUND",
             currentQuest: { id: "test", type: "true-false", duration: "short", location: "test" }, // Match duration to prevent stale check
         });
         render(
@@ -177,6 +179,8 @@ describe("QuestPage", () => {
                 status: "LOBBY",
                 players: [{ id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true }],
                 createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             },
         });
         render(
@@ -204,6 +208,8 @@ describe("QuestPage", () => {
                 status: "IN_PROGRESS",
                 players: [{ id: "other-user", name: "Bob", role: "CREWMATE", isAlive: true }],
                 createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             },
         });
         render(
@@ -231,6 +237,8 @@ describe("QuestPage", () => {
                 status: "IN_PROGRESS",
                 players: [{ id: "user-1", name: "Alice", isAlive: true }],
                 createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             },
         });
         render(
@@ -255,6 +263,8 @@ describe("QuestPage", () => {
                 status: "IN_PROGRESS",
                 players: [{ id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true }],
                 createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             },
             currentQuest: {
                 id: "s1",
@@ -298,6 +308,8 @@ describe("QuestPage", () => {
                 status: "IN_PROGRESS",
                 players: [{ id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true, completedQuests: ["s1"] }],
                 createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             },
             currentQuest: {
                 id: "s1",
@@ -324,6 +336,8 @@ describe("QuestPage", () => {
                 status: "IN_PROGRESS",
                 players: [{ id: "user-1", name: "Alice", role: "IMPOSTOR", isAlive: true }],
                 createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             },
         });
         render(

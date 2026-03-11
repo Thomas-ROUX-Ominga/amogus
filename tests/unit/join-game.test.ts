@@ -4,11 +4,17 @@ import { redis } from "@/lib/redis/client";
 
 // Mock kv client
 vi.mock("@/lib/redis/client", () => ({
+    GAME_TTL_SECONDS: 86400,
     redis: {
-        set: vi.fn(),
         get: vi.fn(),
         atomicUpdate: vi.fn(),
     },
+}));
+
+vi.mock("@/lib/redis/auth-utils", () => ({
+    createPlayerSession: vi.fn(() => Promise.resolve({ success: true })),
+    verifyPlayerSession: vi.fn(() => Promise.resolve({ success: true })),
+    verifySession: vi.fn(() => Promise.resolve({ success: true })),
 }));
 
 // Valid UUID v4 for testing
@@ -25,8 +31,11 @@ describe("joinGame", () => {
             status: "LOBBY",
             players: [],
             createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
         };
         vi.mocked(redis.get).mockResolvedValueOnce(mockState);
+        vi.mocked(redis.atomicUpdate).mockImplementationOnce(async (_key, updater) => updater(mockState));
 
         const result = await joinGame("test-game", "Omi", VALID_UUID);
 
@@ -37,7 +46,11 @@ describe("joinGame", () => {
             name: "Omi",
             isAlive: true,
         });
-        expect(redis.set).toHaveBeenCalled();
+        expect(redis.atomicUpdate).toHaveBeenCalledWith(
+            "game:v2:test-game:state",
+            expect.any(Function),
+            86400
+        );
     });
 
     it("should not add a player if they are already in the game", async () => {
@@ -46,14 +59,17 @@ describe("joinGame", () => {
             status: "LOBBY",
             players: [{ id: VALID_UUID, name: "Omi", isAlive: true }],
             createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
         };
         vi.mocked(redis.get).mockResolvedValueOnce(mockState);
+        vi.mocked(redis.atomicUpdate).mockImplementationOnce(async (_key, updater) => updater(mockState));
 
         const result = await joinGame("test-game", "Omi-Duplicate", VALID_UUID);
 
         expect(result.success).toBe(true);
         expect(result.data?.players).toHaveLength(1);
-        expect(redis.set).not.toHaveBeenCalled();
+        expect(redis.atomicUpdate).toHaveBeenCalledTimes(1);
     });
 
     it("should return error if game does not exist", async () => {

@@ -72,6 +72,7 @@ describe("PlayerList", () => {
 });
 
 describe("ProgressBar", () => {
+    const now = Date.now();
     const mockGameState: GameState = {
         id: "test-game",
         status: "IN_PROGRESS",
@@ -91,7 +92,9 @@ describe("ProgressBar", () => {
                 completedQuests: ["quest1"]
             }
         ],
-        createdAt: Date.now()
+        createdAt: now,
+        revision: 1,
+        updatedAt: now,
     };
 
     it("should render progress bar correctly", () => {
@@ -136,6 +139,7 @@ describe("ProgressBar", () => {
 });
 
 describe("TrackerStats", () => {
+    const now = Date.now();
     const mockGameState: GameState = {
         id: "test-game-id",
         status: "IN_PROGRESS",
@@ -162,7 +166,9 @@ describe("TrackerStats", () => {
                 completedQuests: []
             }
         ],
-        createdAt: Date.now()
+        createdAt: now,
+        revision: 1,
+        updatedAt: now,
     };
 
     it("should render stats correctly", () => {

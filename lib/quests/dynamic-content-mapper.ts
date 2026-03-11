@@ -1,12 +1,6 @@
-import { Quest, QuestGame, QuestType, QuestDuration } from "@/types/quest";
+import { QuestGame, QuestType, QuestDuration, QuestContentResult } from "@/types/quest";
 import { getQuestGamesByDuration } from "@/lib/constants/quest-pool";
 import { getQuestMetadata, getPlayerFailedQuests, getGame } from "@/lib/redis/actions";
-
-export interface QuestContentResult {
-    content: QuestGame;
-    contentId: string;
-    isRotation: boolean; // true if this is a rotation due to previous failure
-}
 
 /**
  * Dynamic Content Mapper for Story 8.2
@@ -73,6 +67,7 @@ export class DynamicContentMapper {
             }
 
             return {
+                questId,
                 ...contentResult,
                 isRotation: failedContentIds.length > 0 && !failedContentIds.includes(contentResult.contentId)
             };

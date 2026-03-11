@@ -96,6 +96,8 @@ describe("DynamicContentMapper", () => {
                     }
                 ],
                 createdAt: Date.now(),
+                revision: 1,
+                updatedAt: Date.now(),
                 questsTotal: 10,
                 questsPerPlayer: { short: 1, medium: 1, long: 1 }
             }
@@ -119,6 +121,8 @@ describe("DynamicContentMapper", () => {
                         }
                     ],
                     createdAt: Date.now(),
+                    revision: 1,
+                    updatedAt: Date.now(),
                     questsTotal: 10,
                     questsPerPlayer: { short: 1, medium: 1, long: 1 }
                 }
@@ -158,6 +162,7 @@ describe("DynamicContentMapper", () => {
 
             // Assert
             expect(result).not.toBeNull();
+            expect(result!.questId).toBe(mockQuestId);
             expect(result!.content.type).toBe("true-false");
             expect(result!.content.duration).toBe("short");
             expect(result!.contentId).toBeDefined();
@@ -188,6 +193,7 @@ describe("DynamicContentMapper", () => {
 
             // Assert
             expect(result).not.toBeNull();
+            expect(result!.questId).toBe(mockQuestId);
             expect(result!.content.type).toBe("true-false");
             expect(result!.content.duration).toBe("short");
             expect(result!.contentId).toBeDefined();
@@ -238,6 +244,7 @@ describe("DynamicContentMapper", () => {
 
             // Assert
             expect(result).not.toBeNull();
+            expect(result!.questId).toBe(mockQuestId);
             expect(result!.content.type).toBe("true-false");
             expect(result!.content.duration).toBe("short");
             expect(result!.contentId).toBeDefined();

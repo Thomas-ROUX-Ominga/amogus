@@ -73,7 +73,7 @@ describe('Game Creation Integration', () => {
       // Verify Redis was called with short code key pattern
       const { redis } = await import('@/lib/redis/client');
       expect(redis.set).toHaveBeenCalledWith(
-        'game:AH72X9:state',
+        'game:v2:AH72X9:state',
         expect.objectContaining({
           id: 'AH72X9',
           batchId: 'batch-123',
@@ -116,7 +116,7 @@ describe('Game Creation Integration', () => {
       
       const { redis } = await import('@/lib/redis/client');
       expect(redis.set).toHaveBeenCalledWith(
-        'game:AH72X9:state',
+        'game:v2:AH72X9:state',
         expect.objectContaining({
           questsPerPlayer: { short: 3, medium: 1, long: 2 },
         }),
@@ -171,7 +171,7 @@ describe('Game Creation Integration', () => {
       
       const { redis } = await import('@/lib/redis/client');
       expect(redis.set).toHaveBeenCalledWith(
-        'game:AH72X9:state',
+        'game:v2:AH72X9:state',
         expect.objectContaining({
           batchId: undefined,
           questsTotal: 30, // From default pool

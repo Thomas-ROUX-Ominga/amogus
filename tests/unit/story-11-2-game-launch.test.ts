@@ -35,11 +35,13 @@ describe('Task 3: Restrict Game Launch to Admin', () => {
           { id: 'admin-user-id', name: 'Admin', role: 'ADMIN', isAlive: true }
         ],
         createdAt: Date.now(),
+        revision: 1,
+        updatedAt: Date.now(),
         creatorId: 'admin-user-id',
       };
 
       const { redis } = await import('@/lib/redis/client');
-      vi.mocked(redis.atomicUpdate).mockImplementation(async (key, updater) => {
+      vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
         const result = updater(mockGameState);
         return result || mockGameState;
       });
@@ -66,11 +68,13 @@ describe('Task 3: Restrict Game Launch to Admin', () => {
           { id: 'player-user-id', name: 'Player', isAlive: true }
         ],
         createdAt: Date.now(),
+        revision: 1,
+        updatedAt: Date.now(),
         creatorId: 'admin-user-id',
       };
 
       const { redis } = await import('@/lib/redis/client');
-      vi.mocked(redis.atomicUpdate).mockImplementation(async (key, updater) => {
+      vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, _updater) => {
         // This should not be called for non-admin attempts
         throw new Error('atomicUpdate should not be called for non-admin');
       });
@@ -97,11 +101,13 @@ describe('Task 3: Restrict Game Launch to Admin', () => {
           { id: 'admin-user-id', name: 'Admin', role: 'ADMIN', isAlive: true }
         ],
         createdAt: Date.now(),
+        revision: 1,
+        updatedAt: Date.now(),
         creatorId: 'admin-user-id', // Different from session user
       };
 
       const { redis } = await import('@/lib/redis/client');
-      vi.mocked(redis.atomicUpdate).mockImplementation(async (key, updater) => {
+      vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
         // Call the updater function to test the validation logic
         const result = updater(mockGameState);
         return result || mockGameState;

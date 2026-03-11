@@ -38,6 +38,8 @@ describe("Sabotage actions", () => {
         id: "game-1",
         status: "IN_PROGRESS",
         createdAt: Date.now(),
+       revision: 1,
+       updatedAt: Date.now(),
         players: [
             { id: "imp-1", name: "Impostor", role: "IMPOSTOR", isAlive: true },
             { id: "crew-1", name: "Crewmate", role: "CREWMATE", isAlive: true },
@@ -169,6 +171,7 @@ describe("Sabotage actions", () => {
                 },
             },
         };
+        vi.mocked(redis.get).mockResolvedValueOnce(expiredState);
         mockAtomicUpdate(expiredState);
 
         const result = await refreshGame("game-1");
@@ -176,5 +179,21 @@ describe("Sabotage actions", () => {
         expect(result.success).toBe(true);
         expect(result.data?.status).toBe("FINISHED");
         expect(result.data?.winner).toBe("IMPOSTOR");
+    });
+
+    it("falls back to latest state when refresh hits watch contention", async () => {
+        const watchError = Object.assign(
+            new Error("One (or more) of the watched keys has been changed"),
+            { name: "WatchError" }
+        );
+
+        vi.mocked(redis.atomicUpdate).mockRejectedValueOnce(watchError);
+        vi.mocked(redis.get).mockResolvedValueOnce(baseState);
+
+        const result = await refreshGame("game-1");
+
+        expect(result.success).toBe(true);
+        expect(result.data).toEqual(baseState);
+        expect(redis.get).toHaveBeenCalledWith("game:v2:game-1:state");
     });
 });

@@ -143,4 +143,20 @@ describe('useCameraScanner', () => {
         
         consoleSpy.mockRestore();
     });
+
+    it('should deduplicate repeated scan callbacks', async () => {
+        const gameId = 'test-game-123';
+        const questId = 'quest-456';
+        const { result } = renderHook(() => useCameraScanner({ gameId }));
+
+        await act(async () => {
+            await Promise.all([
+                result.current.handleScan(questId),
+                result.current.handleScan(questId),
+            ]);
+        });
+
+        expect(mockPush).toHaveBeenCalledTimes(1);
+        expect(mockPush).toHaveBeenCalledWith(`/game/${gameId}/quest?questId=${questId}`);
+    });
 });

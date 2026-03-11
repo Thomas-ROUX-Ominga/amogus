@@ -131,21 +131,21 @@ describe('Batch Actions', () => {
       
       // Order of Redis calls in deleteBatch:
       // 1. redis.get(batchKey)
-      // 2. redis.keys("game:*:state")
+      // 2. redis.keys("game:v2:*:state")
       // 3. redis.get(gameKey) for each found key
       // 4. deleteGame(gameId) is called:
       //    a. verifySession()
-      //    b. redis.keys(`game:${gameId}:*`)
+      //    b. redis.keys(`game:v2:${gameId}:*`)
       //    c. redis.del(key) for each associated key
       // 5. redis.del(batchKey)
 
       (redis.get as any)
         .mockResolvedValueOnce(mockBatch) // get batch
-        .mockResolvedValueOnce(mockGame);  // get game for key game:GAME1:state
+        .mockResolvedValueOnce(mockGame);  // get game for key game:v2:GAME1:state
       
       (redis.keys as any)
-        .mockResolvedValueOnce(['game:GAME1:state']) // gameKeys search in deleteBatch
-        .mockResolvedValueOnce(['game:GAME1:state', 'game:GAME1:player:p1:failed-quests']); // gameKeys search in deleteGame
+        .mockResolvedValueOnce(['game:v2:GAME1:state']) // gameKeys search in deleteBatch
+        .mockResolvedValueOnce(['game:v2:GAME1:state', 'game:v2:GAME1:player:p1:failed-quests']); // gameKeys search in deleteGame
       
       (redis.del as any).mockResolvedValue(1);
 
@@ -153,10 +153,10 @@ describe('Batch Actions', () => {
 
       expect(result.success).toBe(true);
       expect(redis.get).toHaveBeenCalledWith('batch:batch-123');
-      expect(redis.keys).toHaveBeenCalledWith('game:*:state');
-      expect(redis.keys).toHaveBeenCalledWith('game:GAME1:*');
+      expect(redis.keys).toHaveBeenCalledWith('game:v2:*:state');
+      expect(redis.keys).toHaveBeenCalledWith('game:v2:GAME1:*');
       expect(redis.del).toHaveBeenCalledWith('batch:batch-123');
-      expect(redis.del).toHaveBeenCalledWith('game:GAME1:state');
+      expect(redis.del).toHaveBeenCalledWith('game:v2:GAME1:state');
     });
 
     it('should handle non-existent batch', async () => {

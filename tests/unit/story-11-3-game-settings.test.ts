@@ -1,8 +1,8 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { joinGame, createGame, completeQuest } from "@/lib/redis/actions";
+import { joinGame, completeQuest } from "@/lib/redis/actions";
 import { redis } from "@/lib/redis/client";
-import { getBatch, getBatchData } from "@/lib/redis/batch-actions";
-import { Quest, QuestType, QuestDuration } from "@/types/quest";
+import { getBatchData } from "@/lib/redis/batch-actions";
+import { QuestType, QuestDuration } from "@/types/quest";
 
 // Mock dependencies
 vi.mock("@/lib/redis/client", () => ({
@@ -40,6 +40,8 @@ describe("Story 11.3: Game Settings from Batch", () => {
                 status: "LOBBY",
                 players: [],
                 createdAt: Date.now(),
+                revision: 1,
+                updatedAt: Date.now(),
                 batchId: "test-batch",
                 questsPerPlayer: { short: 2, medium: 1, long: 1 },
             };
@@ -62,7 +64,10 @@ describe("Story 11.3: Game Settings from Batch", () => {
                 success: true,
                 data: mockBatch,
             });
-            vi.mocked(redis.set).mockResolvedValueOnce(undefined);
+            vi.mocked(redis.atomicUpdate).mockImplementationOnce(async (_key, updater) => {
+                const updated = updater(mockGameState as typeof mockGameState);
+                return updated;
+            });
 
             const result = await joinGame("test-game", "TestPlayer", VALID_UUID);
 
@@ -82,15 +87,21 @@ describe("Story 11.3: Game Settings from Batch", () => {
 
         it("should not assign quests when game has no batch configuration", async () => {
             // Mock game state without batch configuration
+            const now = Date.now();
             const mockGameState = {
                 id: "test-game",
                 status: "LOBBY",
                 players: [],
-                createdAt: Date.now(),
+                createdAt: now,
+                revision: 1,
+                updatedAt: now,
             };
 
             vi.mocked(redis.get).mockResolvedValueOnce(mockGameState);
-            vi.mocked(redis.set).mockResolvedValueOnce(undefined);
+            vi.mocked(redis.atomicUpdate).mockImplementationOnce(async (_key, updater) => {
+                const updated = updater(mockGameState as typeof mockGameState);
+                return updated;
+            });
 
             const result = await joinGame("test-game", "TestPlayer", VALID_UUID);
 
@@ -110,6 +121,8 @@ describe("Story 11.3: Game Settings from Batch", () => {
                 status: "LOBBY",
                 players: [],
                 createdAt: Date.now(),
+                revision: 1,
+                updatedAt: Date.now(),
                 batchId: "test-batch",
                 questsPerPlayer: { short: 1, medium: 1, long: 1 },
             };
@@ -132,6 +145,8 @@ describe("Story 11.3: Game Settings from Batch", () => {
                 status: "LOBBY",
                 players: [],
                 createdAt: Date.now(),
+                revision: 1,
+                updatedAt: Date.now(),
                 batchId: "test-batch",
                 questsPerPlayer: { short: 10, medium: 0, long: 0 }, // 10 short requested, only 2 exist
             };
@@ -157,10 +172,14 @@ describe("Story 11.3: Game Settings from Batch", () => {
 
     describe("Quest Assignment Validation", () => {
         it("should block quest completion if not assigned to player when game has batch", async () => {
+            const now = Date.now();
             const mockGameState = {
                 id: "test-game",
                 status: "IN_PROGRESS",
                 batchId: "test-batch",
+                createdAt: now,
+                revision: 1,
+                updatedAt: now,
                 players: [{
                     id: VALID_UUID,
                     name: "TestPlayer",
@@ -170,10 +189,8 @@ describe("Story 11.3: Game Settings from Batch", () => {
             };
 
             vi.mocked(redis.get).mockResolvedValueOnce(mockGameState);
-            vi.mocked(redis.atomicUpdate).mockImplementationOnce(async (key, updater) => {
-                console.log("Updater input:", JSON.stringify(mockGameState));
+            vi.mocked(redis.atomicUpdate).mockImplementationOnce(async (_key, updater) => {
                 const updated = updater(mockGameState as typeof mockGameState);
-                console.log("Updater output:", JSON.stringify(updated));
                 return updated;
             });
 
@@ -183,10 +200,14 @@ describe("Story 11.3: Game Settings from Batch", () => {
         });
 
         it("should allow quest completion if assigned to player", async () => {
+            const now = Date.now();
             const mockGameState = {
                 id: "test-game",
                 status: "IN_PROGRESS",
                 batchId: "test-batch",
+                createdAt: now,
+                revision: 1,
+                updatedAt: now,
                 players: [{
                     id: VALID_UUID,
                     name: "TestPlayer",
@@ -197,7 +218,7 @@ describe("Story 11.3: Game Settings from Batch", () => {
             };
 
             vi.mocked(redis.get).mockResolvedValueOnce(mockGameState);
-            vi.mocked(redis.atomicUpdate).mockImplementationOnce(async (key, updater) => {
+            vi.mocked(redis.atomicUpdate).mockImplementationOnce(async (_key, updater) => {
                 const updated = updater(mockGameState as typeof mockGameState);
                 return updated;
             });

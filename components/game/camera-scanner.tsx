@@ -20,11 +20,15 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+    const hasScannedRef = useRef(false);
+    const scanCooldownUntilRef = useRef(0);
     const scannerRegionId = 'qr-scanner-region';
 
     useEffect(() => {
         if (!isOpen) {
             cleanupScanner();
+            hasScannedRef.current = false;
+            scanCooldownUntilRef.current = 0;
             return;
         }
 
@@ -65,10 +69,18 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                 { facingMode: "environment" },
                 config,
                 (decodedText) => {
+                    const now = Date.now();
+                    if (hasScannedRef.current || now < scanCooldownUntilRef.current) {
+                        return;
+                    }
+
                     // Extract quest ID from QR code data
                     const questId = extractQuestId(decodedText);
                     
                     if (questId) {
+                        hasScannedRef.current = true;
+                        scanCooldownUntilRef.current = now + 1000;
+
                         // Immediately stop/clear scanner to prevent multiple triggers
                         cleanupScanner();
                         
@@ -173,6 +185,8 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
 
     const handleRetry = () => {
         setError(null);
+        hasScannedRef.current = false;
+        scanCooldownUntilRef.current = 0;
         // Reactive useEffect will trigger initializeScanner once error is null and container renders
     };
 

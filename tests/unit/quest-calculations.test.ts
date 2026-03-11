@@ -8,6 +8,8 @@ describe("quest-calculations", () => {
         status: "IN_PROGRESS",
         players: [],
         createdAt: Date.now(),
+        revision: 1,
+        updatedAt: Date.now(),
         questsPerPlayer: {
             short: 1,
             medium: 1,

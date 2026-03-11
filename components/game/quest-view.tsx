@@ -60,7 +60,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
         }
 
         const loadQuestGame = () => {
-            if (currentQuestContent) {
+            if (currentQuestContent && currentQuestContent.questId === quest.id) {
                 setQuestGame(currentQuestContent.content);
                 setIsLoadingGame(false);
             } else if (quest.type === "mini-game") {
@@ -83,7 +83,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
 
 
         loadQuestGame();
-    }, [quest, currentQuestContent, isImpostor]);
+    }, [quest, currentQuestContent, isImpostor, t]);
 
     const triggerSuccessFlow = useCallback(() => {
         setShowSuccessOverlay(true);
@@ -146,7 +146,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
 
     const handleError = useCallback(() => {
         // Story 8.2: Record failed quest when user gets wrong answer
-        if (userId && currentQuestContent && !isImpostor) {
+        if (userId && currentQuestContent && currentQuestContent.questId === quest.id && !isImpostor) {
             recordFailedQuest(gameId, userId, quest.id, currentQuestContent.contentId);
             setShowFailedOverlay(true);
         }

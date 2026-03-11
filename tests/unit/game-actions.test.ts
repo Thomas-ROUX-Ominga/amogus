@@ -1,8 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { createGame, getGame, completeQuest } from "@/lib/redis/actions";
+import { createGame, getGame, getGameSnapshot, completeQuest } from "@/lib/redis/actions";
 import { redis } from "@/lib/redis/client";
 import { GameState } from "@/types/game";
-import { verifySession } from "@/lib/redis/auth-utils";
 
 // Mock kv client
 vi.mock("@/lib/redis/client", () => ({
@@ -13,11 +12,6 @@ vi.mock("@/lib/redis/client", () => ({
         atomicUpdate: vi.fn(),
         exists: vi.fn(() => Promise.resolve(0)), // Mock exists to return 0 (no collision)
     },
-}));
-
-// Mock admin session
-vi.mock("@/lib/redis/auth-utils", () => ({
-    verifySession: vi.fn(),
 }));
 
 // Mock quest-pool functions
@@ -59,7 +53,7 @@ describe("createGame", () => {
         expect(result.success).toBe(true);
         expect(result.data).toBe("234567");
         expect(redis.set).toHaveBeenCalledWith(
-            "game:234567:state",
+            "game:v2:234567:state",
             expect.objectContaining({
                 id: "234567",
                 status: "LOBBY",
@@ -95,14 +89,15 @@ describe("getGame", () => {
     });
 
     it("should return game state if found", async () => {
-        const mockState = { id: "test-id", status: "LOBBY", players: [] };
+        const now = Date.now();
+        const mockState = { id: "test-id", status: "LOBBY", players: [], createdAt: now, revision: 1, updatedAt: now };
         vi.mocked(redis.get).mockResolvedValueOnce(mockState);
 
         const result = await getGame("test-id");
 
         expect(result.success).toBe(true);
         expect(result.data).toEqual(mockState);
-        expect(redis.get).toHaveBeenCalledWith("game:test-id:state");
+        expect(redis.get).toHaveBeenCalledWith("game:v2:test-id:state");
     });
 
     it("should return failure if game not found", async () => {
@@ -133,6 +128,8 @@ describe("completeQuest", () => {
             { id: "user-2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
         ],
         createdAt: Date.now(),
+        revision: 1,
+        updatedAt: Date.now(),
     };
 
     beforeEach(() => {
@@ -211,5 +208,45 @@ describe("completeQuest", () => {
 
         expect(result.success).toBe(false);
         expect(result.code).toBe("ERR_QUEST_COMPLETE_FAILED");
+    });
+});
+
+describe("getGameSnapshot", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("should allow lobby snapshot for users not joined yet", async () => {
+        const now = Date.now();
+        vi.mocked(redis.get).mockResolvedValueOnce({
+            id: "game-lobby",
+            status: "LOBBY",
+            players: [{ id: "host", name: "Host", isAlive: true }],
+            createdAt: now,
+            revision: 1,
+            updatedAt: now,
+        });
+
+        const result = await getGameSnapshot("game-lobby", "anonymous-user");
+
+        expect(result.success).toBe(true);
+        expect(result.data?.status).toBe("LOBBY");
+    });
+
+    it("should block snapshot for unknown users once game is in progress", async () => {
+        const now = Date.now();
+        vi.mocked(redis.get).mockResolvedValueOnce({
+            id: "game-live",
+            status: "IN_PROGRESS",
+            players: [{ id: "known-user", name: "Known", isAlive: true }],
+            createdAt: now,
+            revision: 2,
+            updatedAt: now,
+        });
+
+        const result = await getGameSnapshot("game-live", "unknown-user");
+
+        expect(result.success).toBe(false);
+        expect(result.code).toBe("ERR_INVALID_SIGNATURE");
     });
 });

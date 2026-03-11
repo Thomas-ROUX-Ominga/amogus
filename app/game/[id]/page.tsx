@@ -17,7 +17,18 @@ import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 export default function LobbyPage() {
     const t = useTranslations();
     const { id } = useParams();
-    const { gameState, isLoading, isLaunching, error, errorCode, launchError, selectedRole, fetchGame, launch, reset } = useGameStore();
+    const {
+        gameState,
+        isLoading,
+        isLaunching,
+        fatalError,
+        fatalErrorCode,
+        launchError,
+        selectedRole,
+        fetchGame,
+        launch,
+        reset,
+    } = useGameStore();
     const { authState } = useAuth();
     
     // Reset state when switching between different games
@@ -42,8 +53,8 @@ export default function LobbyPage() {
 
     // Real-time polling for lobby updates
     const { 
-        gameState: realTimeGameState, 
         isConnected, 
+        syncStatus,
         isGameInProgress: realTimeGameInProgress,
         isGameFinished: realTimeGameFinished,
         playerCount: realTimePlayerCount,
@@ -138,17 +149,17 @@ export default function LobbyPage() {
         );
     }
 
-    if (error) {
+    if (fatalError) {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <ErrorView
                     title={
-                        errorCode === ERROR_CODES.GAME_NOT_FOUND
+                        fatalErrorCode === ERROR_CODES.GAME_NOT_FOUND
                             ? t("game.lobby.sessionDecommissioned")
                             : t("game.lobby.signalInterrupted")
                     }
-                    message={getLocalizedErrorMessage({ t, code: errorCode, fallback: error })}
-                    code={errorCode || "ERR_UNKNOWN_SIG"}
+                    message={getLocalizedErrorMessage({ t, code: fatalErrorCode, fallback: fatalError })}
+                    code={fatalErrorCode || "ERR_UNKNOWN_SIG"}
                     onRetry={() => {
                         if (id) fetchGame(id as string);
                     }}
@@ -207,7 +218,11 @@ export default function LobbyPage() {
                             <span className={`text-[8px] tracking-widest ${
                                 isConnected ? 'text-green-400/80' : 'text-red-400/80'
                             }`}>
-                                {isConnected ? t("game.lobby.sync") : t("game.lobby.offline")}
+                                {isConnected
+                                    ? t("game.lobby.sync")
+                                    : syncStatus === "reconnecting"
+                                    ? t("game.lobby.establishingUplink")
+                                    : t("game.lobby.offline")}
                             </span>
                         </div>
                         

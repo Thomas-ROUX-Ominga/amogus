@@ -55,6 +55,8 @@ const mockGameState: GameState = {
         { id: "user-2", name: "Bob", role: "IMPOSTOR", isAlive: true },
     ],
     createdAt: Date.now(),
+    revision: 1,
+    updatedAt: Date.now(),
     creatorId: "user-999",
 };
 

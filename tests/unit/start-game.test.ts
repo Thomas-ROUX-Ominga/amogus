@@ -53,6 +53,8 @@ describe("startGame", () => {
             status: "LOBBY",
             players: [{ id: "player-1", name: "Alice", isAlive: true }],
             createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             creatorId: "player-1",
         };
         mockAtomicUpdate(mockState);
@@ -67,7 +69,7 @@ describe("startGame", () => {
             })
         );
         expect(redis.atomicUpdate).toHaveBeenCalledWith(
-            "game:test-game-id:state",
+            "game:v2:test-game-id:state",
             expect.any(Function),
             86400
         );
@@ -88,6 +90,8 @@ describe("startGame", () => {
             status: "IN_PROGRESS",
             players: [{ id: "player-1", name: "Alice", isAlive: true }],
             createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             creatorId: "player-1",
         };
         mockAtomicUpdate(mockState);
@@ -108,6 +112,8 @@ describe("startGame", () => {
             status: "FINISHED",
             players: [{ id: "player-1", name: "Alice", isAlive: true }],
             createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             creatorId: "player-1",
         };
         mockAtomicUpdate(mockState);
@@ -124,6 +130,8 @@ describe("startGame", () => {
             status: "LOBBY",
             players: [],
             createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
             creatorId: "player-1",
         };
         mockAtomicUpdate(mockState);

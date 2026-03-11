@@ -6,6 +6,7 @@ import { Batch, BatchCreateInput, BatchListItem, BatchSabotages } from "@/types/
 import { generateBatch } from "@/lib/quests/batch-generator";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { verifyAdminSession } from "@/lib/redis/auth-utils";
+import { getGameStatePattern, parseGameIdFromStateKey } from "@/lib/redis/game-state-keys";
 
 export async function createBatch(input: BatchCreateInput): Promise<ActionResponse<Batch>> {
   try {
@@ -147,13 +148,13 @@ export async function deleteBatch(batchId: string): Promise<ActionResponse<void>
     }
 
     // Stop and delete any active games using this batch
-    const gameKeys = await redis.keys("game:*:state");
+    const gameKeys = await redis.keys(getGameStatePattern());
     for (const key of gameKeys) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const game = await redis.get<any>(key);
       if (game?.batchId === batchId) {
-        // Extract gameId from key (game:ID:state)
-        const gameId = key.split(":")[1];
+        // Extract gameId from key (game:v2:ID:state)
+        const gameId = parseGameIdFromStateKey(key);
         if (gameId) {
             await deleteGame(gameId);
         }

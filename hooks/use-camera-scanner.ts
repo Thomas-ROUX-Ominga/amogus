@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 export interface UseCameraScannerOptions {
@@ -18,9 +18,13 @@ export interface UseCameraScannerReturn {
 export function useCameraScanner({ gameId }: UseCameraScannerOptions = {}): UseCameraScannerReturn {
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const hasScannedRef = useRef(false);
+    const cooldownUntilRef = useRef(0);
     const router = useRouter();
 
     const openScanner = useCallback(() => {
+        hasScannedRef.current = false;
+        cooldownUntilRef.current = 0;
         setIsOpen(true);
     }, []);
 
@@ -34,6 +38,13 @@ export function useCameraScanner({ gameId }: UseCameraScannerOptions = {}): UseC
             console.error('No gameId provided for navigation');
             return;
         }
+
+        const now = Date.now();
+        if (hasScannedRef.current || now < cooldownUntilRef.current) {
+            return;
+        }
+        hasScannedRef.current = true;
+        cooldownUntilRef.current = now + 1000;
 
         setIsLoading(true);
         

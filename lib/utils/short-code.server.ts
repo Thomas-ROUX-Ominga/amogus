@@ -1,4 +1,5 @@
 import { redis } from "@/lib/redis/client";
+import { getGameStateKey } from "@/lib/redis/game-state-keys";
 
 /**
  * Alphabet for short codes - excludes ambiguous characters 0, 1, O, I
@@ -32,7 +33,7 @@ export async function generateShortCode(): Promise<string> {
     }
 
     // Check for collision in Redis
-    const gameKey = `game:${shortCode}:state`;
+    const gameKey = getGameStateKey(shortCode);
     const exists = await redis.exists(gameKey);
     
     if (exists === 0) {
