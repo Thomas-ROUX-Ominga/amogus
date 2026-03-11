@@ -129,7 +129,7 @@ interface GameStore {
 
     // Actions
     fetchGame: (id: string, userId?: string) => Promise<void>;
-    fetchGameQuests: (gameId: string) => Promise<void>;
+    fetchGameQuests: (gameId: string, userId?: string) => Promise<void>;
     refreshGameData: (id: string, userId?: string) => Promise<void>;
     applyRealtimeState: (state: GameState, userId?: string) => void;
     setSyncStatus: (status: SyncStatus) => void;
@@ -596,7 +596,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
             fatalError: null,
             fatalErrorCode: null,
         });
-        const response = await getGame(id);
+        const response = await getGame(id, userId);
 
         if (response.success && response.data) {
             get().applyRealtimeState(response.data, userId);
@@ -616,9 +616,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
     },
 
-    fetchGameQuests: async (gameId: string) => {
+    fetchGameQuests: async (gameId: string, userId?: string) => {
         set({ isGameQuestsLoading: true });
-        const response = await getGameQuests(gameId);
+        const response = await getGameQuests(gameId, userId);
 
         if (response.success && response.data) {
             set({ gameQuests: response.data, isGameQuestsLoading: false });
@@ -630,7 +630,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     refreshGameData: async (id: string, userId?: string) => {
         set({ isRefreshing: true });
-        const response = await refreshGame(id);
+        const response = await refreshGame(id, userId);
 
         if (response.success && response.data) {
             get().applyRealtimeState(response.data, userId);
@@ -782,7 +782,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
         if (response.success && response.data) {
             // Fetch fresh game state after role selection to ensure full sync
-            const gameResponse = await getGame(gameId);
+            const gameResponse = await getGame(gameId, userId);
             
             if (gameResponse.success && gameResponse.data) {
                 get().applyRealtimeState(gameResponse.data, userId);
@@ -1075,7 +1075,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
         if (response.success && response.data) {
             // Refresh game state to get updated player data
-            const gameResponse = await getGame(gameId);
+            const gameResponse = await getGame(gameId, userId);
             
             if (gameResponse.success && gameResponse.data) {
                 get().applyRealtimeState(gameResponse.data, userId);

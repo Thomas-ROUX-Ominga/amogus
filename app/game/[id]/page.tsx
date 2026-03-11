@@ -161,7 +161,7 @@ export default function LobbyPage() {
                     message={getLocalizedErrorMessage({ t, code: fatalErrorCode, fallback: fatalError })}
                     code={fatalErrorCode || "ERR_UNKNOWN_SIG"}
                     onRetry={() => {
-                        if (id) fetchGame(id as string);
+                        if (id) fetchGame(id as string, userId ?? undefined);
                     }}
                 />
             </main>

@@ -140,7 +140,7 @@ export function QuestProgress({
 
                         if (shouldFetch) {
                             lastQuestCatalogFetchRef.current = { gameId: activeGameId, at: nowTs };
-                            await fetchGameQuests(activeGameId);
+                            await fetchGameQuests(activeGameId, currentPlayerId);
                             allQuests = useGameStore.getState().gameQuests ?? EMPTY_QUESTS;
                         }
                     }
@@ -224,6 +224,7 @@ export function QuestProgress({
         completed,
         resolvedGameQuests.length,
         activeGameState?.id,
+        currentPlayerId,
         isGameQuestsLoading,
         fetchGameQuests,
         t,

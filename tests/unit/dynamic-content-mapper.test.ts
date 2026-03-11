@@ -94,7 +94,7 @@ describe("DynamicContentMapper", () => {
             // Assert
             expect(result).not.toBeNull();
             expect(result!.questId).toBe(mockQuestId);
-            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId);
+            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId, mockUserId);
             expect(mockGetPlayerFailedQuests).toHaveBeenCalledWith(mockGameId, mockUserId);
         });
 
@@ -123,7 +123,7 @@ describe("DynamicContentMapper", () => {
             expect(result!.content.duration).toBe("short");
             expect(result!.contentId).toBeDefined();
             expect(result!.isRotation).toBe(false);
-            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId);
+            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId, mockUserId);
             expect(mockGetPlayerFailedQuests).toHaveBeenCalledWith(mockGameId, mockUserId);
         });
 
@@ -154,7 +154,7 @@ describe("DynamicContentMapper", () => {
             expect(result!.content.duration).toBe("short");
             expect(result!.contentId).toBeDefined();
             expect(result!.isRotation).toBe(true);
-            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId);
+            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId, mockUserId);
             expect(mockGetPlayerFailedQuests).toHaveBeenCalledWith(mockGameId, mockUserId);
         });
 
@@ -175,7 +175,7 @@ describe("DynamicContentMapper", () => {
 
             // Assert
             expect(result).toBeNull();
-            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId);
+            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId, mockUserId);
         });
 
         it("should return fallback content when all content has been tried", async () => {
@@ -205,7 +205,7 @@ describe("DynamicContentMapper", () => {
             expect(result!.content.duration).toBe("short");
             expect(result!.contentId).toBeDefined();
             expect(result!.isRotation).toBe(false);
-            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId);
+            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId, mockUserId);
             expect(mockGetPlayerFailedQuests).toHaveBeenCalledWith(mockGameId, mockUserId);
         });
 
@@ -228,7 +228,7 @@ describe("DynamicContentMapper", () => {
 
             // Assert
             expect(result).toBeNull();
-            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId);
+            expect(mockGetQuestMetadata).toHaveBeenCalledWith(mockQuestId, mockGameId, mockUserId);
         });
 
         it("should return 0 when player has not failed quests", async () => {

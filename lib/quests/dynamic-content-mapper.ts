@@ -22,7 +22,7 @@ export class DynamicContentMapper {
         try {
             // Fetch metadata and failed history in parallel to keep quest load latency low.
             const [metadataResponse, failedQuestsResponse] = await Promise.all([
-                getQuestMetadata(questId, gameId),
+                getQuestMetadata(questId, gameId, userId),
                 getPlayerFailedQuests(gameId, userId),
             ]);
 

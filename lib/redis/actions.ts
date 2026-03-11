@@ -314,6 +314,222 @@ async function buildMeetingViewData(gameId: string, userId: string, state: GameS
     };
 }
 
+interface ViewerScope {
+    viewerUserId?: string;
+    isOrganizer: boolean;
+}
+
+function canViewerSeeRole(
+    targetRole: PlayerRole | undefined,
+    targetPlayerId: string,
+    viewerUserId: string | undefined,
+    viewerRole: PlayerRole | undefined,
+    isOrganizer: boolean,
+    revealAllRoles: boolean
+): boolean {
+    if (!targetRole) return false;
+    if (isOrganizer) return true;
+    if (!viewerUserId) return false;
+    if (revealAllRoles) return true;
+    if (targetPlayerId === viewerUserId) return true;
+    if (viewerRole === "IMPOSTOR" && targetRole === "IMPOSTOR") {
+        return true;
+    }
+    return false;
+}
+
+function sanitizeMeetingSnapshotForViewer(
+    snapshot: MeetingSnapshot,
+    viewerUserId: string | undefined,
+    viewerRole: PlayerRole | undefined,
+    isOrganizer: boolean,
+    revealAllRoles: boolean
+): MeetingSnapshot {
+    return {
+        ...snapshot,
+        players: snapshot.players.map((player) => {
+            const canSeeRole = canViewerSeeRole(
+                player.role,
+                player.id,
+                viewerUserId,
+                viewerRole,
+                isOrganizer,
+                revealAllRoles
+            );
+
+            return {
+                id: player.id,
+                name: player.name,
+                isAlive: player.isAlive,
+                role: canSeeRole ? player.role : undefined,
+            };
+        }),
+    };
+}
+
+function sanitizeMeetingStateForViewer(
+    meeting: MeetingState,
+    viewerUserId: string | undefined,
+    viewerRole: PlayerRole | undefined,
+    isOrganizer: boolean,
+    revealAllRoles: boolean
+): MeetingState {
+    return {
+        ...meeting,
+        snapshot: sanitizeMeetingSnapshotForViewer(
+            meeting.snapshot,
+            viewerUserId,
+            viewerRole,
+            isOrganizer,
+            revealAllRoles
+        ),
+    };
+}
+
+function sanitizeMeetingViewForViewer(
+    meetingView: MeetingView,
+    state: GameState,
+    scope: ViewerScope
+): MeetingView {
+    const meeting = meetingView.meeting;
+    if (!meeting || scope.isOrganizer) {
+        return meetingView;
+    }
+
+    const viewerRole = scope.viewerUserId
+        ? state.players.find((player) => player.id === scope.viewerUserId)?.role
+        : undefined;
+    const revealAllRoles = Boolean(scope.viewerUserId) && state.status === "FINISHED";
+
+    return {
+        ...meetingView,
+        meeting: sanitizeMeetingStateForViewer(
+            meeting,
+            scope.viewerUserId,
+            viewerRole,
+            scope.isOrganizer,
+            revealAllRoles
+        ),
+    };
+}
+
+function sanitizeGameStateForViewer(state: GameState, scope: ViewerScope): GameState {
+    if (scope.isOrganizer) {
+        return state;
+    }
+
+    const viewerRole = scope.viewerUserId
+        ? state.players.find((player) => player.id === scope.viewerUserId)?.role
+        : undefined;
+    const revealAllRoles = Boolean(scope.viewerUserId) && state.status === "FINISHED";
+
+    return {
+        ...state,
+        players: state.players.map((player) => {
+            const isSelf = scope.viewerUserId === player.id;
+            const canSeeRole = canViewerSeeRole(
+                player.role,
+                player.id,
+                scope.viewerUserId,
+                viewerRole,
+                scope.isOrganizer,
+                revealAllRoles
+            );
+
+            const sanitizedPlayer = {
+                id: player.id,
+                name: player.name,
+                isAlive: player.isAlive,
+                role: canSeeRole ? player.role : undefined,
+            };
+
+            if (isSelf) {
+                return {
+                    ...sanitizedPlayer,
+                    completedQuests: player.completedQuests ? [...player.completedQuests] : undefined,
+                    lastQuestCompleted: player.lastQuestCompleted,
+                    assignedQuests: player.assignedQuests ? [...player.assignedQuests] : undefined,
+                    meetingBuzzUsedAt: player.meetingBuzzUsedAt,
+                };
+            }
+
+            return sanitizedPlayer;
+        }),
+        meeting: state.meeting
+            ? sanitizeMeetingStateForViewer(
+                  state.meeting,
+                  scope.viewerUserId,
+                  viewerRole,
+                  scope.isOrganizer,
+                  revealAllRoles
+              )
+            : state.meeting,
+    };
+}
+
+async function resolveViewerScopeForGame(
+    gameId: string,
+    state: GameState,
+    userId?: string
+): Promise<ActionResponse<ViewerScope>> {
+    const normalizedUserId = userId?.trim();
+
+    const organizerSession = await verifySession();
+    if (organizerSession.success) {
+        return {
+            success: true,
+            data: {
+                viewerUserId: normalizedUserId,
+                isOrganizer: true,
+            },
+        };
+    }
+
+    const isLobby = state.status === "LOBBY";
+    const playerExists = normalizedUserId
+        ? state.players.some((player) => player.id === normalizedUserId)
+        : false;
+
+    let hasValidPlayerSession = false;
+    if (normalizedUserId) {
+        const sessionCheck = await verifyPlayerSession(normalizedUserId, gameId);
+        hasValidPlayerSession = sessionCheck.success;
+    }
+
+    if (isLobby) {
+        if (normalizedUserId && playerExists && hasValidPlayerSession) {
+            return {
+                success: true,
+                data: {
+                    viewerUserId: normalizedUserId,
+                    isOrganizer: false,
+                },
+            };
+        }
+
+        return {
+            success: true,
+            data: { isOrganizer: false },
+        };
+    }
+
+    if (!normalizedUserId || !playerExists || !hasValidPlayerSession) {
+        return {
+            success: false,
+            error: "Player session verification failed.",
+            code: ERROR_CODES.ERR_INVALID_SIGNATURE,
+        };
+    }
+
+    return {
+        success: true,
+        data: {
+            viewerUserId: normalizedUserId,
+            isOrganizer: false,
+        },
+    };
+}
+
 /**
  * Utility to check if any win conditions are met
  */
@@ -462,7 +678,7 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
     }
 }
 
-export async function getGame(id: string): Promise<ActionResponse<GameState>> {
+export async function getGame(id: string, userId?: string): Promise<ActionResponse<GameState>> {
     try {
         const state = await readGameState(id);
 
@@ -474,9 +690,18 @@ export async function getGame(id: string): Promise<ActionResponse<GameState>> {
             };
         }
 
+        const viewerScope = await resolveViewerScopeForGame(id, state, userId);
+        if (!viewerScope.success || !viewerScope.data) {
+            return {
+                success: false,
+                error: viewerScope.error ?? "Access denied.",
+                code: viewerScope.code ?? ERROR_CODES.ERR_INVALID_SIGNATURE,
+            };
+        }
+
         return {
             success: true,
-            data: state,
+            data: sanitizeGameStateForViewer(state, viewerScope.data),
         };
     } catch (error) {
         console.error("Failed to fetch game:", error);
@@ -737,7 +962,10 @@ export async function joinGame(
 
         return {
             success: true,
-            data: normalizeGameState(updatedState),
+            data: sanitizeGameStateForViewer(normalizeGameState(updatedState), {
+                viewerUserId: userId,
+                isOrganizer: false,
+            }),
         };
     } catch (error) {
         console.error("Failed to join game:", error);
@@ -903,7 +1131,8 @@ export async function completeQuest(
 }
 
 export async function refreshGame(
-    gameId: string
+    gameId: string,
+    userId?: string
 ): Promise<ActionResponse<GameState>> {
     try {
         const state = await readGameState(gameId);
@@ -916,10 +1145,19 @@ export async function refreshGame(
         }
 
         const resolved = resolveRuntimeTransitions(state, Date.now());
+        const viewerScope = await resolveViewerScopeForGame(gameId, resolved, userId);
+        if (!viewerScope.success || !viewerScope.data) {
+            return {
+                success: false,
+                error: viewerScope.error ?? "Access denied.",
+                code: viewerScope.code ?? ERROR_CODES.ERR_INVALID_SIGNATURE,
+            };
+        }
+
         if (areGameStatesEquivalent(state, resolved)) {
             return {
                 success: true,
-                data: state,
+                data: sanitizeGameStateForViewer(state, viewerScope.data),
             };
         }
 
@@ -929,15 +1167,24 @@ export async function refreshGame(
 
         return {
             success: true,
-            data: persisted ?? resolved,
+            data: sanitizeGameStateForViewer(persisted ?? resolved, viewerScope.data),
         };
     } catch (error) {
         if (isWatchConflictError(error)) {
             const latestState = await readGameState(gameId);
             if (latestState) {
+                const viewerScope = await resolveViewerScopeForGame(gameId, latestState, userId);
+                if (!viewerScope.success || !viewerScope.data) {
+                    return {
+                        success: false,
+                        error: viewerScope.error ?? "Access denied.",
+                        code: viewerScope.code ?? ERROR_CODES.ERR_INVALID_SIGNATURE,
+                    };
+                }
+
                 return {
                     success: true,
-                    data: latestState,
+                    data: sanitizeGameStateForViewer(latestState, viewerScope.data),
                 };
             }
         }
@@ -977,21 +1224,18 @@ export async function getGameSnapshot(
                   updatedAt: syntheticUpdatedAt,
               });
 
-        if (userId) {
-            const playerExists = snapshot.players.some((player) => player.id === userId);
-            const canReadLobbySnapshot = snapshot.status === "LOBBY";
-            if (!playerExists && !canReadLobbySnapshot) {
-                return {
-                    success: false,
-                    error: "Player not found in game.",
-                    code: ERROR_CODES.ERR_INVALID_SIGNATURE,
-                };
-            }
+        const viewerScope = await resolveViewerScopeForGame(gameId, snapshot, userId);
+        if (!viewerScope.success || !viewerScope.data) {
+            return {
+                success: false,
+                error: viewerScope.error ?? "Access denied.",
+                code: viewerScope.code ?? ERROR_CODES.ERR_INVALID_SIGNATURE,
+            };
         }
 
         return {
             success: true,
-            data: normalizeGameState(snapshot),
+            data: sanitizeGameStateForViewer(normalizeGameState(snapshot), viewerScope.data),
         };
     } catch (error) {
         console.error("Failed to fetch game snapshot:", error);
@@ -1029,7 +1273,6 @@ export async function triggerSabotage(
         }
 
         let validationError: ActionResponse<TriggerSabotageResult> | null = null;
-        let triggerResult: TriggerSabotageResult | null = null;
         const now = Date.now();
 
         const updatedState = await mutateGameState(gameId, (state) => {
@@ -1125,23 +1368,6 @@ export async function triggerSabotage(
                           },
                       };
 
-            triggerResult = {
-                event:
-                    type === "COMMUNICATIONS"
-                        ? "COMMUNICATIONS_ACTIVATED"
-                        : type === "LIGHTS"
-                        ? "LIGHTS_ACTIVATED"
-                        : "REACTOR_ACTIVATED",
-                reactorProgress:
-                    type === "REACTOR"
-                        ? {
-                              scanned: 0,
-                              total: 2,
-                              remainingMs: REACTOR_SABOTAGE_DURATION_MS,
-                          }
-                        : undefined,
-                gameState: updatedState,
-            };
             return updatedState;
         });
 
@@ -1157,9 +1383,30 @@ export async function triggerSabotage(
             };
         }
 
+        const sanitizedState = sanitizeGameStateForViewer(updatedState, {
+            viewerUserId: userId,
+            isOrganizer: false,
+        });
+
         return {
             success: true,
-            data: triggerResult ?? {},
+            data: {
+                event:
+                    type === "COMMUNICATIONS"
+                        ? "COMMUNICATIONS_ACTIVATED"
+                        : type === "LIGHTS"
+                        ? "LIGHTS_ACTIVATED"
+                        : "REACTOR_ACTIVATED",
+                reactorProgress:
+                    type === "REACTOR"
+                        ? {
+                              scanned: 0,
+                              total: 2,
+                              remainingMs: REACTOR_SABOTAGE_DURATION_MS,
+                          }
+                        : undefined,
+                gameState: sanitizedState,
+            },
         };
     } catch (error) {
         console.error("Failed to trigger sabotage:", error);
@@ -1414,9 +1661,36 @@ export async function scanSabotage(
             };
         }
 
+        const fallbackState = sanitizeGameStateForViewer(result, {
+            viewerUserId: userId,
+            isOrganizer: false,
+        });
+
+        const resolvedScanResult = scanResult as ScanSabotageResult | null;
+
+        let sanitizedScanState: GameState | undefined;
+        if (resolvedScanResult && resolvedScanResult.gameState) {
+            sanitizedScanState = sanitizeGameStateForViewer(resolvedScanResult.gameState, {
+                viewerUserId: userId,
+                isOrganizer: false,
+            });
+        }
+
+        if (!resolvedScanResult) {
+            return {
+                success: true,
+                data: { handled: false, gameState: fallbackState },
+            };
+        }
+
         return {
             success: true,
-            data: scanResult ?? { handled: false, gameState: result ?? undefined },
+            data: {
+                handled: resolvedScanResult.handled,
+                event: resolvedScanResult.event,
+                reactorProgress: resolvedScanResult.reactorProgress,
+                gameState: sanitizedScanState,
+            },
         };
     } catch (error) {
         console.error("Failed to scan sabotage:", error);
@@ -1458,7 +1732,10 @@ export async function getMeetingView(
         const data = await buildMeetingViewData(gameId, userId, state);
         return {
             success: true,
-            data,
+            data: sanitizeMeetingViewForViewer(data, state, {
+                viewerUserId: userId,
+                isOrganizer: false,
+            }),
         };
     } catch (error) {
         console.error("Failed to fetch meeting view:", error);
@@ -1601,10 +1878,13 @@ export async function triggerMeeting(
             };
         }
 
-        const data = await buildMeetingViewData(gameId, userId, result!);
+        const data = await buildMeetingViewData(gameId, userId, result);
         return {
             success: true,
-            data,
+            data: sanitizeMeetingViewForViewer(data, result, {
+                viewerUserId: userId,
+                isOrganizer: false,
+            }),
         };
     } catch (error) {
         console.error("Failed to trigger meeting:", error);
@@ -1751,10 +2031,13 @@ export async function castMeetingVote(
         }
 
         await redis.set(voteKey, targetId, GAME_TTL_SECONDS);
-        const data = await buildMeetingViewData(gameId, userId, result!);
+        const data = await buildMeetingViewData(gameId, userId, result);
         return {
             success: true,
-            data,
+            data: sanitizeMeetingViewForViewer(data, result, {
+                viewerUserId: userId,
+                isOrganizer: false,
+            }),
         };
     } catch (error) {
         console.error("Failed to cast meeting vote:", error);
@@ -1867,10 +2150,13 @@ export async function cancelMeetingVote(
         }
 
         await redis.del(voteKey);
-        const data = await buildMeetingViewData(gameId, userId, result!);
+        const data = await buildMeetingViewData(gameId, userId, result);
         return {
             success: true,
-            data,
+            data: sanitizeMeetingViewForViewer(data, result, {
+                viewerUserId: userId,
+                isOrganizer: false,
+            }),
         };
     } catch (error) {
         console.error("Failed to cancel meeting vote:", error);
@@ -1970,15 +2256,35 @@ export async function selectRole(
 }
 
 // Quest metadata actions for Story 8.2
-export async function getQuestMetadata(questId: string, gameId: string): Promise<ActionResponse<Quest>> {
+export async function getQuestMetadata(
+    questId: string,
+    gameId: string,
+    userId?: string
+): Promise<ActionResponse<Quest>> {
     try {
-        // Get game state to find batchId
-        const gameResponse = await getGame(gameId);
-        if (gameResponse.success && gameResponse.data && gameResponse.data.batchId) {
-            const batchResponse = await getBatchData(gameResponse.data.batchId);
+        const state = await readGameState(gameId);
+        if (!state) {
+            return {
+                success: false,
+                error: "Game session not found.",
+                code: ERROR_CODES.GAME_NOT_FOUND,
+            };
+        }
+
+        const viewerScope = await resolveViewerScopeForGame(gameId, state, userId);
+        if (!viewerScope.success) {
+            return {
+                success: false,
+                error: viewerScope.error ?? "Access denied.",
+                code: viewerScope.code ?? ERROR_CODES.ERR_INVALID_SIGNATURE,
+            };
+        }
+
+        if (state.batchId) {
+            const batchResponse = await getBatchData(state.batchId);
             if (batchResponse.success && batchResponse.data) {
                 // Search for quest in batch's quests array
-                const quest = batchResponse.data.quests.find(q => q.id === questId);
+                const quest = batchResponse.data.quests.find((q) => q.id === questId);
                 if (quest) {
                     return {
                         success: true,
@@ -2004,6 +2310,15 @@ export async function getQuestMetadata(questId: string, gameId: string): Promise
 
 export async function getPlayerFailedQuests(gameId: string, userId: string): Promise<ActionResponse<Record<string, string[]>>> {
     try {
+        const sessionCheck = await verifyPlayerSession(userId, gameId);
+        if (!sessionCheck.success) {
+            return {
+                success: false,
+                error: sessionCheck.error || "Session verification failed",
+                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+            };
+        }
+
         const failedQuestsKey = getFailedQuestsKey(gameId, userId);
         const failedQuests = await redis.get<Record<string, string[]>>(failedQuestsKey);
 
@@ -2028,6 +2343,15 @@ export async function addFailedQuest(
     contentId: string
 ): Promise<ActionResponse<void>> {
     try {
+        const sessionCheck = await verifyPlayerSession(userId, gameId);
+        if (!sessionCheck.success) {
+            return {
+                success: false,
+                error: sessionCheck.error || "Session verification failed",
+                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+            };
+        }
+
         const failedQuestsKey = getFailedQuestsKey(gameId, userId);
 
         await redis.atomicUpdate<Record<string, string[]>>(failedQuestsKey, (failedQuests) => {
@@ -2168,7 +2492,7 @@ export async function eliminatePlayer(
 }
 
 
-export async function getGameQuests(gameId: string): Promise<ActionResponse<Quest[]>> {
+export async function getGameQuests(gameId: string, userId?: string): Promise<ActionResponse<Quest[]>> {
     try {
         const state = await readGameState(gameId);
 
@@ -2187,11 +2511,36 @@ export async function getGameQuests(gameId: string): Promise<ActionResponse<Ques
             };
         }
 
+        const viewerScope = await resolveViewerScopeForGame(gameId, state, userId);
+        if (!viewerScope.success || !viewerScope.data) {
+            return {
+                success: false,
+                error: viewerScope.error ?? "Access denied.",
+                code: viewerScope.code ?? ERROR_CODES.ERR_INVALID_SIGNATURE,
+            };
+        }
+        const viewerData = viewerScope.data;
+
         const batchResponse = await getBatchData(state.batchId);
         if (batchResponse.success && batchResponse.data) {
+            if (viewerData.isOrganizer) {
+                return {
+                    success: true,
+                    data: batchResponse.data.quests,
+                };
+            }
+
+            const viewerPlayer = viewerData.viewerUserId
+                ? state.players.find((player) => player.id === viewerData.viewerUserId)
+                : undefined;
+            const assignedQuestIds = new Set(viewerPlayer?.assignedQuests ?? []);
+
             return {
                 success: true,
-                data: batchResponse.data.quests,
+                data:
+                    assignedQuestIds.size > 0
+                        ? batchResponse.data.quests.filter((quest) => assignedQuestIds.has(quest.id))
+                        : [],
             };
         }
 

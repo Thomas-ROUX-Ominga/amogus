@@ -224,7 +224,7 @@ function QuestPageContent() {
                         fallback: fatalError,
                     })}
                     code={fatalErrorCode || ERROR_CODES.ERR_QUEST_LOAD_FAILED}
-                    onRetry={() => { if (id) fetchGame(gameId); }}
+                    onRetry={() => { if (id) fetchGame(gameId, userId ?? undefined); }}
                 />
             </main>
         );

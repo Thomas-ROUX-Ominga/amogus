@@ -2,6 +2,7 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 import { createGame, getGame, getGameSnapshot, completeQuest } from "@/lib/redis/actions";
 import { redis } from "@/lib/redis/client";
 import { GameState } from "@/types/game";
+import { verifyPlayerSession, verifySession } from "@/lib/redis/auth-utils";
 
 // Mock kv client
 vi.mock("@/lib/redis/client", () => ({
@@ -214,6 +215,12 @@ describe("completeQuest", () => {
 describe("getGameSnapshot", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(verifySession).mockResolvedValue({
+            success: false,
+            error: "No session",
+            code: "ERR_NO_SESSION",
+        });
+        vi.mocked(verifyPlayerSession).mockResolvedValue({ success: true });
     });
 
     it("should allow lobby snapshot for users not joined yet", async () => {
