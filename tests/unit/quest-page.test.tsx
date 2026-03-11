@@ -328,6 +328,40 @@ describe("QuestPage", () => {
         expect(screen.getByText("RETOUR AU COCKPIT")).toBeTruthy();
     });
 
+    it("should not show already-completed guard while quest completion flow is active", async () => {
+        vi.mocked(useGameStore).mockReturnValue({
+            ...baseStoreState,
+            questAnswered: true,
+            gameState: {
+                id: "game-123",
+                status: "IN_PROGRESS",
+                players: [{ id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true, completedQuests: ["s1"] }],
+                createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
+            },
+            currentQuest: {
+                id: "s1",
+                type: "true-false",
+                duration: "short",
+                title: "Test Quest",
+                instruction: "Test instruction",
+            },
+        });
+        render(
+            <AuthProvider>
+                <QuestPage />
+            </AuthProvider>
+        );
+
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 0));
+        });
+
+        expect(screen.queryByText("QUÊTE DÉJÀ ACCOMPLIE")).toBeNull();
+        expect(screen.getByRole("heading", { level: 2 })).toBeTruthy();
+    });
+
     it("should set a simulated quest and not a real one if player is an IMPOSTOR", () => {
         vi.mocked(useGameStore).mockReturnValue({
             ...baseStoreState,

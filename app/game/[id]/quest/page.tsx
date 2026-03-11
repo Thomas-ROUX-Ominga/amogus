@@ -50,9 +50,11 @@ function QuestPageContent() {
     const {
         gameState,
         isLoading,
+        isCompletingQuest,
         fatalError,
         fatalErrorCode,
         currentQuest,
+        questAnswered,
         currentQuestContent,
         setCurrentQuest,
         fetchGame = async () => {},
@@ -244,6 +246,8 @@ function QuestPageContent() {
 
     // Game state validations
     if (gameState) {
+        const isQuestCompletionFlowActive = questAnswered || isCompletingQuest;
+
         // Game not in progress
         if (gameState.status !== "IN_PROGRESS") {
             return (
@@ -332,7 +336,7 @@ function QuestPageContent() {
         // Quest already completed guard
         if (currentQuest) {
             const completedQuests = currentPlayer.completedQuests ?? [];
-            if (completedQuests.includes(currentQuest.id)) {
+            if (!isQuestCompletionFlowActive && completedQuests.includes(currentQuest.id)) {
                 return (
                     <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                         <div className="max-w-2xl w-full border-2 border-[#2DA44E]/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm">
