@@ -3,6 +3,7 @@ import { joinGame, completeQuest } from "@/lib/redis/actions";
 import { redis } from "@/lib/redis/client";
 import { getBatchData } from "@/lib/redis/batch-actions";
 import { QuestType, QuestDuration } from "@/types/quest";
+import { GameState } from "@/types/game";
 
 // Mock dependencies
 vi.mock("@/lib/redis/client", () => ({
@@ -26,6 +27,7 @@ vi.mock("@/lib/redis/auth-utils", () => ({
 
 // Valid UUID v4 for testing
 const VALID_UUID = "user-12345";
+const VALID_UUID_2 = "user-67890";
 
 describe("Story 11.3: Game Settings from Batch", () => {
     beforeEach(() => {
@@ -83,6 +85,66 @@ describe("Story 11.3: Game Settings from Batch", () => {
                 expect(player.assignedQuests).toContain("quest-3");
                 expect(player.assignedQuests).toContain("quest-4");
             }
+        });
+
+        it("should spread quests across players when enough quests exist per duration", async () => {
+            const now = Date.now();
+            const initialGameState: GameState = {
+                id: "test-game",
+                status: "LOBBY",
+                players: [],
+                createdAt: now,
+                revision: 1,
+                updatedAt: now,
+                batchId: "test-batch",
+                questsPerPlayer: { short: 1, medium: 1, long: 1 },
+            };
+
+            const mockBatch = {
+                id: "test-batch",
+                questCount: 6,
+                createdAt: new Date().toISOString(),
+                quests: [
+                    { id: "s-1", type: "qcm" as QuestType, duration: "short" as QuestDuration },
+                    { id: "s-2", type: "true-false" as QuestType, duration: "short" as QuestDuration },
+                    { id: "m-1", type: "qcm" as QuestType, duration: "medium" as QuestDuration },
+                    { id: "m-2", type: "true-false" as QuestType, duration: "medium" as QuestDuration },
+                    { id: "l-1", type: "qcm" as QuestType, duration: "long" as QuestDuration },
+                    { id: "l-2", type: "true-false" as QuestType, duration: "long" as QuestDuration },
+                ],
+            };
+
+            let mutableState: GameState = { ...initialGameState };
+            vi.mocked(redis.get).mockImplementation(async () => ({ ...mutableState }));
+            vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
+                const updated = updater(mutableState);
+                if (updated) {
+                    mutableState = updated;
+                    return updated;
+                }
+                return mutableState;
+            });
+            vi.mocked(getBatchData).mockResolvedValue({
+                success: true,
+                data: mockBatch,
+            });
+
+            const firstJoin = await joinGame("test-game", "Alpha", VALID_UUID);
+            const secondJoin = await joinGame("test-game", "Beta", VALID_UUID_2);
+
+            expect(firstJoin.success).toBe(true);
+            expect(secondJoin.success).toBe(true);
+
+            const alpha = mutableState.players.find((player) => player.id === VALID_UUID);
+            const beta = mutableState.players.find((player) => player.id === VALID_UUID_2);
+
+            expect(alpha?.assignedQuests).toBeDefined();
+            expect(beta?.assignedQuests).toBeDefined();
+            expect(alpha?.assignedQuests?.length).toBe(3);
+            expect(beta?.assignedQuests?.length).toBe(3);
+
+            const overlap = alpha?.assignedQuests?.filter((id) => beta?.assignedQuests?.includes(id)) ?? [];
+            expect(overlap).toHaveLength(0);
         });
 
         it("should not assign quests when game has no batch configuration", async () => {
@@ -163,6 +225,10 @@ describe("Story 11.3: Game Settings from Batch", () => {
 
             vi.mocked(redis.get).mockResolvedValueOnce(mockGameState);
             vi.mocked(getBatchData).mockResolvedValueOnce({ success: true, data: mockBatch as typeof mockBatch });
+            vi.mocked(redis.atomicUpdate).mockImplementationOnce(async (_key, updater) => {
+                const updated = updater(mockGameState as typeof mockGameState);
+                return updated ?? (mockGameState as typeof mockGameState);
+            });
 
             const result = await joinGame("test-game", "Test", VALID_UUID);
             expect(result.success).toBe(false);

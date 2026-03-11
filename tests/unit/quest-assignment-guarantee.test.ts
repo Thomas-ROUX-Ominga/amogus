@@ -64,4 +64,48 @@ describe('Quest Assignment Verification', () => {
     expect(assignments).toHaveLength(3);
     expect(assignments.every(a => a.questType === 'qcm')).toBe(true);
   });
+
+  it('should prioritize least-used quests to spread assignments across players', async () => {
+    const mockBatch = {
+      id: 'batch-balanced',
+      questCount: 6,
+      createdAt: new Date().toISOString(),
+      quests: [
+        { id: 's-1', type: 'qcm', duration: 'short' },
+        { id: 's-2', type: 'qcm', duration: 'short' },
+        { id: 'm-1', type: 'qcm', duration: 'medium' },
+        { id: 'm-2', type: 'qcm', duration: 'medium' },
+        { id: 'l-1', type: 'qcm', duration: 'long' },
+        { id: 'l-2', type: 'qcm', duration: 'long' },
+      ],
+    };
+
+    vi.mocked(batchActions.getBatchData).mockResolvedValue({
+      success: true,
+      data: mockBatch as { id: string; questCount: number; createdAt: string; quests: Array<{ id: string; type: 'qcm' | 'mini-game'; duration: 'short' | 'medium' | 'long' }> },
+    });
+
+    const gameState: Partial<GameState> = {
+      batchId: 'batch-balanced',
+      questsPerPlayer: { short: 1, medium: 1, long: 1 },
+      players: [
+        {
+          id: 'p1',
+          name: 'Player 1',
+          isAlive: true,
+          assignedQuests: ['s-1', 'm-1', 'l-1'],
+        },
+      ],
+    };
+
+    const assignments = await assignQuestsFromBatch(gameState as GameState);
+    const assignedIds = assignments.map((assignment) => assignment.questId);
+
+    expect(assignedIds).toContain('s-2');
+    expect(assignedIds).toContain('m-2');
+    expect(assignedIds).toContain('l-2');
+    expect(assignedIds).not.toContain('s-1');
+    expect(assignedIds).not.toContain('m-1');
+    expect(assignedIds).not.toContain('l-1');
+  });
 });

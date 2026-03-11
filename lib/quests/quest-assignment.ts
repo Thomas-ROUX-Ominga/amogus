@@ -1,4 +1,4 @@
-import { Quest } from "@/types/quest";
+import { Quest, Batch } from "@/types/quest";
 import { getBatchData } from "@/lib/redis/batch-actions";
 import { GameState } from "@/types/game";
 
@@ -6,6 +6,131 @@ export interface QuestAssignment {
   questId: string;
   questType: string;
   duration: 'short' | 'medium' | 'long';
+}
+
+type QuestDuration = Quest["duration"];
+
+function pickRandom<T>(items: T[]): T {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function pickLeastUsedQuest(candidates: Quest[], usageByQuestId: Record<string, number>): Quest {
+  const minUsage = candidates.reduce(
+    (currentMin, quest) => Math.min(currentMin, usageByQuestId[quest.id] ?? 0),
+    Number.POSITIVE_INFINITY
+  );
+
+  const leastUsed = candidates.filter((quest) => (usageByQuestId[quest.id] ?? 0) === minUsage);
+  return pickRandom(leastUsed);
+}
+
+function buildQuestUsageMap(players: GameState["players"] | undefined, batchQuests: Quest[]): Record<string, number> {
+  const usageByQuestId: Record<string, number> = {};
+  const questById = new Map(batchQuests.map((quest) => [quest.id, quest]));
+  const existingPlayers = Array.isArray(players) ? players : [];
+
+  for (const player of existingPlayers) {
+    if (!player.assignedQuests) {
+      continue;
+    }
+
+    for (const assignedQuestId of player.assignedQuests) {
+      if (!questById.has(assignedQuestId)) {
+        continue;
+      }
+      usageByQuestId[assignedQuestId] = (usageByQuestId[assignedQuestId] ?? 0) + 1;
+    }
+  }
+
+  return usageByQuestId;
+}
+
+function selectBalancedQuests(
+  quests: Quest[],
+  count: number,
+  durationName: QuestDuration,
+  usageByQuestId: Record<string, number>,
+  forcedQuest?: Quest | null
+): Quest[] {
+  if (count <= 0) return [];
+
+  if (count > quests.length) {
+    throw new Error(`Insufficient ${durationName} quests available. Requested ${count}, but only ${quests.length} found in batch.`);
+  }
+
+  const selected: Quest[] = [];
+  const selectedIds = new Set<string>();
+
+  if (forcedQuest && forcedQuest.duration === durationName) {
+    selected.push(forcedQuest);
+    selectedIds.add(forcedQuest.id);
+  }
+
+  while (selected.length < count) {
+    const candidates = quests.filter((quest) => !selectedIds.has(quest.id));
+    if (candidates.length === 0) {
+      break;
+    }
+
+    const chosenQuest = pickLeastUsedQuest(candidates, usageByQuestId);
+    selected.push(chosenQuest);
+    selectedIds.add(chosenQuest.id);
+  }
+
+  if (selected.length < count) {
+    throw new Error(`Insufficient ${durationName} quests available after balancing. Requested ${count}, but only ${selected.length} could be selected.`);
+  }
+
+  return selected;
+}
+
+export function assignQuestsFromLoadedBatch(
+  gameState: GameState,
+  batch: Pick<Batch, "id" | "quests">
+): QuestAssignment[] {
+  if (!gameState.questsPerPlayer) {
+    return [];
+  }
+
+  const distribution = gameState.questsPerPlayer;
+
+  // Group batch quests by duration
+  const shortQuests = batch.quests.filter((q) => q.duration === "short");
+  const mediumQuests = batch.quests.filter((q) => q.duration === "medium");
+  const longQuests = batch.quests.filter((q) => q.duration === "long");
+
+  // Build usage frequency from players already assigned in this game.
+  const usageByQuestId = buildQuestUsageMap(gameState.players, batch.quests);
+
+  // Keep mini-game guarantee, but pick the least-used eligible mini-game first.
+  const miniGameCandidates = batch.quests.filter(
+    (q) => q.type === "mini-game" && distribution[q.duration] > 0
+  );
+  const forcedMiniGame = miniGameCandidates.length > 0
+    ? pickLeastUsedQuest(miniGameCandidates, usageByQuestId)
+    : null;
+
+  const selectedShort = selectBalancedQuests(shortQuests, distribution.short, "short", usageByQuestId, forcedMiniGame);
+  const selectedMedium = selectBalancedQuests(mediumQuests, distribution.medium, "medium", usageByQuestId, forcedMiniGame);
+  const selectedLong = selectBalancedQuests(longQuests, distribution.long, "long", usageByQuestId, forcedMiniGame);
+
+  return [
+    ...selectedShort.map((quest) => ({
+      questId: quest.id,
+      questType: quest.type,
+      duration: "short" as const
+    })),
+    ...selectedMedium.map((quest) => ({
+      questId: quest.id,
+      questType: quest.type,
+      duration: "medium" as const
+    })),
+    ...selectedLong.map((quest) => ({
+      questId: quest.id,
+      questType: quest.type,
+      duration: "long" as const
+    }))
+  ];
 }
 
 /**
@@ -27,79 +152,7 @@ export async function assignQuestsFromBatch(gameState: GameState): Promise<Quest
       return [];
     }
 
-    const batch = batchResponse.data;
-    const distribution = gameState.questsPerPlayer;
-    
-    // Group batch quests by duration
-    const shortQuests = batch.quests.filter(q => q.duration === 'short');
-    const mediumQuests = batch.quests.filter(q => q.duration === 'medium');
-    const longQuests = batch.quests.filter(q => q.duration === 'long');
-
-    // Identify mini-games in the batch to ensure at least one is assigned
-    const miniGames = batch.quests.filter(q => q.type === 'mini-game');
-    let forcedMiniGame: Quest | null = null;
-    
-    if (miniGames.length > 0) {
-      // Pick one random mini-game to guarantee for this player
-      forcedMiniGame = miniGames[Math.floor(Math.random() * miniGames.length)];
-    }
-
-    // Helper to select random quests using Fisher-Yates shuffle
-    const selectRandomQuests = (quests: Quest[], count: number, durationName: 'short' | 'medium' | 'long', forced?: Quest | null): Quest[] => {
-      if (count <= 0) return [];
-      
-      if (count > quests.length) {
-        throw new Error(`Insufficient ${durationName} quests available. Requested ${count}, but only ${quests.length} found in batch.`);
-      }
-
-      let pool = [...quests];
-      const selected: Quest[] = [];
-
-      // If we have a forced quest for this duration, include it first
-      if (forced && forced.duration === durationName) {
-        selected.push(forced);
-        pool = pool.filter(q => q.id !== forced.id);
-      }
-
-      // Shuffle the remaining pool
-      for (let i = pool.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [pool[i], pool[j]] = [pool[j], pool[i]];
-      }
-
-      // Fill remaining slots
-      const remainingCount = count - selected.length;
-      selected.push(...pool.slice(0, remainingCount));
-
-      return selected;
-    };
-
-    // Select quests according to distribution, forcing the mini-game if applicable
-    const selectedShort = selectRandomQuests(shortQuests, distribution.short, 'short', forcedMiniGame);
-    const selectedMedium = selectRandomQuests(mediumQuests, distribution.medium, 'medium', forcedMiniGame);
-    const selectedLong = selectRandomQuests(longQuests, distribution.long, 'long', forcedMiniGame);
-
-    // Convert to quest assignments
-    const assignments: QuestAssignment[] = [
-      ...selectedShort.map(quest => ({
-        questId: quest.id,
-        questType: quest.type,
-        duration: 'short' as const
-      })),
-      ...selectedMedium.map(quest => ({
-        questId: quest.id,
-        questType: quest.type,
-        duration: 'medium' as const
-      })),
-      ...selectedLong.map(quest => ({
-        questId: quest.id,
-        questType: quest.type,
-        duration: 'long' as const
-      }))
-    ];
-
-
-    return assignments;
+    return assignQuestsFromLoadedBatch(gameState, batchResponse.data);
   } catch (error) {
     console.error(`[CRITICAL] Error assigning quests from batch ${gameState.batchId}:`, error);
     return [];

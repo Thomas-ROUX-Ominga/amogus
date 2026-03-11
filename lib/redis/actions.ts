@@ -16,7 +16,7 @@ import { getBatchData } from "./batch-actions";
 import { getTotalQuestGamesCount } from "@/lib/constants/quest-pool";
 import { generateShortCode } from "@/lib/utils/short-code.server";
 import { Quest, BatchSabotages, SabotageType } from "@/types/quest";
-import { assignQuestsFromBatch } from "@/lib/quests/quest-assignment";
+import { assignQuestsFromLoadedBatch } from "@/lib/quests/quest-assignment";
 import {
     getFailedQuestsKey,
     getGameNamespacePattern,
@@ -617,22 +617,21 @@ export async function joinGame(
             };
         }
 
-        // Story 11.3: Game Settings from Batch - Assign quests from batch
-        let assignedQuestIds: string[] | undefined = undefined;
-
+        // Story 11.3: Game Settings from Batch - preload batch once, then assign inside atomic update
+        let assignmentBatch: { id: string; quests: Quest[] } | null = null;
         if (preloadedState.batchId) {
-            const assignedQuests = await assignQuestsFromBatch(preloadedState);
-
-            // If we have a batch but failed to assign quests, treat as an error
-            // (Unless the intended distribution was 0 total, which we validated above as 1 min)
-            if (assignedQuests.length === 0) {
+            const batchResponse = await getBatchData(preloadedState.batchId);
+            if (!batchResponse.success || !batchResponse.data) {
                 return {
                     success: false,
                     error: "Failed to assign quests from mission batch.",
                     code: ERROR_CODES.ERR_SIGNAL_LOST
                 };
             }
-            assignedQuestIds = assignedQuests.map(a => a.questId);
+            assignmentBatch = {
+                id: batchResponse.data.id,
+                quests: batchResponse.data.quests,
+            };
         }
 
         let validationError: ActionResponse<GameState> | null = null;
@@ -660,6 +659,47 @@ export async function joinGame(
                     code: ERROR_CODES.ERR_FULL_CAPACITY,
                 };
                 return null;
+            }
+
+            let assignedQuestIds: string[] | undefined = undefined;
+            if (normalizedState.batchId && !assignmentBatch) {
+                validationError = {
+                    success: false,
+                    error: "Failed to assign quests from mission batch.",
+                    code: ERROR_CODES.ERR_SIGNAL_LOST,
+                };
+                return null;
+            }
+
+            if (assignmentBatch && normalizedState.batchId) {
+                if (normalizedState.batchId !== assignmentBatch.id) {
+                    validationError = {
+                        success: false,
+                        error: "Failed to assign quests from mission batch.",
+                        code: ERROR_CODES.ERR_SIGNAL_LOST,
+                    };
+                    return null;
+                }
+                try {
+                    const assignedQuests = assignQuestsFromLoadedBatch(normalizedState, assignmentBatch);
+                    if (assignedQuests.length === 0) {
+                        validationError = {
+                            success: false,
+                            error: "Failed to assign quests from mission batch.",
+                            code: ERROR_CODES.ERR_SIGNAL_LOST,
+                        };
+                        return null;
+                    }
+                    assignedQuestIds = assignedQuests.map((assignment) => assignment.questId);
+                } catch (error) {
+                    console.error("Quest assignment failed during joinGame mutation:", error);
+                    validationError = {
+                        success: false,
+                        error: "Failed to assign quests from mission batch.",
+                        code: ERROR_CODES.ERR_SIGNAL_LOST,
+                    };
+                    return null;
+                }
             }
 
             const newPlayer = {
