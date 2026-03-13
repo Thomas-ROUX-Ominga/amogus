@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
@@ -27,6 +27,16 @@ interface DragState {
     leftIndex: number;
     currentX: number;
     currentY: number;
+}
+
+interface AnchorPoint {
+    x: number;
+    y: number;
+}
+
+interface ConnectorAnchors {
+    left: AnchorPoint[];
+    right: AnchorPoint[];
 }
 
 const COLOR_PALETTE: WireColor[] = [
@@ -76,9 +86,72 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
     const [connections, setConnections] = useState<Record<number, number>>({});
     const [dragging, setDragging] = useState<DragState | null>(null);
     const [showFailed, setShowFailed] = useState(false);
+    const [anchors, setAnchors] = useState<ConnectorAnchors>({ left: [], right: [] });
+    const boardRef = useRef<HTMLDivElement | null>(null);
+    const leftConnectorRefs = useRef<Array<HTMLElement | null>>([]);
+    const rightConnectorRefs = useRef<Array<HTMLElement | null>>([]);
 
     const totalWires = WIRES_COUNT_BY_DURATION[duration];
     const connectedCount = Object.keys(connections).length;
+
+    const getFallbackLeftAnchor = useCallback((index: number): AnchorPoint => ({
+        x: LEFT_X,
+        y: getRowY(index, totalWires),
+    }), [totalWires]);
+
+    const getFallbackRightAnchor = useCallback((index: number): AnchorPoint => ({
+        x: RIGHT_X,
+        y: getRowY(index, totalWires),
+    }), [totalWires]);
+
+    const getLeftAnchor = useCallback((index: number): AnchorPoint => {
+        return anchors.left[index] ?? getFallbackLeftAnchor(index);
+    }, [anchors.left, getFallbackLeftAnchor]);
+
+    const getRightAnchor = useCallback((index: number): AnchorPoint => {
+        return anchors.right[index] ?? getFallbackRightAnchor(index);
+    }, [anchors.right, getFallbackRightAnchor]);
+
+    const measureAnchors = useCallback(() => {
+        const board = boardRef.current;
+        if (!board) return;
+
+        const boardRect = board.getBoundingClientRect();
+        if (!boardRect.width || !boardRect.height) return;
+
+        const toViewBoxX = (clientX: number) => ((clientX - boardRect.left) / boardRect.width) * VIEWBOX_WIDTH;
+        const toViewBoxY = (clientY: number) => ((clientY - boardRect.top) / boardRect.height) * VIEWBOX_HEIGHT;
+
+        const nextLeft: AnchorPoint[] = [];
+        const nextRight: AnchorPoint[] = [];
+
+        for (let index = 0; index < totalWires; index++) {
+            const leftConnector = leftConnectorRefs.current[index];
+            const rightConnector = rightConnectorRefs.current[index];
+
+            if (leftConnector) {
+                const rect = leftConnector.getBoundingClientRect();
+                nextLeft[index] = {
+                    x: toViewBoxX((rect.left + rect.right) / 2),
+                    y: toViewBoxY((rect.top + rect.bottom) / 2),
+                };
+            } else {
+                nextLeft[index] = getFallbackLeftAnchor(index);
+            }
+
+            if (rightConnector) {
+                const rect = rightConnector.getBoundingClientRect();
+                nextRight[index] = {
+                    x: toViewBoxX((rect.left + rect.right) / 2),
+                    y: toViewBoxY((rect.top + rect.bottom) / 2),
+                };
+            } else {
+                nextRight[index] = getFallbackRightAnchor(index);
+            }
+        }
+
+        setAnchors({ left: nextLeft, right: nextRight });
+    }, [totalWires, getFallbackLeftAnchor, getFallbackRightAnchor]);
 
     const rightToLeft = useMemo(() => {
         const used = new Map<number, number>();
@@ -98,6 +171,25 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
     useEffect(() => {
         resetRound();
     }, [duration, resetRound]);
+
+    useEffect(() => {
+        const raf = requestAnimationFrame(measureAnchors);
+        const onResize = () => measureAnchors();
+        const onScroll = () => measureAnchors();
+
+        window.addEventListener("resize", onResize);
+        window.addEventListener("scroll", onScroll, true);
+        window.visualViewport?.addEventListener("resize", onResize);
+        window.visualViewport?.addEventListener("scroll", onScroll);
+
+        return () => {
+            cancelAnimationFrame(raf);
+            window.removeEventListener("resize", onResize);
+            window.removeEventListener("scroll", onScroll, true);
+            window.visualViewport?.removeEventListener("resize", onResize);
+            window.visualViewport?.removeEventListener("scroll", onScroll);
+        };
+    }, [measureAnchors, round]);
 
     const failRound = useCallback(() => {
         if (showFailed) return;
@@ -130,13 +222,13 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
     const handleLeftPointerDown = useCallback((leftIndex: number) => {
         if (showFailed || connections[leftIndex] !== undefined) return;
 
-        const startY = getRowY(leftIndex, totalWires);
+        const startAnchor = getLeftAnchor(leftIndex);
         setDragging({
             leftIndex,
-            currentX: LEFT_X,
-            currentY: startY,
+            currentX: startAnchor.x,
+            currentY: startAnchor.y,
         });
-    }, [showFailed, connections, totalWires]);
+    }, [showFailed, connections, getLeftAnchor]);
 
     const handleBoardPointerMove = useCallback((event: PointerEvent<HTMLDivElement>) => {
         if (!dragging || showFailed) return;
@@ -155,23 +247,29 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
         if (rect.width && rect.height) {
             const x = ((event.clientX - rect.left) / rect.width) * VIEWBOX_WIDTH;
             const y = ((event.clientY - rect.top) / rect.height) * VIEWBOX_HEIGHT;
+            const rightAnchors = Array.from({ length: totalWires }, (_, index) => getRightAnchor(index));
+            const rightDropThreshold = rightAnchors.length
+                ? Math.min(...rightAnchors.map((point) => point.x)) - 120
+                : RIGHT_DROP_X_THRESHOLD;
 
-            if (x >= RIGHT_DROP_X_THRESHOLD) {
+            if (x >= rightDropThreshold) {
                 let closestRightIndex = 0;
                 let closestDistance = Number.POSITIVE_INFINITY;
 
                 for (let index = 0; index < totalWires; index++) {
-                    const rowY = getRowY(index, totalWires);
-                    const distance = Math.abs(y - rowY);
+                    const distance = Math.abs(y - rightAnchors[index].y);
                     if (distance < closestDistance) {
                         closestDistance = distance;
                         closestRightIndex = index;
                     }
                 }
 
-                // Keep the drop zone forgiving on touch, but still tied to a right-side row.
-                const rowGap = totalWires > 1 ? (BOTTOM_Y - TOP_Y) / (totalWires - 1) : VIEWBOX_HEIGHT;
-                const maxDistance = Math.max(28, rowGap * 0.45);
+                const sortedY = rightAnchors.map((point) => point.y).sort((a, b) => a - b);
+                const rowGaps = sortedY.slice(1).map((value, index) => value - sortedY[index]);
+                const averageGap = rowGaps.length
+                    ? rowGaps.reduce((sum, gap) => sum + gap, 0) / rowGaps.length
+                    : VIEWBOX_HEIGHT;
+                const maxDistance = Math.max(30, averageGap * 0.5);
 
                 if (closestDistance <= maxDistance) {
                     connectWireToRightIndex(closestRightIndex);
@@ -181,12 +279,14 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
         }
 
         setDragging(null);
-    }, [dragging, showFailed, totalWires, connectWireToRightIndex]);
+    }, [dragging, showFailed, totalWires, connectWireToRightIndex, getRightAnchor]);
 
     const handleRightPointerUp = useCallback((rightIndex: number, event: PointerEvent<HTMLButtonElement>) => {
         event.stopPropagation();
         connectWireToRightIndex(rightIndex);
     }, [connectWireToRightIndex]);
+
+    const draggingStartAnchor = dragging ? getLeftAnchor(dragging.leftIndex) : null;
 
     return (
         <div className="space-y-4">
@@ -207,6 +307,7 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
                 onPointerMove={handleBoardPointerMove}
                 onPointerUp={handleBoardPointerUp}
                 data-testid="wires-board"
+                ref={boardRef}
             >
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.08),transparent_35%),radial-gradient(circle_at_80%_85%,rgba(255,255,255,0.06),transparent_30%),linear-gradient(90deg,#0c0f14,#161a22_45%,#0f131a)]" />
                 <div
@@ -228,31 +329,33 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
                     {Object.entries(connections).map(([leftIndexStr, rightIndex]) => {
                         const leftIndex = Number(leftIndexStr);
                         const color = round.left[leftIndex];
+                        const leftAnchor = getLeftAnchor(leftIndex);
+                        const rightAnchor = getRightAnchor(rightIndex);
                         return (
                             <g key={`${leftIndex}-${rightIndex}`}>
                                 <line
-                                    x1={LEFT_X}
-                                    y1={getRowY(leftIndex, totalWires)}
-                                    x2={RIGHT_X}
-                                    y2={getRowY(rightIndex, totalWires)}
+                                    x1={leftAnchor.x}
+                                    y1={leftAnchor.y}
+                                    x2={rightAnchor.x}
+                                    y2={rightAnchor.y}
                                     stroke="rgba(0,0,0,0.65)"
                                     strokeWidth="18"
                                     strokeLinecap="round"
                                 />
                                 <line
-                                    x1={LEFT_X}
-                                    y1={getRowY(leftIndex, totalWires)}
-                                    x2={RIGHT_X}
-                                    y2={getRowY(rightIndex, totalWires)}
+                                    x1={leftAnchor.x}
+                                    y1={leftAnchor.y}
+                                    x2={rightAnchor.x}
+                                    y2={rightAnchor.y}
                                     stroke={color.hex}
                                     strokeWidth="13"
                                     strokeLinecap="round"
                                 />
                                 <line
-                                    x1={LEFT_X}
-                                    y1={getRowY(leftIndex, totalWires) - 2}
-                                    x2={RIGHT_X}
-                                    y2={getRowY(rightIndex, totalWires) - 2}
+                                    x1={leftAnchor.x}
+                                    y1={leftAnchor.y - 2}
+                                    x2={rightAnchor.x}
+                                    y2={rightAnchor.y - 2}
                                     stroke="rgba(255,255,255,0.35)"
                                     strokeWidth="3"
                                     strokeLinecap="round"
@@ -264,8 +367,8 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
                     {dragging && (
                         <g>
                             <line
-                                x1={LEFT_X}
-                                y1={getRowY(dragging.leftIndex, totalWires)}
+                                x1={draggingStartAnchor?.x ?? LEFT_X}
+                                y1={draggingStartAnchor?.y ?? getRowY(dragging.leftIndex, totalWires)}
                                 x2={dragging.currentX}
                                 y2={dragging.currentY}
                                 stroke="rgba(0,0,0,0.65)"
@@ -274,8 +377,8 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
                                 strokeDasharray="20 10"
                             />
                             <line
-                                x1={LEFT_X}
-                                y1={getRowY(dragging.leftIndex, totalWires)}
+                                x1={draggingStartAnchor?.x ?? LEFT_X}
+                                y1={draggingStartAnchor?.y ?? getRowY(dragging.leftIndex, totalWires)}
                                 x2={dragging.currentX}
                                 y2={dragging.currentY}
                                 stroke={round.left[dragging.leftIndex].hex}
@@ -284,8 +387,8 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
                                 strokeDasharray="20 10"
                             />
                             <line
-                                x1={LEFT_X}
-                                y1={getRowY(dragging.leftIndex, totalWires) - 1}
+                                x1={draggingStartAnchor?.x ?? LEFT_X}
+                                y1={(draggingStartAnchor?.y ?? getRowY(dragging.leftIndex, totalWires)) - 1}
                                 x2={dragging.currentX}
                                 y2={dragging.currentY - 1}
                                 stroke="rgba(255,255,255,0.4)"
@@ -316,7 +419,13 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
                             >
                                 <span className="h-6 w-2 rounded-sm bg-gradient-to-b from-zinc-200 to-zinc-500" />
                                 <span className={`inline-block w-9 sm:w-10 h-5 rounded-full border border-black/40 shadow-inner ${color.endpointClass}`} />
-                                <span className="ml-auto h-4 w-4 rounded-sm bg-[#b87333] border border-[#7a3f1d]" />
+                                <span
+                                    className="ml-auto h-4 w-4 rounded-sm bg-[#b87333] border border-[#7a3f1d]"
+                                    ref={(node) => {
+                                        leftConnectorRefs.current[index] = node;
+                                    }}
+                                    data-connector-anchor="left"
+                                />
                             </button>
                         );
                     })}
@@ -342,7 +451,13 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
                                 data-connector="right"
                                 disabled={showFailed || isConnected}
                             >
-                                <span className="h-4 w-4 rounded-sm bg-[#b87333] border border-[#7a3f1d]" />
+                                <span
+                                    className="h-4 w-4 rounded-sm bg-[#b87333] border border-[#7a3f1d]"
+                                    ref={(node) => {
+                                        rightConnectorRefs.current[index] = node;
+                                    }}
+                                    data-connector-anchor="right"
+                                />
                                 <span className={`inline-block w-9 sm:w-10 h-5 rounded-full border border-black/40 shadow-inner ${color.endpointClass}`} />
                                 <span className="h-6 w-2 rounded-sm bg-gradient-to-b from-zinc-200 to-zinc-500" />
                             </button>
