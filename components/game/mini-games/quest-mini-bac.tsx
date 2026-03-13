@@ -65,12 +65,14 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
     );
     const [errors, setErrors] = useState<boolean[]>([]);
     const [submitted, setSubmitted] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [showFailed, setShowFailed] = useState(false);
 
     // Reset submitted state when game state changes (new round)
     useEffect(() => {
         setSubmitted(false);
         setErrors([]);
+        setIsSubmitting(false);
     }, [gameState]);
 
     const handleInputChange = useCallback(
@@ -93,35 +95,41 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
     const handleSubmit = useCallback(
         async (e: React.FormEvent) => {
             e.preventDefault();
-            if (submitted) return;
+            if (submitted || isSubmitting) return;
 
-            const { answers, letter, categories } = gameState;
-            const errorFlags = await Promise.all(
-                answers.map(async (word, index) => {
-                    const trimmed = word.trim();
-                    const category = categories[index];
-                    // Must start with the right letter (accent-insensitive)
-                    if (normalize(trimmed).charAt(0) !== normalize(letter)) return true;
-                    // For proper nouns, we might allow shorter words, but generally 2 is a good minimum
-                    if (trimmed.length < 2) return true;
-                    return !(await isCategoryValid(trimmed, category.type));
-                })
-            );
+            setIsSubmitting(true);
 
-            setErrors(errorFlags);
+            try {
+                const { answers, letter, categories } = gameState;
+                const errorFlags = await Promise.all(
+                    answers.map(async (word, index) => {
+                        const trimmed = word.trim();
+                        const category = categories[index];
+                        // Must start with the right letter (accent-insensitive)
+                        if (normalize(trimmed).charAt(0) !== normalize(letter)) return true;
+                        // For proper nouns, we might allow shorter words, but generally 2 is a good minimum
+                        if (trimmed.length < 2) return true;
+                        return !(await isCategoryValid(trimmed, category.type));
+                    })
+                );
 
-            if (errorFlags.every((e) => !e)) {
-                // All correct → success!
-                setSubmitted(true);
-                onSuccess();
-            } else {
-                // Some invalid words → show failed overlay, then reload
-                setSubmitted(true);
-                setShowFailed(true);
-                onError();
+                setErrors(errorFlags);
+
+                if (errorFlags.every((e) => !e)) {
+                    // All correct → success!
+                    setSubmitted(true);
+                    onSuccess();
+                } else {
+                    // Some invalid words → show failed overlay, then reload
+                    setSubmitted(true);
+                    setShowFailed(true);
+                    onError();
+                }
+            } finally {
+                setIsSubmitting(false);
             }
         },
-        [gameState, submitted, onSuccess, onError]
+        [gameState, submitted, isSubmitting, onSuccess, onError]
     );
 
     const handleRetry = useCallback(() => {
@@ -186,7 +194,7 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
                                     type="text"
                                     value={gameState.answers[index]}
                                     onChange={(e) => handleInputChange(index, e.target.value)}
-                                    disabled={submitted}
+                                    disabled={submitted || isSubmitting}
                                     animate={
                                         hasError && !prefersReducedMotion
                                             ? { x: [-4, 4, -4, 4, 0], transition: { duration: 0.3 } }
@@ -219,11 +227,12 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
                 {/* Submit button */}
                 <button
                     type="submit"
-                    disabled={submitted || !allFilled}
+                    disabled={submitted || isSubmitting || !allFilled}
                     className="w-full max-w-2xl mx-auto min-h-[44px] flex items-center justify-center border-2 border-primary/80 bg-primary/20 text-primary font-rajdhani text-sm uppercase tracking-widest hover:bg-primary/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
                     aria-label={t("game.questWidgets.miniBacSubmitAria")}
+                    aria-busy={isSubmitting}
                 >
-                    {t("common.actions.confirm")}
+                    {isSubmitting ? t("common.actions.loading") : t("common.actions.confirm")}
                 </button>
             </form>
 

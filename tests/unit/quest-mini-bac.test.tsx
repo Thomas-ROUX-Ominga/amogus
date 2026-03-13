@@ -88,4 +88,42 @@ describe("QuestMiniBac Validation", () => {
             // But we want to ensure the letter check itself is accent-insensitive.
         });
     });
+
+    it("should show loading state and prevent submit spam while validating", async () => {
+        const pendingResolves: Array<(value: boolean) => void> = [];
+        vi.mocked(isCategoryValid).mockImplementation(
+            () =>
+                new Promise<boolean>((resolve) => {
+                    pendingResolves.push(resolve);
+                })
+        );
+
+        render(<QuestMiniBac duration="short" onSuccess={onSuccess} onError={onError} />);
+
+        const letterElement = screen
+            .getAllByText(/[A-Z]/)
+            .find((el) => el.textContent?.length === 1 && el.className.includes("text-5xl"));
+        const letter = letterElement?.textContent || "";
+        const inputs = screen.getAllByRole("textbox");
+
+        inputs.forEach((input) => {
+            fireEvent.change(input, { target: { value: `${letter}test` } });
+        });
+
+        const submitBtn = screen.getByRole("button", { name: /Valider/i });
+        fireEvent.click(submitBtn);
+        fireEvent.click(submitBtn);
+
+        await waitFor(() => {
+            expect(screen.getByRole("button", { name: /Valider/i })).toBeDisabled();
+            expect(screen.getByText("Chargement...")).toBeInTheDocument();
+        });
+        expect(isCategoryValid).toHaveBeenCalledTimes(inputs.length);
+
+        pendingResolves.forEach((resolve) => resolve(true));
+
+        await waitFor(() => {
+            expect(onSuccess).toHaveBeenCalledTimes(1);
+        });
+    });
 });
