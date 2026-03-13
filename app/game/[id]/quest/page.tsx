@@ -75,8 +75,8 @@ function QuestPageContent() {
                    (!questId && duration && currentQuest?.duration !== duration);
 
     useEffect(() => {
-        if (id) {
-            fetchGame(id as string, userId ?? undefined);
+        if (id && userId) {
+            fetchGame(id as string, userId);
         }
     }, [id, userId, fetchGame]);
 
@@ -224,7 +224,7 @@ function QuestPageContent() {
                         fallback: fatalError,
                     })}
                     code={fatalErrorCode || ERROR_CODES.ERR_QUEST_LOAD_FAILED}
-                    onRetry={() => { if (id) fetchGame(gameId, userId ?? undefined); }}
+                    onRetry={() => { if (id && userId) fetchGame(gameId, userId); }}
                 />
             </main>
         );
