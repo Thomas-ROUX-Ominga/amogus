@@ -19,10 +19,14 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
     const t = useTranslations();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [viewportHeight, setViewportHeight] = useState<number | null>(null);
     const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
     const hasScannedRef = useRef(false);
     const scanCooldownUntilRef = useRef(0);
     const scannerRegionId = 'qr-scanner-region';
+    const scannerSquareSize = viewportHeight
+        ? Math.max(220, Math.min(448, viewportHeight - 192))
+        : 448;
 
     useEffect(() => {
         if (!isOpen) {
@@ -43,6 +47,39 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
             }
         };
     }, [isOpen, error, isLoading]);
+
+    useEffect(() => {
+        if (!isOpen || typeof window === "undefined" || typeof document === "undefined") {
+            setViewportHeight(null);
+            return;
+        }
+
+        const updateViewportHeight = () => {
+            const nextHeight = Math.round(window.visualViewport?.height ?? window.innerHeight);
+            setViewportHeight(nextHeight);
+        };
+
+        const originalBodyOverflow = document.body.style.overflow;
+        const originalBodyTouchAction = document.body.style.touchAction;
+        const originalHtmlOverflow = document.documentElement.style.overflow;
+
+        updateViewportHeight();
+        window.addEventListener("resize", updateViewportHeight);
+        window.visualViewport?.addEventListener("resize", updateViewportHeight);
+
+        // Lock page scroll so the scanner stays fixed to the visible viewport on mobile.
+        document.body.style.overflow = "hidden";
+        document.body.style.touchAction = "none";
+        document.documentElement.style.overflow = "hidden";
+
+        return () => {
+            window.removeEventListener("resize", updateViewportHeight);
+            window.visualViewport?.removeEventListener("resize", updateViewportHeight);
+            document.body.style.overflow = originalBodyOverflow;
+            document.body.style.touchAction = originalBodyTouchAction;
+            document.documentElement.style.overflow = originalHtmlOverflow;
+        };
+    }, [isOpen]);
 
     const initializeScanner = async () => {
         if (!document.getElementById(scannerRegionId)) return;
@@ -210,9 +247,10 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm"
+                    className="fixed inset-x-0 top-0 z-50 h-screen overflow-hidden overscroll-none bg-black/90 backdrop-blur-sm"
+                    style={viewportHeight ? { height: `${viewportHeight}px` } : undefined}
                 >
-                    <div className="relative h-full flex flex-col">
+                    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 bg-black/50">
                             <div className="flex items-center gap-3">
@@ -231,7 +269,7 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                         </div>
 
                         {/* Scanner Area */}
-                        <div className="flex-1 relative flex items-center justify-center p-4">
+                        <div className="relative flex flex-1 min-h-0 items-center justify-center overflow-hidden p-4">
                             {/* Eliminated Player Overlay - Only block Impostors, allow Crewmates in Ghost Mode */}
                             {isPlayerEliminated && playerRole === "IMPOSTOR" && (
                                 <EliminatedScreen onDismiss={onClose} playerRole={playerRole} />
@@ -253,7 +291,13 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
 
                             {/* Scanner Area Container - Always rendered to keep #qr-scanner-region in DOM */}
                             {!(isPlayerEliminated && playerRole === "IMPOSTOR") && (
-                                <div className={`relative w-full max-w-md aspect-square transition-opacity duration-300 ${isLoading || error ? 'opacity-0' : 'opacity-100'}`}>
+                                <div
+                                    className={`relative shrink-0 transition-opacity duration-300 ${isLoading || error ? 'opacity-0' : 'opacity-100'}`}
+                                    style={{
+                                        width: `min(100%, ${scannerSquareSize}px)`,
+                                        height: `min(100%, ${scannerSquareSize}px)`,
+                                    }}
+                                >
                                     <div
                                         id={scannerRegionId}
                                         className="w-full h-full rounded-lg overflow-hidden bg-black [&_video]:object-cover [&_video]:w-full [&_video]:h-full"
