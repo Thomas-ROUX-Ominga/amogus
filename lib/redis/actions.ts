@@ -49,9 +49,24 @@ function isWatchConflictError(error: unknown): boolean {
     return message.includes("watched keys") && message.includes("changed");
 }
 
+function normalizeLegacyPlayerRole(role: unknown): PlayerRole | undefined {
+    if (role === "CREWMATE" || role === "IMPOSTOR") {
+        return role;
+    }
+
+    // Legacy compatibility: older game states may still contain ADMIN.
+    return undefined;
+}
+
 function normalizeGameState(state: GameState): GameState {
     return {
         ...state,
+        players: Array.isArray(state.players)
+            ? state.players.map((player) => ({
+                  ...player,
+                  role: normalizeLegacyPlayerRole((player as { role?: unknown }).role),
+              }))
+            : [],
         revision: typeof state.revision === "number" ? state.revision : 0,
         updatedAt: typeof state.updatedAt === "number" ? state.updatedAt : state.createdAt,
     };
@@ -141,7 +156,7 @@ function getNormalizedSabotageState(state: GameState): SabotageState {
 
 function getEligibleMeetingVoterIds(state: GameState): string[] {
     return state.players
-        .filter((player) => player.isAlive && !!player.role && player.role !== "ADMIN")
+        .filter((player) => player.isAlive && !!player.role)
         .map((player) => player.id);
 }
 
@@ -600,30 +615,14 @@ async function resolveViewerScopeForGame(
     userId?: string
 ): Promise<ActionResponse<ViewerScope>> {
     const normalizedUserId = userId?.trim();
-
     const organizerSession = await verifySession();
-    if (organizerSession.success) {
-        return {
-            success: true,
-            data: {
-                viewerUserId: normalizedUserId,
-                isOrganizer: true,
-            },
-        };
-    }
+    if (normalizedUserId) {
+        const playerExists = state.players.some((player) => player.id === normalizedUserId);
+        const playerSession = await verifyAndRecoverPlayerSession(gameId, normalizedUserId, playerExists);
+        const hasValidPlayerSession = playerSession.isPlayerSessionValid;
 
-    const isLobby = state.status === "LOBBY";
-    const playerExists = normalizedUserId
-        ? state.players.some((player) => player.id === normalizedUserId)
-        : false;
-
-    const playerSession = normalizedUserId
-        ? await verifyAndRecoverPlayerSession(gameId, normalizedUserId, playerExists)
-        : null;
-    const hasValidPlayerSession = playerSession?.isPlayerSessionValid ?? false;
-
-    if (isLobby) {
-        if (normalizedUserId && playerExists && hasValidPlayerSession) {
+        if (playerExists && hasValidPlayerSession) {
+            // Player context always gets player-level role visibility, even for organizer accounts.
             return {
                 success: true,
                 data: {
@@ -633,22 +632,14 @@ async function resolveViewerScopeForGame(
             };
         }
 
-        return {
-            success: true,
-            data: { isOrganizer: false },
-        };
-    }
+        if (state.status === "LOBBY") {
+            return {
+                success: true,
+                data: { isOrganizer: false },
+            };
+        }
 
-    if (!normalizedUserId || !playerExists) {
-        return {
-            success: false,
-            error: "Player session verification failed.",
-            code: ERROR_CODES.ERR_INVALID_SIGNATURE,
-        };
-    }
-
-    if (!hasValidPlayerSession) {
-        if (playerSession?.recoveryAttempted) {
+        if (playerSession.recoveryAttempted) {
             return {
                 success: false,
                 error: playerSession.error || "Player session verification failed.",
@@ -663,12 +654,26 @@ async function resolveViewerScopeForGame(
         };
     }
 
+    if (organizerSession.success) {
+        return {
+            success: true,
+            data: {
+                isOrganizer: true,
+            },
+        };
+    }
+
+    if (state.status === "LOBBY") {
+        return {
+            success: true,
+            data: { isOrganizer: false },
+        };
+    }
+
     return {
-        success: true,
-        data: {
-            viewerUserId: normalizedUserId,
-            isOrganizer: false,
-        },
+        success: false,
+        error: "Player session verification failed.",
+        code: ERROR_CODES.ERR_INVALID_SIGNATURE,
     };
 }
 
@@ -709,7 +714,7 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
     try {
         // Verify organizer session
         const session = await verifySession();
-        if (!session.success) {
+        if (!session.success || !session.data) {
             return {
                 success: false,
                 error: "Unauthorized access: Organizer credentials required.",
@@ -770,15 +775,7 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
                 : undefined;
         }
 
-        // Get admin session info to add admin as first player
-        const adminSession = await verifySession();
-        if (!adminSession.success || !adminSession.data) {
-            return {
-                success: false,
-                error: "Unauthorized access: Organizer credentials required.",
-                code: ERROR_CODES.ERR_UNAUTHORIZED,
-            };
-        }
+        const organizerData = session.data;
 
         const now = Date.now();
         const initialState: GameState = {
@@ -786,16 +783,15 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
             status: "LOBBY",
             players: [
                 {
-                    id: adminSession.data.userId,
-                    name: adminSession.data.username,
-                    role: "ADMIN",
+                    id: organizerData.userId,
+                    name: organizerData.username,
                     isAlive: true,
                 }
             ],
             createdAt: now,
             revision: 1,
             updatedAt: now,
-            creatorId: adminSession.data.userId,
+            creatorId: organizerData.userId,
             batchId,
             questsTotal,
             questsPerPlayer,
@@ -1640,7 +1636,7 @@ export async function scanSabotage(
                 return null;
             }
 
-            if (!player.isAlive || player.role === "ADMIN" || !player.role) {
+            if (!player.isAlive || !player.role) {
                 validationError = {
                     success: false,
                     error: "You are not allowed to use sabotage systems.",
@@ -1943,7 +1939,7 @@ export async function triggerMeeting(
             }
 
             const player = workingState.players[playerIndex];
-            const isEligible = player.isAlive && player.role && player.role !== "ADMIN";
+            const isEligible = player.isAlive && !!player.role;
             if (!isEligible) {
                 validationError = {
                     success: false,

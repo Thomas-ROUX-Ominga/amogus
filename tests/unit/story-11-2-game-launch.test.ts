@@ -15,14 +15,14 @@ vi.mock('@/lib/redis/client', () => ({
   GAME_TTL_SECONDS: 86400,
 }));
 
-describe('Task 3: Restrict Game Launch to Admin', () => {
+describe('Task 3: Restrict Game Launch to Host', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe('Subtask 3.2: Server-side validation for game launch', () => {
-    it('should allow admin to start the game', async () => {
-      // Mock admin session
+    it('should allow host to start the game', async () => {
+      // Mock organizer session
       vi.mocked(verifySession).mockResolvedValue({
         success: true,
         data: { userId: 'admin-user-id', username: 'admin', role: 'organizer' }
@@ -32,7 +32,7 @@ describe('Task 3: Restrict Game Launch to Admin', () => {
         id: 'TEST123',
         status: 'LOBBY',
         players: [
-          { id: 'admin-user-id', name: 'Admin', role: 'ADMIN', isAlive: true }
+          { id: 'admin-user-id', name: 'Admin', isAlive: true }
         ],
         createdAt: Date.now(),
         revision: 1,
@@ -52,7 +52,7 @@ describe('Task 3: Restrict Game Launch to Admin', () => {
       expect(redis.atomicUpdate).toHaveBeenCalled();
     });
 
-    it('should reject non-admin trying to start the game', async () => {
+    it('should reject non-host trying to start the game', async () => {
       // Mock no session (regular player)
       vi.mocked(verifySession).mockResolvedValue({
         success: false,
@@ -64,7 +64,7 @@ describe('Task 3: Restrict Game Launch to Admin', () => {
         id: 'TEST123',
         status: 'LOBBY',
         players: [
-          { id: 'admin-user-id', name: 'Admin', role: 'ADMIN', isAlive: true },
+          { id: 'admin-user-id', name: 'Admin', isAlive: true },
           { id: 'player-user-id', name: 'Player', isAlive: true }
         ],
         createdAt: Date.now(),
@@ -75,8 +75,8 @@ describe('Task 3: Restrict Game Launch to Admin', () => {
 
       const { redis } = await import('@/lib/redis/client');
       vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, _updater) => {
-        // This should not be called for non-admin attempts
-        throw new Error('atomicUpdate should not be called for non-admin');
+        // This should not be called for non-host attempts
+        throw new Error('atomicUpdate should not be called for non-host');
       });
 
       const result = await startGame('TEST123');
@@ -88,7 +88,7 @@ describe('Task 3: Restrict Game Launch to Admin', () => {
     });
 
     it('should reject if creatorId does not match session user', async () => {
-      // Mock admin session for different user
+      // Mock organizer session for different user
       vi.mocked(verifySession).mockResolvedValue({
         success: true,
         data: { userId: 'different-admin-id', username: 'admin2', role: 'organizer' }
@@ -98,7 +98,7 @@ describe('Task 3: Restrict Game Launch to Admin', () => {
         id: 'TEST123',
         status: 'LOBBY',
         players: [
-          { id: 'admin-user-id', name: 'Admin', role: 'ADMIN', isAlive: true }
+          { id: 'admin-user-id', name: 'Admin', isAlive: true }
         ],
         createdAt: Date.now(),
         revision: 1,

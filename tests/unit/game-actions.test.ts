@@ -67,13 +67,14 @@ describe("createGame", () => {
                     expect.objectContaining({
                         id: "test-user",
                         name: "test-org",
-                        role: "ADMIN",
                         isAlive: true,
                     })
                 ]),
             }),
             86400
         );
+        const savedState = vi.mocked(redis.set).mock.calls[0]?.[1] as GameState;
+        expect(savedState.players[0]?.role).toBeUndefined();
     });
 
     it("should return failure if KV fails", async () => {
@@ -157,6 +158,28 @@ describe("getGame", () => {
 
         expect(result.success).toBe(true);
         expect(createPlayerSession).toHaveBeenCalledWith("joined-user", "test-id");
+    });
+
+    it("applies player role visibility when organizer requests with userId", async () => {
+        const now = Date.now();
+        vi.mocked(redis.get).mockResolvedValueOnce({
+            id: "test-id",
+            status: "IN_PROGRESS",
+            players: [
+                { id: "test-user", name: "Host", role: "CREWMATE", isAlive: true },
+                { id: "other-user", name: "Other", role: "IMPOSTOR", isAlive: true },
+            ],
+            createdAt: now,
+            revision: 2,
+            updatedAt: now,
+            creatorId: "test-user",
+        });
+
+        const result = await getGame("test-id", "test-user");
+
+        expect(result.success).toBe(true);
+        expect(result.data?.players.find((player) => player.id === "test-user")?.role).toBe("CREWMATE");
+        expect(result.data?.players.find((player) => player.id === "other-user")?.role).toBeUndefined();
     });
 });
 

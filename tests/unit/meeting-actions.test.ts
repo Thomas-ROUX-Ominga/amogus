@@ -62,7 +62,7 @@ const baseGameState = (): GameState => ({
    revision: 1,
    updatedAt: Date.now(),
     players: [
-        { id: "admin", name: "Admin", role: "ADMIN", isAlive: true },
+        { id: "admin", name: "Admin", isAlive: true },
         { id: "u1", name: "Alice", role: "CREWMATE", isAlive: true, completedQuests: [] },
         { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
     ],

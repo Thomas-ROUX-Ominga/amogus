@@ -1,6 +1,6 @@
 "use client";
 
-import { Shield, Users, Crown } from "lucide-react";
+import { Shield, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { PlayerRole } from "@/types/game";
 
@@ -19,11 +19,6 @@ const ROLE_CONFIG = {
         color: "#DA3633",
         labelKey: "game.roleBadge.impostor",
         Icon: Shield,
-    },
-    ADMIN: {
-        color: "#6366F1",
-        labelKey: "game.roleBadge.admin",
-        Icon: Crown,
     },
 } as const;
 

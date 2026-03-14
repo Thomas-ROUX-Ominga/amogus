@@ -17,7 +17,6 @@ import { GameOverScreen } from "@/components/game/game-over-screen";
 import { ReactorSabotageAlert } from "@/components/game/reactor-sabotage-alert";
 import { useCameraScanner } from "@/hooks/use-camera-scanner";
 import { scanSabotage } from "@/lib/redis/actions";
-import { getGlobalQuestStats } from "@/lib/utils/quest-calculations";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 interface GameHomeProps {
@@ -221,7 +220,6 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     const hasUsedBuzzer = Boolean(currentPlayer.meetingBuzzUsedAt);
     const canUseBuzzer =
         currentPlayer.isAlive &&
-        currentPlayer.role !== "ADMIN" &&
         !(currentPlayer.role === "CREWMATE" && communicationsSabotaged) &&
         !hasUsedBuzzer &&
         !isMeetingActive &&
@@ -281,16 +279,8 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     {/* Quest Progress (Crewmate and Host only) */}
                     <QuestProgress
                         role={role}
-                        completed={
-                            gameState.creatorId === userId 
-                                ? getGlobalQuestStats(gameState.players, gameState).completed 
-                                : questsCompleted
-                        }
-                        total={
-                            gameState.creatorId === userId 
-                                ? getGlobalQuestStats(gameState.players, gameState).total 
-                                : questsTotal
-                        }
+                        completed={questsCompleted}
+                        total={questsTotal}
                         isLoading={isLoading}
                         assignedQuests={currentPlayer.assignedQuests}
                         completedQuests={currentPlayer.completedQuests}
@@ -339,7 +329,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     )}
 
                     {/* SCAN Button (thumb zone — bottom) */}
-                    {gameState.creatorId !== userId && !isImpostor && !allQuestsDone && !isMeetingActive && (
+                    {!isImpostor && !allQuestsDone && !isMeetingActive && (
                         <ScanButton 
                             disabled={false} 
                             onClick={() => {
@@ -350,7 +340,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     )}
 
                     {/* Camera Scanner Overlay */}
-                    {gameState.creatorId !== userId && !isImpostor && !allQuestsDone && !isMeetingActive && (
+                    {!isImpostor && !allQuestsDone && !isMeetingActive && (
                         <CameraScanner
                             isOpen={isOpen}
                             onClose={closeScanner}
@@ -389,16 +379,14 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         {t("game.home.footerRole", { role: currentPlayer.role })}
                     </div>
                     <div className="flex items-center gap-2">
-                        {currentPlayer.role !== "ADMIN" && (
-                            <BuzzerButton
-                                onBuzz={handleBuzz}
-                                disabled={!canUseBuzzer || isTriggeringMeeting}
-                                isBuzzing={isTriggeringMeeting}
-                                hasUsed={hasUsedBuzzer}
-                                meetingActive={isMeetingActive}
-                            />
-                        )}
-                        {gameState.creatorId !== userId && !isImpostor && (
+                        <BuzzerButton
+                            onBuzz={handleBuzz}
+                            disabled={!canUseBuzzer || isTriggeringMeeting}
+                            isBuzzing={isTriggeringMeeting}
+                            hasUsed={hasUsedBuzzer}
+                            meetingActive={isMeetingActive}
+                        />
+                        {!isImpostor && (
                             <EliminationButton
                                 onEliminate={handleElimination}
                                 disabled={isEliminating || !currentPlayer.isAlive || isMeetingActive}

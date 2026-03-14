@@ -21,14 +21,14 @@ vi.mock('@/lib/utils/short-code.server', () => ({
   generateShortCode: vi.fn(),
 }));
 
-describe('Task 2: Fix Admin Role Assignment on Game Launch', () => {
+describe('Task 2: Host Role Assignment on Game Launch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('Subtask 2.1 & 2.2: Admin role assignment', () => {
-    it('should assign admin role in createGame', async () => {
-      // Mock admin session
+  describe('Subtask 2.1 & 2.2: Host role assignment', () => {
+    it('should create host player without gameplay role in createGame', async () => {
+      // Mock organizer session
       vi.mocked(verifySession).mockResolvedValue({
         success: true,
         data: { userId: 'admin-user-id', username: 'admin', role: 'organizer' }
@@ -51,16 +51,17 @@ describe('Task 2: Fix Admin Role Assignment on Game Launch', () => {
             expect.objectContaining({
               id: 'admin-user-id',
               name: 'admin',
-              role: 'ADMIN',
               isAlive: true,
             })
           ])
         }),
         expect.any(Number)
       );
+      const savedState = vi.mocked(redis.set).mock.calls[0]?.[1] as { players: Array<{ role?: string }> };
+      expect(savedState.players[0]?.role).toBeUndefined();
     });
 
-    it('should not assign admin role to regular players in joinGame', async () => {
+    it('should not assign gameplay role to regular players in joinGame', async () => {
       // Mock no session (regular player)
       vi.mocked(verifySession).mockResolvedValue({
         success: false,

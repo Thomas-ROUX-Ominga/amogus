@@ -32,7 +32,7 @@ describe("joinGame concurrency", () => {
         sharedState = {
             id: "CONCURRENT",
             status: "LOBBY",
-            players: [{ id: "admin-1", name: "Admin", role: "ADMIN", isAlive: true }],
+            players: [{ id: "admin-1", name: "Admin", isAlive: true }],
             createdAt: now,
             revision: 1,
             updatedAt: now,

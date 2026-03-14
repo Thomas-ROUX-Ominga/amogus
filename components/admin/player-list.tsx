@@ -15,7 +15,6 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
     const roleLabelMap: Record<string, string> = {
         CREWMATE: t("game.roleBadge.crewmate"),
         IMPOSTOR: t("game.roleBadge.impostor"),
-        ADMIN: t("game.roleBadge.admin"),
     };
 
     return (

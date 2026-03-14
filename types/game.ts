@@ -2,7 +2,7 @@ import type { BatchSabotages, SabotageType } from "./quest";
 
 export type GameStatus = "LOBBY" | "IN_PROGRESS" | "FINISHED";
 
-export type PlayerRole = "CREWMATE" | "IMPOSTOR" | "ADMIN";
+export type PlayerRole = "CREWMATE" | "IMPOSTOR";
 
 export type MeetingStatus = "ACTIVE" | "COMPLETED";
 export type MeetingEndReason = "ALL_VOTED" | "TIMEOUT";

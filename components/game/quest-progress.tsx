@@ -486,7 +486,7 @@ export function QuestProgress({
             )}
 
             <div className="text-xs text-primary/60 uppercase tracking-widest font-rajdhani">
-                {role === "ADMIN" ? t("game.questProgress.crewProgress") : t("game.questProgress.questsProgress")}
+                {t("game.questProgress.questsProgress")}
             </div>
             <div className="w-full h-2 bg-white/10 overflow-hidden">
                 <div
@@ -508,7 +508,6 @@ export function QuestProgress({
                     t("game.questProgress.completedOutOf", {
                         completed: String(completed),
                         total: String(total),
-                        scope: role === "ADMIN" ? t("game.questProgress.completedScopeTotal") : "",
                     })
                 ) : (
                     t("game.questProgress.pendingMissions")

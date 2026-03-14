@@ -33,7 +33,7 @@ vi.mock("@/components/game/quest-progress", () => ({
         role,
         communicationsSabotaged,
     }: {
-        role: "CREWMATE" | "IMPOSTOR" | "ADMIN";
+        role: "CREWMATE" | "IMPOSTOR";
         communicationsSabotaged?: boolean;
     }) => (
         <div>
@@ -143,6 +143,11 @@ describe("GameHome", () => {
         expect(screen.getByText("SCANNER")).toBeTruthy();
     });
 
+    it("should render SCAN button for host crewmate", () => {
+        render(<GameHome gameState={hostGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
+        expect(screen.getByText("SCANNER")).toBeTruthy();
+    });
+
     it("should render SCAN button as enabled button", () => {
         render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
         const button = screen.getByRole("button", { name: /Scanner/i });
@@ -227,6 +232,11 @@ describe("GameHome", () => {
 
     it("should render elimination button for Crewmate", () => {
         render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
+        expect(screen.getByText("Signaler mon élimination")).toBeTruthy();
+    });
+
+    it("should render elimination button for host crewmate", () => {
+        render(<GameHome gameState={hostGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
         expect(screen.getByText("Signaler mon élimination")).toBeTruthy();
     });
 

@@ -109,7 +109,7 @@ describe('Task 3: Restrict Game Launch to Admin - UI', () => {
       id: 'TEST123',
       status: 'LOBBY' as const,
       players: [
-        { id: 'admin-user-id', name: 'Admin', role: 'ADMIN' as const, isAlive: true },
+        { id: 'admin-user-id', name: 'Admin', isAlive: true },
         { id: 'player-user-id', name: 'Player', isAlive: true }
       ],
       createdAt: Date.now(),
