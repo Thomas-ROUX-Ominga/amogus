@@ -26,6 +26,7 @@ export type SyncStatus = "connected" | "reconnecting" | "degraded";
 const SYNC_SSE_RECONNECT_DELAY_MS = 1500;
 const SYNC_FALLBACK_POLL_INTERVAL_MS = 2000;
 const SYNC_FAILURES_FOR_DEGRADED = 3;
+const NEW_PLAYER_HIGHLIGHT_MS = 2000;
 const pendingQuestContentRequests = new Map<string, Promise<QuestContentResult | null>>();
 
 interface SnapshotApiResponse {
@@ -218,6 +219,17 @@ export function useRealTimeGamePolling(gameId: string, userId?: string, enabled 
     const [syncError, setSyncError] = React.useState<Error | null>(null);
     const [newPlayers, setNewPlayers] = React.useState<GameState["players"]>([]);
     const previousPlayerIds = React.useRef<Set<string>>(new Set());
+    const highlightedNewPlayerIds = React.useRef<Set<string>>(new Set());
+    const newPlayerTimeouts = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+    const clearNewPlayerHighlights = React.useCallback((resetState = true) => {
+        newPlayerTimeouts.current.forEach((timerId) => clearTimeout(timerId));
+        newPlayerTimeouts.current.clear();
+        highlightedNewPlayerIds.current.clear();
+        if (resetState) {
+            setNewPlayers([]);
+        }
+    }, []);
 
     const currentPlayer = gameStateFromStore?.players.find((player) => player.id === userId);
     const isEliminated = currentPlayer ? !currentPlayer.isAlive : false;
@@ -226,30 +238,87 @@ export function useRealTimeGamePolling(gameId: string, userId?: string, enabled 
 
     React.useEffect(() => {
         if (!gameStateFromStore || gameStateFromStore.id !== gameId) {
-            setNewPlayers([]);
+            clearNewPlayerHighlights();
             return;
         }
 
+        const previousIds = previousPlayerIds.current;
         const currentPlayerIds = new Set(gameStateFromStore.players.map((player) => player.id));
         const freshlyJoined = gameStateFromStore.players.filter(
-            (player) => !previousPlayerIds.current.has(player.id)
+            (player) => !previousIds.has(player.id)
         );
+
+        // Drop highlights for players that are no longer in the lobby.
+        highlightedNewPlayerIds.current.forEach((playerId) => {
+            if (currentPlayerIds.has(playerId)) {
+                return;
+            }
+            const timerId = newPlayerTimeouts.current.get(playerId);
+            if (timerId) {
+                clearTimeout(timerId);
+                newPlayerTimeouts.current.delete(playerId);
+            }
+            highlightedNewPlayerIds.current.delete(playerId);
+        });
+
+        freshlyJoined.forEach((player) => {
+            const playerId = player.id;
+            if (highlightedNewPlayerIds.current.has(playerId)) {
+                return;
+            }
+            highlightedNewPlayerIds.current.add(playerId);
+
+            const timeoutId = setTimeout(() => {
+                newPlayerTimeouts.current.delete(playerId);
+                highlightedNewPlayerIds.current.delete(playerId);
+                setNewPlayers((previousPlayers) =>
+                    previousPlayers.filter((previousPlayer) => previousPlayer.id !== playerId)
+                );
+            }, NEW_PLAYER_HIGHLIGHT_MS);
+
+            newPlayerTimeouts.current.set(playerId, timeoutId);
+        });
+
         previousPlayerIds.current = currentPlayerIds;
-        setNewPlayers(freshlyJoined);
+
+        const currentlyHighlighted = gameStateFromStore.players.filter((player) =>
+            highlightedNewPlayerIds.current.has(player.id)
+        );
+        setNewPlayers(currentlyHighlighted);
+    }, [gameStateFromStore, gameId, clearNewPlayerHighlights]);
+
+    React.useEffect(() => {
+        return () => {
+            clearNewPlayerHighlights(false);
+        };
+    }, [clearNewPlayerHighlights]);
+
+    React.useEffect(() => {
+        if (enabled && gameId && userId) {
+            return;
+        }
+
+        previousPlayerIds.current.clear();
+        clearNewPlayerHighlights();
+    }, [enabled, gameId, userId, clearNewPlayerHighlights]);
+
+    React.useEffect(() => {
+        if (gameStateFromStore?.id === gameId) {
+            return;
+        }
+
+        previousPlayerIds.current.clear();
+        clearNewPlayerHighlights();
     }, [gameStateFromStore, gameId]);
 
     React.useEffect(() => {
         if (!enabled || !gameId) {
-            previousPlayerIds.current.clear();
-            setNewPlayers([]);
             setIsLoading(false);
             setSyncError(null);
             return;
         }
 
         if (!userId) {
-            previousPlayerIds.current.clear();
-            setNewPlayers([]);
             setIsLoading(false);
             setSyncError(null);
             return;

@@ -128,4 +128,156 @@ describe("Real-time Lobby Integration", () => {
             expect(result.current.gameState?.status).toBe("IN_PROGRESS");
         });
     });
+
+    it("keeps a newly joined player highlighted for 2 seconds, then clears it", async () => {
+        vi.useFakeTimers();
+        try {
+            const { result } = renderHook(() => useRealTimeGamePolling("test-game-123", "user1"));
+            const source = MockEventSource.instances[0];
+
+            // Clear initial highlights from baseline players.
+            await act(async () => {
+                source.emit("open");
+                await vi.advanceTimersByTimeAsync(2000);
+            });
+            expect(result.current.newPlayers).toHaveLength(0);
+
+            await act(async () => {
+                source.emit("state", {
+                    gameState: createGameState(
+                        [
+                            { id: "user1", name: "Player 1", isAlive: true, completedQuests: [] },
+                            { id: "user2", name: "Player 2", isAlive: true, completedQuests: [] },
+                            { id: "user3", name: "Player 3", isAlive: true, completedQuests: [] },
+                        ],
+                        2,
+                    ),
+                    revision: 2,
+                    updatedAt: now + 2,
+                });
+            });
+            expect(result.current.newPlayers.some((player) => player.id === "user3")).toBe(true);
+
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(2000);
+            });
+            expect(result.current.newPlayers.some((player) => player.id === "user3")).toBe(false);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("keeps independent timers for players joining at different moments", async () => {
+        vi.useFakeTimers();
+        try {
+            const { result } = renderHook(() => useRealTimeGamePolling("test-game-123", "user1"));
+            const source = MockEventSource.instances[0];
+
+            await act(async () => {
+                source.emit("open");
+                await vi.advanceTimersByTimeAsync(2000);
+            });
+            expect(result.current.newPlayers).toHaveLength(0);
+
+            await act(async () => {
+                source.emit("state", {
+                    gameState: createGameState(
+                        [
+                            { id: "user1", name: "Player 1", isAlive: true, completedQuests: [] },
+                            { id: "user2", name: "Player 2", isAlive: true, completedQuests: [] },
+                            { id: "user3", name: "Player 3", isAlive: true, completedQuests: [] },
+                        ],
+                        2,
+                    ),
+                    revision: 2,
+                    updatedAt: now + 2,
+                });
+            });
+
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(1000);
+                source.emit("state", {
+                    gameState: createGameState(
+                        [
+                            { id: "user1", name: "Player 1", isAlive: true, completedQuests: [] },
+                            { id: "user2", name: "Player 2", isAlive: true, completedQuests: [] },
+                            { id: "user3", name: "Player 3", isAlive: true, completedQuests: [] },
+                            { id: "user4", name: "Player 4", isAlive: true, completedQuests: [] },
+                        ],
+                        3,
+                    ),
+                    revision: 3,
+                    updatedAt: now + 3,
+                });
+            });
+
+            expect(result.current.newPlayers.some((player) => player.id === "user3")).toBe(true);
+            expect(result.current.newPlayers.some((player) => player.id === "user4")).toBe(true);
+
+            // user3 expires first
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(1000);
+            });
+            expect(result.current.newPlayers.some((player) => player.id === "user3")).toBe(false);
+            expect(result.current.newPlayers.some((player) => player.id === "user4")).toBe(true);
+
+            // then user4 expires
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(1000);
+            });
+            expect(result.current.newPlayers.some((player) => player.id === "user4")).toBe(false);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("does not reset a highlighted player's timer on non-join SSE updates", async () => {
+        vi.useFakeTimers();
+        try {
+            const { result } = renderHook(() => useRealTimeGamePolling("test-game-123", "user1"));
+            const source = MockEventSource.instances[0];
+
+            await act(async () => {
+                source.emit("open");
+                await vi.advanceTimersByTimeAsync(2000);
+            });
+            expect(result.current.newPlayers).toHaveLength(0);
+
+            await act(async () => {
+                source.emit("state", {
+                    gameState: createGameState(
+                        [
+                            { id: "user1", name: "Player 1", isAlive: true, completedQuests: [] },
+                            { id: "user2", name: "Player 2", isAlive: true, completedQuests: [] },
+                            { id: "user3", name: "Player 3", isAlive: true, completedQuests: [] },
+                        ],
+                        2,
+                    ),
+                    revision: 2,
+                    updatedAt: now + 2,
+                });
+                await vi.advanceTimersByTimeAsync(1500);
+            });
+
+            await act(async () => {
+                // Same players, only revision changed: should not restart user3 timer.
+                source.emit("state", {
+                    gameState: createGameState(
+                        [
+                            { id: "user1", name: "Player 1", isAlive: true, completedQuests: [] },
+                            { id: "user2", name: "Player 2", isAlive: true, completedQuests: [] },
+                            { id: "user3", name: "Player 3", isAlive: true, completedQuests: [] },
+                        ],
+                        3,
+                    ),
+                    revision: 3,
+                    updatedAt: now + 3,
+                });
+                await vi.advanceTimersByTimeAsync(500);
+            });
+            expect(result.current.newPlayers.some((player) => player.id === "user3")).toBe(false);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
 });

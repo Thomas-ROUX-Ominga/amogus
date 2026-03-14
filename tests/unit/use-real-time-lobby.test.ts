@@ -156,4 +156,81 @@ describe("useRealTimeGamePolling", () => {
             expect(result.current.syncStatus === "reconnecting" || result.current.syncStatus === "degraded").toBe(true);
         });
     });
+
+    it("cleans up new-player timers on unmount", async () => {
+        vi.useFakeTimers();
+        try {
+            const { unmount } = renderHook(() => useRealTimeGamePolling("test-game", "user1"));
+            const source = MockEventSource.instances[0];
+
+            await act(async () => {
+                source.emit("open");
+                source.emit("state", {
+                    gameState: {
+                        ...baseState,
+                        players: [
+                            ...baseState.players,
+                            { id: "user3", name: "Player 3", isAlive: true, completedQuests: [] },
+                        ],
+                        revision: 2,
+                        updatedAt: now + 2,
+                    },
+                    revision: 2,
+                    updatedAt: now + 2,
+                });
+            });
+
+            expect(vi.getTimerCount()).toBeGreaterThan(0);
+            unmount();
+            expect(vi.getTimerCount()).toBe(0);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("clears new players and timers when gameId or userId becomes invalid", async () => {
+        vi.useFakeTimers();
+        try {
+            const { result, rerender } = renderHook(
+                ({ gameId, userId }) => useRealTimeGamePolling(gameId, userId),
+                {
+                    initialProps: { gameId: "test-game", userId: "user1" },
+                }
+            );
+            const source = MockEventSource.instances[0];
+
+            await act(async () => {
+                source.emit("open");
+                await vi.advanceTimersByTimeAsync(2000);
+            });
+            expect(result.current.newPlayers).toHaveLength(0);
+
+            await act(async () => {
+                source.emit("state", {
+                    gameState: {
+                        ...baseState,
+                        players: [
+                            ...baseState.players,
+                            { id: "user3", name: "Player 3", isAlive: true, completedQuests: [] },
+                        ],
+                        revision: 2,
+                        updatedAt: now + 2,
+                    },
+                    revision: 2,
+                    updatedAt: now + 2,
+                });
+            });
+            expect(result.current.newPlayers.some((player) => player.id === "user3")).toBe(true);
+            expect(vi.getTimerCount()).toBeGreaterThan(0);
+
+            await act(async () => {
+                rerender({ gameId: "", userId: "user1" });
+                await vi.advanceTimersByTimeAsync(0);
+            });
+            expect(result.current.newPlayers).toHaveLength(0);
+            expect(vi.getTimerCount()).toBe(0);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
 });
