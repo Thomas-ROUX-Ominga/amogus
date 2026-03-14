@@ -274,4 +274,25 @@ describe("GameHome", () => {
         
         vi.unstubAllGlobals();
     });
+
+    it("should prioritize game over popup over eliminated overlay for dead impostor", () => {
+        const deadImpostor: Player = { ...impostorPlayer, isAlive: false };
+        const finishedState: GameState = {
+            ...mockGameState,
+            status: "FINISHED",
+            winner: "IMPOSTOR",
+        };
+
+        vi.stubGlobal("sessionStorage", {
+            getItem: vi.fn(() => null),
+            setItem: vi.fn(),
+        });
+
+        render(<GameHome gameState={finishedState} currentPlayer={deadImpostor} userId="user-2" />);
+
+        expect(screen.getByText("VICTOIRE")).toBeTruthy();
+        expect(screen.queryByText("En attente de fin de partie ou retour au lobby.")).toBeNull();
+
+        vi.unstubAllGlobals();
+    });
 });

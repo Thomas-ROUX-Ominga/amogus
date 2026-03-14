@@ -231,9 +231,6 @@ export function useRealTimeGamePolling(gameId: string, userId?: string, enabled 
         }
     }, []);
 
-    const currentPlayer = gameStateFromStore?.players.find((player) => player.id === userId);
-    const isEliminated = currentPlayer ? !currentPlayer.isAlive : false;
-    const shouldStopPolling = isEliminated && currentPlayer?.role === "IMPOSTOR";
     const isGameFinished = gameStateFromStore?.status === "FINISHED" && gameStateFromStore?.id === gameId;
 
     React.useEffect(() => {
@@ -324,7 +321,7 @@ export function useRealTimeGamePolling(gameId: string, userId?: string, enabled 
             return;
         }
 
-        if (shouldStopPolling || isGameFinished) {
+        if (isGameFinished) {
             setIsLoading(false);
             setSyncError(null);
             return;
@@ -526,7 +523,6 @@ export function useRealTimeGamePolling(gameId: string, userId?: string, enabled 
         enabled,
         gameId,
         userId,
-        shouldStopPolling,
         isGameFinished,
         applyRealtimeState,
         refreshGameData,

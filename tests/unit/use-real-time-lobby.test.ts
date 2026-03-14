@@ -233,4 +233,65 @@ describe("useRealTimeGamePolling", () => {
             vi.useRealTimers();
         }
     });
+
+    it("keeps realtime sync active for eliminated impostor until FINISHED and applies winner update", async () => {
+        const eliminatedImpostorState: GameState = {
+            ...baseState,
+            status: "IN_PROGRESS",
+            players: [
+                { id: "user1", name: "Impostor", role: "IMPOSTOR", isAlive: false, completedQuests: [] },
+                { id: "user2", name: "Crewmate", role: "CREWMATE", isAlive: true, completedQuests: [] },
+            ],
+            revision: 10,
+            updatedAt: now + 10,
+        };
+        useGameStore.setState({ gameState: eliminatedImpostorState });
+
+        const { result } = renderHook(() => useRealTimeGamePolling("test-game", "user1"));
+
+        expect(MockEventSource.instances).toHaveLength(1);
+        const source = MockEventSource.instances[0];
+
+        await act(async () => {
+            source.emit("open");
+            source.emit("state", {
+                gameState: {
+                    ...eliminatedImpostorState,
+                    status: "FINISHED",
+                    winner: "IMPOSTOR",
+                    revision: 11,
+                    updatedAt: now + 11,
+                },
+                revision: 11,
+                updatedAt: now + 11,
+            });
+        });
+
+        await waitFor(() => {
+            expect(result.current.gameState?.status).toBe("FINISHED");
+            expect(result.current.gameState?.winner).toBe("IMPOSTOR");
+            expect(result.current.isGameFinished).toBe(true);
+        });
+    });
+
+    it("does not start SSE when game is already finished", async () => {
+        useGameStore.setState({
+            gameState: {
+                ...baseState,
+                status: "FINISHED",
+                winner: "CREWMATE",
+                revision: 4,
+                updatedAt: now + 4,
+            },
+        });
+
+        const { result } = renderHook(() => useRealTimeGamePolling("test-game", "user1"));
+
+        await waitFor(() => {
+            expect(result.current.isLoading).toBe(false);
+        });
+        expect(result.current.isGameFinished).toBe(true);
+        expect(MockEventSource.instances).toHaveLength(0);
+        expect(fetch).not.toHaveBeenCalled();
+    });
 });

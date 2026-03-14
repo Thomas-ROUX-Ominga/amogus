@@ -28,6 +28,8 @@ interface GameHomeProps {
 
 export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     const t = useTranslations();
+    const gameWinner = gameState.winner;
+    const isGameOver = gameState.status === "FINISHED" && Boolean(gameWinner);
     const storageKey = `elimination-dismissed-${gameState.id}-${userId}`;
     const isMeetingActive = gameState.meeting?.status === "ACTIVE";
     const activeMeetingId = gameState.meeting?.id;
@@ -63,13 +65,18 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
 
     // Sync local overlay state with player alive status
     useEffect(() => {
+        if (isGameOver) {
+            setShowEliminatedOverlay(false);
+            return;
+        }
+
         if (!currentPlayer.isAlive) {
             const isDismissed = sessionStorage.getItem(storageKey);
             if (!isDismissed) {
                 setShowEliminatedOverlay(true);
             }
         }
-    }, [currentPlayer.isAlive, storageKey]);
+    }, [currentPlayer.isAlive, storageKey, isGameOver]);
 
     useEffect(() => {
         if (!isMeetingActive || !meetingPopupStorageKey) {
@@ -256,9 +263,9 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                 </div>
 
                 {/* Victory/Defeat Overlay */}
-                {gameState.status === "FINISHED" && gameState.winner && (
+                {isGameOver && gameWinner && (
                     <GameOverScreen 
-                        winner={gameState.winner}
+                        winner={gameWinner}
                         userRole={role}
                         isHost={gameState.creatorId === userId}
                         gameId={gameState.id}
@@ -355,7 +362,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     )}
 
                     {/* Prominent Elimination Overlay */}
-                    {showEliminatedOverlay && (
+                    {showEliminatedOverlay && !isGameOver && (
                         <EliminatedScreen 
                             playerName={currentPlayer.name}
                             playerRole={currentPlayer.role}
