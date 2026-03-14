@@ -24,6 +24,15 @@ function getSignature() {
     return `${left.join(",")}|${right.join(",")}`;
 }
 
+const COLOR_HEX_BY_ID: Record<string, string> = {
+    red: "#ef4444",
+    cyan: "#06b6d4",
+    amber: "#f59e0b",
+    green: "#22c55e",
+    purple: "#a855f7",
+    white: "#f8fafc",
+};
+
 function getRowY(index: number, total: number) {
     const topY = 84;
     const bottomY = 516;
@@ -175,5 +184,110 @@ describe("QuestWires", () => {
 
         expect(onError).not.toHaveBeenCalled();
         expect(getLeftButtons()[0]).toBeDisabled();
+    });
+
+    it("never uses more than 6 distinct colors across rounds", async () => {
+        render(<QuestWires duration="short" onSuccess={onSuccess} onError={onError} />);
+
+        const allSeen = new Set<string>();
+
+        for (let round = 0; round < 10; round++) {
+            const leftButtons = getLeftButtons();
+            const rightButtons = getRightButtons();
+            for (const button of [...leftButtons, ...rightButtons]) {
+                const color = button.getAttribute("data-wire-color");
+                if (color) allSeen.add(color);
+            }
+
+            const leftColor = leftButtons[0].getAttribute("data-wire-color");
+            const wrongRight = rightButtons.find((button) => button.getAttribute("data-wire-color") !== leftColor);
+            expect(wrongRight).toBeDefined();
+
+            fireEvent.pointerDown(leftButtons[0], { clientX: 30, clientY: 30 });
+            fireEvent.pointerUp(wrongRight!, { clientX: 540, clientY: 140 });
+
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(2100);
+            });
+        }
+
+        expect(allSeen.size).toBeLessThanOrEqual(6);
+    });
+
+    it("uses exactly 6 distinct colors on long duration", () => {
+        render(<QuestWires duration="long" onSuccess={onSuccess} onError={onError} />);
+
+        const leftColors = new Set(getLeftButtons().map((button) => button.getAttribute("data-wire-color")));
+        const rightColors = new Set(getRightButtons().map((button) => button.getAttribute("data-wire-color")));
+
+        expect(leftColors.size).toBe(6);
+        expect(rightColors.size).toBe(6);
+    });
+
+    it("draws connected lines from measured copper connector centers, not fallback anchors", () => {
+        render(<QuestWires duration="short" onSuccess={onSuccess} onError={onError} />);
+
+        const board = screen.getByTestId("wires-board");
+        vi.spyOn(board, "getBoundingClientRect").mockReturnValue({
+            x: 0,
+            y: 0,
+            top: 0,
+            left: 0,
+            bottom: 600,
+            right: 1000,
+            width: 1000,
+            height: 600,
+            toJSON: () => ({}),
+        });
+
+        const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+        const connectorRectSpy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function () {
+            const element = this as HTMLElement;
+            const connectorSide = element.dataset.connectorAnchor;
+            const rawIndex = element.dataset.anchorIndex;
+            if (!connectorSide || rawIndex === undefined) {
+                return originalGetBoundingClientRect.call(element);
+            }
+
+            const index = Number(rawIndex);
+            const centerY = 100 + index * 60;
+            const centerX = connectorSide === "left" ? 130 : 870;
+            return {
+                x: centerX - 10,
+                y: centerY - 10,
+                top: centerY - 10,
+                left: centerX - 10,
+                bottom: centerY + 10,
+                right: centerX + 10,
+                width: 20,
+                height: 20,
+                toJSON: () => ({}),
+            };
+        });
+
+        const leftButtons = getLeftButtons();
+        const rightButtons = getRightButtons();
+        const leftColor = leftButtons[0].getAttribute("data-wire-color");
+        const rightIndex = rightButtons.findIndex((button) => button.getAttribute("data-wire-color") === leftColor);
+        expect(leftColor).toBeTruthy();
+        expect(rightIndex).toBeGreaterThanOrEqual(0);
+
+        fireEvent.pointerDown(leftButtons[0], { clientX: 130, clientY: 100 });
+        fireEvent.pointerUp(rightButtons[rightIndex], { clientX: 870, clientY: 100 + rightIndex * 60 });
+
+        const expectedStrokeColor = COLOR_HEX_BY_ID[leftColor!];
+        const colorLine = Array.from(board.querySelectorAll("line")).find((line) =>
+            line.getAttribute("stroke") === expectedStrokeColor && line.getAttribute("stroke-width") === "13"
+        );
+
+        expect(colorLine).toBeTruthy();
+        expect(Number(colorLine!.getAttribute("x1"))).toBeCloseTo(130, 3);
+        expect(Number(colorLine!.getAttribute("y1"))).toBeCloseTo(100, 3);
+        expect(Number(colorLine!.getAttribute("x2"))).toBeCloseTo(870, 3);
+        expect(Number(colorLine!.getAttribute("y2"))).toBeCloseTo(100 + rightIndex * 60, 3);
+        expect(Number(colorLine!.getAttribute("x1"))).not.toBeCloseTo(140, 3);
+        expect(Number(colorLine!.getAttribute("x2"))).not.toBeCloseTo(860, 3);
+
+        connectorRectSpy.mockRestore();
     });
 });

@@ -41,13 +41,11 @@ interface ConnectorAnchors {
 
 const COLOR_PALETTE: WireColor[] = [
     { id: "red", label: "rouge", hex: "#ef4444", endpointClass: "bg-red-500" },
-    { id: "blue", label: "bleu", hex: "#3b82f6", endpointClass: "bg-blue-500" },
-    { id: "yellow", label: "jaune", hex: "#facc15", endpointClass: "bg-yellow-400" },
+    { id: "cyan", label: "cyan", hex: "#06b6d4", endpointClass: "bg-cyan-500" },
+    { id: "amber", label: "ambre", hex: "#f59e0b", endpointClass: "bg-amber-500" },
     { id: "green", label: "vert", hex: "#22c55e", endpointClass: "bg-green-500" },
-    { id: "pink", label: "rose", hex: "#ec4899", endpointClass: "bg-pink-500" },
     { id: "purple", label: "violet", hex: "#a855f7", endpointClass: "bg-violet-500" },
     { id: "white", label: "blanc", hex: "#f8fafc", endpointClass: "bg-slate-100" },
-    { id: "lime", label: "citron", hex: "#84cc16", endpointClass: "bg-lime-500" },
 ];
 
 function shuffle<T>(items: T[]): T[] {
@@ -87,6 +85,7 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
     const [dragging, setDragging] = useState<DragState | null>(null);
     const [showFailed, setShowFailed] = useState(false);
     const [anchors, setAnchors] = useState<ConnectorAnchors>({ left: [], right: [] });
+    const anchorsRef = useRef<ConnectorAnchors>({ left: [], right: [] });
     const boardRef = useRef<HTMLDivElement | null>(null);
     const leftConnectorRefs = useRef<Array<HTMLElement | null>>([]);
     const rightConnectorRefs = useRef<Array<HTMLElement | null>>([]);
@@ -105,11 +104,11 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
     }), [totalWires]);
 
     const getLeftAnchor = useCallback((index: number): AnchorPoint => {
-        return anchors.left[index] ?? getFallbackLeftAnchor(index);
+        return anchorsRef.current.left[index] ?? anchors.left[index] ?? getFallbackLeftAnchor(index);
     }, [anchors.left, getFallbackLeftAnchor]);
 
     const getRightAnchor = useCallback((index: number): AnchorPoint => {
-        return anchors.right[index] ?? getFallbackRightAnchor(index);
+        return anchorsRef.current.right[index] ?? anchors.right[index] ?? getFallbackRightAnchor(index);
     }, [anchors.right, getFallbackRightAnchor]);
 
     const measureAnchors = useCallback(() => {
@@ -131,26 +130,36 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
 
             if (leftConnector) {
                 const rect = leftConnector.getBoundingClientRect();
-                nextLeft[index] = {
-                    x: toViewBoxX((rect.left + rect.right) / 2),
-                    y: toViewBoxY((rect.top + rect.bottom) / 2),
-                };
+                if (rect.width > 0 && rect.height > 0) {
+                    nextLeft[index] = {
+                        x: toViewBoxX((rect.left + rect.right) / 2),
+                        y: toViewBoxY((rect.top + rect.bottom) / 2),
+                    };
+                } else {
+                    nextLeft[index] = getFallbackLeftAnchor(index);
+                }
             } else {
                 nextLeft[index] = getFallbackLeftAnchor(index);
             }
 
             if (rightConnector) {
                 const rect = rightConnector.getBoundingClientRect();
-                nextRight[index] = {
-                    x: toViewBoxX((rect.left + rect.right) / 2),
-                    y: toViewBoxY((rect.top + rect.bottom) / 2),
-                };
+                if (rect.width > 0 && rect.height > 0) {
+                    nextRight[index] = {
+                        x: toViewBoxX((rect.left + rect.right) / 2),
+                        y: toViewBoxY((rect.top + rect.bottom) / 2),
+                    };
+                } else {
+                    nextRight[index] = getFallbackRightAnchor(index);
+                }
             } else {
                 nextRight[index] = getFallbackRightAnchor(index);
             }
         }
 
-        setAnchors({ left: nextLeft, right: nextRight });
+        const nextAnchors = { left: nextLeft, right: nextRight };
+        anchorsRef.current = nextAnchors;
+        setAnchors(nextAnchors);
     }, [totalWires, getFallbackLeftAnchor, getFallbackRightAnchor]);
 
     const rightToLeft = useMemo(() => {
@@ -176,6 +185,15 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
         const raf = requestAnimationFrame(measureAnchors);
         const onResize = () => measureAnchors();
         const onScroll = () => measureAnchors();
+        const board = boardRef.current;
+        const resizeObserverCtor = typeof window !== "undefined" ? window.ResizeObserver : undefined;
+        const resizeObserver = resizeObserverCtor && board
+            ? new resizeObserverCtor(() => measureAnchors())
+            : null;
+
+        if (resizeObserver && board) {
+            resizeObserver.observe(board);
+        }
 
         window.addEventListener("resize", onResize);
         window.addEventListener("scroll", onScroll, true);
@@ -184,6 +202,7 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
 
         return () => {
             cancelAnimationFrame(raf);
+            resizeObserver?.disconnect();
             window.removeEventListener("resize", onResize);
             window.removeEventListener("scroll", onScroll, true);
             window.visualViewport?.removeEventListener("resize", onResize);
@@ -222,13 +241,14 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
     const handleLeftPointerDown = useCallback((leftIndex: number) => {
         if (showFailed || connections[leftIndex] !== undefined) return;
 
-        const startAnchor = getLeftAnchor(leftIndex);
+        measureAnchors();
+        const startAnchor = anchorsRef.current.left[leftIndex] ?? getLeftAnchor(leftIndex);
         setDragging({
             leftIndex,
             currentX: startAnchor.x,
             currentY: startAnchor.y,
         });
-    }, [showFailed, connections, getLeftAnchor]);
+    }, [showFailed, connections, getLeftAnchor, measureAnchors]);
 
     const handleBoardPointerMove = useCallback((event: PointerEvent<HTMLDivElement>) => {
         if (!dragging || showFailed) return;
@@ -243,11 +263,15 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
     const handleBoardPointerUp = useCallback((event: PointerEvent<HTMLDivElement>) => {
         if (!dragging || showFailed) return;
 
+        measureAnchors();
+
         const rect = event.currentTarget.getBoundingClientRect();
         if (rect.width && rect.height) {
             const x = ((event.clientX - rect.left) / rect.width) * VIEWBOX_WIDTH;
             const y = ((event.clientY - rect.top) / rect.height) * VIEWBOX_HEIGHT;
-            const rightAnchors = Array.from({ length: totalWires }, (_, index) => getRightAnchor(index));
+            const rightAnchors = Array.from({ length: totalWires }, (_, index) =>
+                anchorsRef.current.right[index] ?? getRightAnchor(index)
+            );
             const rightDropThreshold = rightAnchors.length
                 ? Math.min(...rightAnchors.map((point) => point.x)) - 120
                 : RIGHT_DROP_X_THRESHOLD;
@@ -279,7 +303,7 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
         }
 
         setDragging(null);
-    }, [dragging, showFailed, totalWires, connectWireToRightIndex, getRightAnchor]);
+    }, [dragging, showFailed, totalWires, connectWireToRightIndex, getRightAnchor, measureAnchors]);
 
     const handleRightPointerUp = useCallback((rightIndex: number, event: PointerEvent<HTMLButtonElement>) => {
         event.stopPropagation();
@@ -425,6 +449,7 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
                                         leftConnectorRefs.current[index] = node;
                                     }}
                                     data-connector-anchor="left"
+                                    data-anchor-index={index}
                                 />
                             </button>
                         );
@@ -457,6 +482,7 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
                                         rightConnectorRefs.current[index] = node;
                                     }}
                                     data-connector-anchor="right"
+                                    data-anchor-index={index}
                                 />
                                 <span className={`inline-block w-9 sm:w-10 h-5 rounded-full border border-black/40 shadow-inner ${color.endpointClass}`} />
                                 <span className="h-6 w-2 rounded-sm bg-gradient-to-b from-zinc-200 to-zinc-500" />
