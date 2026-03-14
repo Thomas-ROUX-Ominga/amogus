@@ -2,7 +2,7 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 import { createGame, getGame, getGameSnapshot, completeQuest } from "@/lib/redis/actions";
 import { redis } from "@/lib/redis/client";
 import { GameState } from "@/types/game";
-import { verifyPlayerSession, verifySession } from "@/lib/redis/auth-utils";
+import { createPlayerSession, verifyPlayerSession, verifySession } from "@/lib/redis/auth-utils";
 
 // Mock kv client
 vi.mock("@/lib/redis/client", () => ({
@@ -46,6 +46,10 @@ vi.mock("@/lib/redis/auth-utils", () => ({
 describe("createGame", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(verifySession).mockResolvedValue({
+            success: true,
+            data: { userId: "test-user", username: "test-org", role: "organizer" },
+        });
     });
 
     it("should create a game and store it in KV", async () => {
@@ -87,6 +91,12 @@ describe("getGame", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(verifySession).mockResolvedValue({
+            success: true,
+            data: { userId: "test-user", username: "test-org", role: "organizer" },
+        });
+        vi.mocked(verifyPlayerSession).mockResolvedValue({ success: true });
+        vi.mocked(createPlayerSession).mockResolvedValue({ success: true });
     });
 
     it("should return game state if found", async () => {
@@ -118,6 +128,36 @@ describe("getGame", () => {
         expect(result.success).toBe(false);
         expect(result.error).toContain("Failed to establish link");
     });
+
+    it("auto-recovers missing player-session for joined player in progress game", async () => {
+        const now = Date.now();
+        vi.mocked(verifySession).mockResolvedValue({
+            success: false,
+            error: "No session",
+            code: "ERR_NO_SESSION",
+        });
+        vi.mocked(verifyPlayerSession)
+            .mockResolvedValueOnce({
+                success: false,
+                error: "No player session found",
+                code: "ERR_NO_SESSION",
+            })
+            .mockResolvedValueOnce({ success: true });
+        vi.mocked(createPlayerSession).mockResolvedValue({ success: true });
+        vi.mocked(redis.get).mockResolvedValueOnce({
+            id: "test-id",
+            status: "IN_PROGRESS",
+            players: [{ id: "joined-user", name: "Joined", isAlive: true }],
+            createdAt: now,
+            revision: 4,
+            updatedAt: now,
+        });
+
+        const result = await getGame("test-id", "joined-user");
+
+        expect(result.success).toBe(true);
+        expect(createPlayerSession).toHaveBeenCalledWith("joined-user", "test-id");
+    });
 });
 
 describe("completeQuest", () => {
@@ -135,6 +175,13 @@ describe("completeQuest", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(verifySession).mockResolvedValue({
+            success: true,
+            data: { userId: "test-user", username: "test-org", role: "organizer" },
+        });
+        vi.mocked(verifyPlayerSession).mockResolvedValue({ success: true });
+        vi.mocked(createPlayerSession).mockResolvedValue({ success: true });
+        vi.mocked(redis.get).mockResolvedValue(structuredClone(baseGame));
     });
 
     it("should record quest completion successfully", async () => {
@@ -155,6 +202,7 @@ describe("completeQuest", () => {
     it("should prevent duplicate quest completion (idempotent)", async () => {
         const gameWithCompleted = structuredClone(baseGame);
         gameWithCompleted.players[0].completedQuests = ["s1"];
+        vi.mocked(redis.get).mockResolvedValueOnce(gameWithCompleted);
 
         vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
             return updater(gameWithCompleted);
@@ -168,9 +216,7 @@ describe("completeQuest", () => {
     });
 
     it("should return error when game not found", async () => {
-        vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
-            return updater(null);
-        });
+        vi.mocked(redis.get).mockResolvedValueOnce(null);
 
         const result = await completeQuest("nonexistent", "user-1", "s1");
 
@@ -191,6 +237,7 @@ describe("completeQuest", () => {
 
     it("should return error when game is not IN_PROGRESS", async () => {
         const lobbyGame = { ...structuredClone(baseGame), status: "LOBBY" as const };
+        vi.mocked(redis.get).mockResolvedValueOnce(lobbyGame);
 
         vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
             return updater(lobbyGame);
@@ -203,6 +250,7 @@ describe("completeQuest", () => {
     });
 
     it("should return error on Redis failure", async () => {
+        vi.mocked(redis.get).mockResolvedValueOnce(structuredClone(baseGame));
         vi.mocked(redis.atomicUpdate).mockRejectedValueOnce(new Error("Redis Error"));
 
         const result = await completeQuest("game-123", "user-1", "s1");
@@ -221,6 +269,7 @@ describe("getGameSnapshot", () => {
             code: "ERR_NO_SESSION",
         });
         vi.mocked(verifyPlayerSession).mockResolvedValue({ success: true });
+        vi.mocked(createPlayerSession).mockResolvedValue({ success: true });
     });
 
     it("should allow lobby snapshot for users not joined yet", async () => {
@@ -255,5 +304,57 @@ describe("getGameSnapshot", () => {
 
         expect(result.success).toBe(false);
         expect(result.code).toBe("ERR_INVALID_SIGNATURE");
+    });
+
+    it("auto-recovers missing player-session for joined player in progress game", async () => {
+        const now = Date.now();
+        vi.mocked(redis.get).mockResolvedValueOnce({
+            id: "game-live",
+            status: "IN_PROGRESS",
+            players: [{ id: "known-user", name: "Known", isAlive: true }],
+            createdAt: now,
+            revision: 2,
+            updatedAt: now,
+        });
+        vi.mocked(verifyPlayerSession)
+            .mockResolvedValueOnce({
+                success: false,
+                error: "No player session found",
+                code: "ERR_NO_SESSION",
+            })
+            .mockResolvedValueOnce({ success: true });
+
+        const result = await getGameSnapshot("game-live", "known-user");
+
+        expect(result.success).toBe(true);
+        expect(createPlayerSession).toHaveBeenCalledWith("known-user", "game-live");
+    });
+
+    it("propagates auto-repair failure when player-session recreation fails", async () => {
+        const now = Date.now();
+        vi.mocked(redis.get).mockResolvedValueOnce({
+            id: "game-live",
+            status: "IN_PROGRESS",
+            players: [{ id: "known-user", name: "Known", isAlive: true }],
+            createdAt: now,
+            revision: 2,
+            updatedAt: now,
+        });
+        vi.mocked(verifyPlayerSession).mockResolvedValueOnce({
+            success: false,
+            error: "No player session found",
+            code: "ERR_NO_SESSION",
+        });
+        vi.mocked(createPlayerSession).mockResolvedValueOnce({
+            success: false,
+            error: "Failed to create player session",
+            code: "ERR_SIGNAL_LOST",
+        });
+
+        const result = await getGameSnapshot("game-live", "known-user");
+
+        expect(result.success).toBe(false);
+        expect(result.code).toBe("ERR_SIGNAL_LOST");
+        expect(result.error).toBe("Failed to create player session");
     });
 });

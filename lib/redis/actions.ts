@@ -319,6 +319,22 @@ interface ViewerScope {
     isOrganizer: boolean;
 }
 
+interface PlayerSessionResolution {
+    isPlayerSessionValid: boolean;
+    recoveredSession: boolean;
+    recoveryAttempted: boolean;
+    error?: string;
+    code?: string;
+}
+
+interface ActionAccessScope {
+    gameState: GameState;
+    viewerUserId: string;
+    isOrganizer: boolean;
+    isPlayerSessionValid: boolean;
+    recoveredSession: boolean;
+}
+
 function canViewerSeeRole(
     targetRole: PlayerRole | undefined,
     targetPlayerId: string,
@@ -467,6 +483,117 @@ function sanitizeGameStateForViewer(state: GameState, scope: ViewerScope): GameS
     };
 }
 
+async function verifyAndRecoverPlayerSession(
+    gameId: string,
+    userId: string,
+    playerExists: boolean
+): Promise<PlayerSessionResolution> {
+    // Auto-heal missing player cookie once when the user is already known in this game.
+    if (!playerExists) {
+        return {
+            isPlayerSessionValid: false,
+            recoveredSession: false,
+            recoveryAttempted: false,
+            error: "Player not found in game.",
+            code: ERROR_CODES.ERR_INVALID_SIGNATURE,
+        };
+    }
+
+    const initialCheck = await verifyPlayerSession(userId, gameId);
+    if (initialCheck.success) {
+        return {
+            isPlayerSessionValid: true,
+            recoveredSession: false,
+            recoveryAttempted: false,
+        };
+    }
+
+    if (initialCheck.code !== ERROR_CODES.ERR_NO_SESSION) {
+        return {
+            isPlayerSessionValid: false,
+            recoveredSession: false,
+            recoveryAttempted: false,
+            error: initialCheck.error || "Session verification failed",
+            code: initialCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+        };
+    }
+
+    const sessionResult = await createPlayerSession(userId, gameId);
+    if (!sessionResult.success) {
+        return {
+            isPlayerSessionValid: false,
+            recoveredSession: false,
+            recoveryAttempted: true,
+            error: sessionResult.error || "Session verification failed",
+            code: sessionResult.code || ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
+
+    const recoveredCheck = await verifyPlayerSession(userId, gameId);
+    if (!recoveredCheck.success) {
+        return {
+            isPlayerSessionValid: false,
+            recoveredSession: false,
+            recoveryAttempted: true,
+            error: recoveredCheck.error || "Session verification failed",
+            code: recoveredCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+        };
+    }
+
+    console.warn(`[session] recovered player-session game=${gameId} user=${userId}`);
+    return {
+        isPlayerSessionValid: true,
+        recoveredSession: true,
+        recoveryAttempted: true,
+    };
+}
+
+async function resolveActionAccess(
+    gameId: string,
+    userId: string
+): Promise<ActionResponse<ActionAccessScope>> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+        return {
+            success: false,
+            error: "Player not found in game.",
+            code: ERROR_CODES.ERR_INVALID_SIGNATURE,
+        };
+    }
+
+    const state = await readGameState(gameId);
+    if (!state) {
+        return {
+            success: false,
+            error: "Game session not found.",
+            code: ERROR_CODES.GAME_NOT_FOUND,
+        };
+    }
+
+    const playerExists = state.players.some((player) => player.id === normalizedUserId);
+    const organizerSession = await verifySession();
+    const playerSession = await verifyAndRecoverPlayerSession(gameId, normalizedUserId, playerExists);
+
+    if (!playerSession.isPlayerSessionValid) {
+        return {
+            success: false,
+            error: playerSession.error || "Session verification failed",
+            code: playerSession.code || ERROR_CODES.ERR_INVALID_SESSION,
+        };
+    }
+
+    return {
+        success: true,
+        data: {
+            gameState: state,
+            viewerUserId: normalizedUserId,
+            isOrganizer: organizerSession.success,
+            isPlayerSessionValid: true,
+            recoveredSession: playerSession.recoveredSession,
+        },
+    };
+}
+
 async function resolveViewerScopeForGame(
     gameId: string,
     state: GameState,
@@ -490,11 +617,10 @@ async function resolveViewerScopeForGame(
         ? state.players.some((player) => player.id === normalizedUserId)
         : false;
 
-    let hasValidPlayerSession = false;
-    if (normalizedUserId) {
-        const sessionCheck = await verifyPlayerSession(normalizedUserId, gameId);
-        hasValidPlayerSession = sessionCheck.success;
-    }
+    const playerSession = normalizedUserId
+        ? await verifyAndRecoverPlayerSession(gameId, normalizedUserId, playerExists)
+        : null;
+    const hasValidPlayerSession = playerSession?.isPlayerSessionValid ?? false;
 
     if (isLobby) {
         if (normalizedUserId && playerExists && hasValidPlayerSession) {
@@ -513,7 +639,23 @@ async function resolveViewerScopeForGame(
         };
     }
 
-    if (!normalizedUserId || !playerExists || !hasValidPlayerSession) {
+    if (!normalizedUserId || !playerExists) {
+        return {
+            success: false,
+            error: "Player session verification failed.",
+            code: ERROR_CODES.ERR_INVALID_SIGNATURE,
+        };
+    }
+
+    if (!hasValidPlayerSession) {
+        if (playerSession?.recoveryAttempted) {
+            return {
+                success: false,
+                error: playerSession.error || "Player session verification failed.",
+                code: playerSession.code || ERROR_CODES.ERR_SIGNAL_LOST,
+            };
+        }
+
         return {
             success: false,
             error: "Player session verification failed.",
@@ -983,14 +1125,15 @@ export async function completeQuest(
     questId: string
 ): Promise<ActionResponse<{ completedQuests: string[]; questsCompleted: number }>> {
     try {
-        const sessionCheck = await verifyPlayerSession(userId, gameId);
-        if (!sessionCheck.success) {
+        const accessScope = await resolveActionAccess(gameId, userId);
+        if (!accessScope.success || !accessScope.data) {
             return {
                 success: false,
-                error: sessionCheck.error || "Session verification failed",
-                code: sessionCheck.code || "ERR_INVALID_SESSION"
+                error: accessScope.error || "Session verification failed",
+                code: accessScope.code || ERROR_CODES.ERR_INVALID_SESSION,
             };
         }
+        userId = accessScope.data.viewerUserId;
 
         let validationError: ActionResponse<{ completedQuests: string[]; questsCompleted: number }> | null = null;
 
@@ -1263,14 +1406,15 @@ export async function triggerSabotage(
     type: SabotageType
 ): Promise<ActionResponse<TriggerSabotageResult>> {
     try {
-        const sessionCheck = await verifyPlayerSession(userId, gameId);
-        if (!sessionCheck.success) {
+        const accessScope = await resolveActionAccess(gameId, userId);
+        if (!accessScope.success || !accessScope.data) {
             return {
                 success: false,
-                error: sessionCheck.error || "Session verification failed",
-                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+                error: accessScope.error || "Session verification failed",
+                code: accessScope.code || ERROR_CODES.ERR_INVALID_SESSION,
             };
         }
+        userId = accessScope.data.viewerUserId;
 
         let validationError: ActionResponse<TriggerSabotageResult> | null = null;
         const now = Date.now();
@@ -1441,14 +1585,15 @@ export async function scanSabotage(
     qrId: string
 ): Promise<ActionResponse<ScanSabotageResult>> {
     try {
-        const sessionCheck = await verifyPlayerSession(userId, gameId);
-        if (!sessionCheck.success) {
+        const accessScope = await resolveActionAccess(gameId, userId);
+        if (!accessScope.success || !accessScope.data) {
             return {
                 success: false,
-                error: sessionCheck.error || "Session verification failed",
-                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+                error: accessScope.error || "Session verification failed",
+                code: accessScope.code || ERROR_CODES.ERR_INVALID_SESSION,
             };
         }
+        userId = accessScope.data.viewerUserId;
 
         let validationError: ActionResponse<ScanSabotageResult> | null = null;
         let scanResult: ScanSabotageResult | null = null;
@@ -1707,14 +1852,15 @@ export async function getMeetingView(
     userId: string
 ): Promise<ActionResponse<MeetingView>> {
     try {
-        const sessionCheck = await verifyPlayerSession(userId, gameId);
-        if (!sessionCheck.success) {
+        const accessScope = await resolveActionAccess(gameId, userId);
+        if (!accessScope.success || !accessScope.data) {
             return {
                 success: false,
-                error: sessionCheck.error || "Session verification failed",
-                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+                error: accessScope.error || "Session verification failed",
+                code: accessScope.code || ERROR_CODES.ERR_INVALID_SESSION,
             };
         }
+        userId = accessScope.data.viewerUserId;
 
         const state = await mutateGameState(gameId, (currentState) => {
             const now = Date.now();
@@ -1752,14 +1898,15 @@ export async function triggerMeeting(
     userId: string
 ): Promise<ActionResponse<MeetingView>> {
     try {
-        const sessionCheck = await verifyPlayerSession(userId, gameId);
-        if (!sessionCheck.success) {
+        const accessScope = await resolveActionAccess(gameId, userId);
+        if (!accessScope.success || !accessScope.data) {
             return {
                 success: false,
-                error: sessionCheck.error || "Session verification failed",
-                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+                error: accessScope.error || "Session verification failed",
+                code: accessScope.code || ERROR_CODES.ERR_INVALID_SESSION,
             };
         }
+        userId = accessScope.data.viewerUserId;
 
         let validationError: ActionResponse<MeetingView> | null = null;
         const now = Date.now();
@@ -1902,14 +2049,15 @@ export async function castMeetingVote(
     targetId: string
 ): Promise<ActionResponse<MeetingView>> {
     try {
-        const sessionCheck = await verifyPlayerSession(userId, gameId);
-        if (!sessionCheck.success) {
+        const accessScope = await resolveActionAccess(gameId, userId);
+        if (!accessScope.success || !accessScope.data) {
             return {
                 success: false,
-                error: sessionCheck.error || "Session verification failed",
-                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+                error: accessScope.error || "Session verification failed",
+                code: accessScope.code || ERROR_CODES.ERR_INVALID_SESSION,
             };
         }
+        userId = accessScope.data.viewerUserId;
 
         const preloadedState = await readGameState(gameId);
         if (!preloadedState) {
@@ -2054,14 +2202,15 @@ export async function cancelMeetingVote(
     userId: string
 ): Promise<ActionResponse<MeetingView>> {
     try {
-        const sessionCheck = await verifyPlayerSession(userId, gameId);
-        if (!sessionCheck.success) {
+        const accessScope = await resolveActionAccess(gameId, userId);
+        if (!accessScope.success || !accessScope.data) {
             return {
                 success: false,
-                error: sessionCheck.error || "Session verification failed",
-                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+                error: accessScope.error || "Session verification failed",
+                code: accessScope.code || ERROR_CODES.ERR_INVALID_SESSION,
             };
         }
+        userId = accessScope.data.viewerUserId;
 
         const preloadedState = await readGameState(gameId);
         if (!preloadedState) {
@@ -2183,14 +2332,15 @@ export async function selectRole(
     }
 
     try {
-        const sessionCheck = await verifyPlayerSession(userId, gameId);
-        if (!sessionCheck.success) {
+        const accessScope = await resolveActionAccess(gameId, userId);
+        if (!accessScope.success || !accessScope.data) {
             return {
                 success: false,
-                error: sessionCheck.error || "Session verification failed",
-                code: sessionCheck.code || "ERR_INVALID_SESSION"
+                error: accessScope.error || "Session verification failed",
+                code: accessScope.code || ERROR_CODES.ERR_INVALID_SESSION,
             };
         }
+        userId = accessScope.data.viewerUserId;
 
         let validationError: ActionResponse<{ role: PlayerRole }> | null = null;
 
@@ -2310,14 +2460,15 @@ export async function getQuestMetadata(
 
 export async function getPlayerFailedQuests(gameId: string, userId: string): Promise<ActionResponse<Record<string, string[]>>> {
     try {
-        const sessionCheck = await verifyPlayerSession(userId, gameId);
-        if (!sessionCheck.success) {
+        const accessScope = await resolveActionAccess(gameId, userId);
+        if (!accessScope.success || !accessScope.data) {
             return {
                 success: false,
-                error: sessionCheck.error || "Session verification failed",
-                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+                error: accessScope.error || "Session verification failed",
+                code: accessScope.code || ERROR_CODES.ERR_INVALID_SESSION,
             };
         }
+        userId = accessScope.data.viewerUserId;
 
         const failedQuestsKey = getFailedQuestsKey(gameId, userId);
         const failedQuests = await redis.get<Record<string, string[]>>(failedQuestsKey);
@@ -2343,14 +2494,15 @@ export async function addFailedQuest(
     contentId: string
 ): Promise<ActionResponse<void>> {
     try {
-        const sessionCheck = await verifyPlayerSession(userId, gameId);
-        if (!sessionCheck.success) {
+        const accessScope = await resolveActionAccess(gameId, userId);
+        if (!accessScope.success || !accessScope.data) {
             return {
                 success: false,
-                error: sessionCheck.error || "Session verification failed",
-                code: sessionCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
+                error: accessScope.error || "Session verification failed",
+                code: accessScope.code || ERROR_CODES.ERR_INVALID_SESSION,
             };
         }
+        userId = accessScope.data.viewerUserId;
 
         const failedQuestsKey = getFailedQuestsKey(gameId, userId);
 
@@ -2384,14 +2536,15 @@ export async function eliminatePlayer(
     userId: string
 ): Promise<ActionResponse<{ isAlive: boolean }>> {
     try {
-        const sessionCheck = await verifyPlayerSession(userId, gameId);
-        if (!sessionCheck.success) {
+        const accessScope = await resolveActionAccess(gameId, userId);
+        if (!accessScope.success || !accessScope.data) {
             return {
                 success: false,
-                error: sessionCheck.error || "Session verification failed",
-                code: sessionCheck.code || "ERR_INVALID_SESSION"
+                error: accessScope.error || "Session verification failed",
+                code: accessScope.code || ERROR_CODES.ERR_INVALID_SESSION,
             };
         }
+        userId = accessScope.data.viewerUserId;
 
         let validationError: ActionResponse<{ isAlive: boolean }> | null = null;
 

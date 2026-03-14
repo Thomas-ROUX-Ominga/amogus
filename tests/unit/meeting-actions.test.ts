@@ -48,6 +48,7 @@ vi.mock("@/lib/redis/auth-utils", () => ({
 }));
 
 import { redis } from "@/lib/redis/client";
+import { createPlayerSession, verifyPlayerSession, verifySession } from "@/lib/redis/auth-utils";
 import { triggerMeeting, castMeetingVote, getMeetingView, cancelMeetingVote } from "@/lib/redis/actions";
 import * as redisClientModule from "@/lib/redis/client";
 
@@ -70,8 +71,44 @@ const baseGameState = (): GameState => ({
 describe("meeting actions", () => {
     beforeEach(async () => {
         vi.clearAllMocks();
+        vi.mocked(verifySession).mockResolvedValue({
+            success: true,
+            data: { userId: "admin", username: "admin", role: "organizer" },
+        });
+        vi.mocked(verifyPlayerSession).mockResolvedValue({ success: true });
+        vi.mocked(createPlayerSession).mockResolvedValue({ success: true });
         (redisClientModule as unknown as { __resetRedisMock: () => void }).__resetRedisMock();
         await redis.set(stateKey, baseGameState());
+    });
+
+    it("auto-recovers organizer player-session to open meeting view", async () => {
+        vi.mocked(verifyPlayerSession)
+            .mockResolvedValueOnce({ success: false, error: "No player session found", code: "ERR_NO_SESSION" })
+            .mockResolvedValueOnce({ success: true });
+
+        const result = await getMeetingView(gameId, "admin");
+
+        expect(result.success).toBe(true);
+        expect(createPlayerSession).toHaveBeenCalledWith("admin", gameId);
+    });
+
+    it("auto-recovers missing player-session and allows meeting vote", async () => {
+        vi.mocked(verifySession).mockResolvedValue({
+            success: false,
+            error: "No session",
+            code: "ERR_NO_SESSION",
+        });
+        vi.mocked(verifyPlayerSession)
+            .mockResolvedValueOnce({ success: false, error: "No player session found", code: "ERR_NO_SESSION" })
+            .mockResolvedValueOnce({ success: true })
+            .mockResolvedValue({ success: true });
+
+        const meeting = await triggerMeeting(gameId, "u1");
+        expect(meeting.success).toBe(true);
+
+        const vote = await castMeetingVote(gameId, "u1", "u2");
+        expect(vote.success).toBe(true);
+        expect(createPlayerSession).toHaveBeenCalledWith("u1", gameId);
     });
 
     it("starts a meeting and consumes caller buzzer", async () => {

@@ -13,6 +13,8 @@ vi.mock("@/lib/redis/client", () => ({
 }));
 
 vi.mock("@/lib/redis/auth-utils", () => ({
+    verifySession: vi.fn(() => Promise.resolve({ success: true })),
+    createPlayerSession: vi.fn(() => Promise.resolve({ success: true })),
     verifyPlayerSession: vi.fn(() => Promise.resolve({ success: true })),
 }));
 
@@ -43,6 +45,7 @@ describe("selectRole", () => {
             ],
         };
 
+        vi.mocked(redis.get).mockResolvedValueOnce(mockState);
         vi.mocked(redis.atomicUpdate).mockResolvedValue(updatedState);
 
         const result = await selectRole(gameId, userId, "CREWMATE");
@@ -75,6 +78,7 @@ describe("selectRole", () => {
             ],
         };
 
+        vi.mocked(redis.get).mockResolvedValueOnce(mockState);
         vi.mocked(redis.atomicUpdate).mockResolvedValue(updatedState);
 
         const result = await selectRole(gameId, userId, "IMPOSTOR");
@@ -84,6 +88,7 @@ describe("selectRole", () => {
     });
 
     it("should fail when game does not exist", async () => {
+        vi.mocked(redis.get).mockResolvedValueOnce(null);
         vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
             const result = updater(null);
             return result;
@@ -108,6 +113,7 @@ describe("selectRole", () => {
             updatedAt: Date.now(),
         };
 
+        vi.mocked(redis.get).mockResolvedValueOnce(mockState);
         vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
             const result = updater(mockState);
             return result;
@@ -132,6 +138,7 @@ describe("selectRole", () => {
             updatedAt: Date.now(),
         };
 
+        vi.mocked(redis.get).mockResolvedValueOnce(mockState);
         vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
             const result = updater(mockState);
             return result;
@@ -156,6 +163,7 @@ describe("selectRole", () => {
             updatedAt: Date.now(),
         };
 
+        vi.mocked(redis.get).mockResolvedValueOnce(mockState);
         vi.mocked(redis.atomicUpdate).mockResolvedValue(mockState);
 
         const result = await selectRole(gameId, userId, "CREWMATE");
@@ -183,6 +191,7 @@ describe("selectRole", () => {
             ],
         };
 
+        vi.mocked(redis.get).mockResolvedValueOnce(mockState);
         vi.mocked(redis.atomicUpdate).mockResolvedValue(updatedState);
 
         const result = await selectRole(gameId, userId, "IMPOSTOR");
@@ -192,6 +201,14 @@ describe("selectRole", () => {
     });
 
     it("should handle Redis connection errors", async () => {
+        vi.mocked(redis.get).mockResolvedValueOnce({
+            id: gameId,
+            status: "IN_PROGRESS",
+            players: [{ id: userId, name: "Test Player", isAlive: true }],
+            createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
+        });
         vi.mocked(redis.atomicUpdate).mockRejectedValue(new Error("Redis connection failed"));
 
         const result = await selectRole(gameId, userId, "CREWMATE");

@@ -27,6 +27,7 @@ import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { GameState } from "@/types/game";
 
 function mockAtomicUpdate(state: GameState) {
+    vi.mocked(redis.get).mockResolvedValueOnce(state);
     vi.mocked(redis.atomicUpdate).mockImplementationOnce(async (_key, updater) => {
         const result = updater(state);
         return (result ?? state) as GameState;

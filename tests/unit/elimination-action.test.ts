@@ -3,9 +3,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock the entire Redis client module
 vi.mock('@/lib/redis/client', () => ({
     redis: {
+        get: vi.fn(),
         atomicUpdate: vi.fn(),
     },
     GAME_TTL_SECONDS: 86400,
+}));
+
+vi.mock('@/lib/redis/auth-utils', () => ({
+    verifySession: vi.fn(() => Promise.resolve({ success: true })),
+    createPlayerSession: vi.fn(() => Promise.resolve({ success: true })),
+    verifyPlayerSession: vi.fn(() => Promise.resolve({ success: true })),
 }));
 
 // Import after mocking
@@ -19,15 +26,20 @@ describe('eliminatePlayer', () => {
     });
 
     it('should successfully eliminate a player', async () => {
+        const now = Date.now();
         const mockGameState = {
             id: 'test-game',
             status: 'IN_PROGRESS',
+            createdAt: now,
+            revision: 1,
+            updatedAt: now,
             players: [
                 { id: 'user1', name: 'Player 1', isAlive: true },
                 { id: 'user2', name: 'Player 2', isAlive: true },
             ],
         };
 
+        vi.mocked(redis.get).mockResolvedValueOnce(mockGameState);
         vi.mocked(redis.atomicUpdate).mockResolvedValue({
             ...mockGameState,
             players: [
@@ -48,48 +60,97 @@ describe('eliminatePlayer', () => {
     });
 
     it('should handle already eliminated player (idempotent)', async () => {
+        const now = Date.now();
         const mockGameState = {
             id: 'test-game',
             status: 'IN_PROGRESS',
+            createdAt: now,
+            revision: 1,
+            updatedAt: now,
             players: [
                 { id: 'user1', name: 'Player 1', isAlive: false },
                 { id: 'user2', name: 'Player 2', isAlive: true },
             ],
         };
 
-        vi.mocked(redis.atomicUpdate).mockResolvedValue(null); // No update needed
+        vi.mocked(redis.get).mockResolvedValueOnce(mockGameState);
+        vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
+            const result = updater(mockGameState);
+            return result ?? mockGameState;
+        });
 
         const result = await eliminatePlayer('test-game', 'user1');
+        expect(result.success).toBe(true);
+        expect(result.data).toEqual({ isAlive: false });
     });
 
     it('should return error when game not found', async () => {
-        vi.mocked(redis.atomicUpdate).mockRejectedValue(new Error('Game not found'));
+        vi.mocked(redis.get).mockResolvedValueOnce(null);
 
         const result = await eliminatePlayer('nonexistent-game', 'user1');
 
         expect(result.success).toBe(false);
-        expect(result.error).toBe('Failed to eliminate player.');
+        expect(result.code).toBe(ERROR_CODES.GAME_NOT_FOUND);
     });
 
     it('should return error when game not in progress', async () => {
-        vi.mocked(redis.atomicUpdate).mockRejectedValue(new Error('Game not in progress'));
+        const now = Date.now();
+        vi.mocked(redis.get).mockResolvedValueOnce({
+            id: 'test-game',
+            status: 'LOBBY',
+            createdAt: now,
+            revision: 1,
+            updatedAt: now,
+            players: [
+                { id: 'user1', name: 'Player 1', isAlive: true },
+                { id: 'user2', name: 'Player 2', isAlive: true },
+            ],
+        });
+        vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => updater({
+            id: 'test-game',
+            status: 'LOBBY',
+            createdAt: now,
+            revision: 1,
+            updatedAt: now,
+            players: [
+                { id: 'user1', name: 'Player 1', isAlive: true },
+                { id: 'user2', name: 'Player 2', isAlive: true },
+            ],
+        }));
 
         const result = await eliminatePlayer('test-game', 'user1');
 
         expect(result.success).toBe(false);
-        expect(result.error).toBe('Failed to eliminate player.');
+        expect(result.code).toBe(ERROR_CODES.ERR_INVALID_STATE);
     });
 
     it('should return error when player not found', async () => {
-        vi.mocked(redis.atomicUpdate).mockRejectedValue(new Error('Player not found'));
+        const now = Date.now();
+        vi.mocked(redis.get).mockResolvedValueOnce({
+            id: 'test-game',
+            status: 'IN_PROGRESS',
+            createdAt: now,
+            revision: 1,
+            updatedAt: now,
+            players: [{ id: 'user1', name: 'Player 1', isAlive: true }],
+        });
 
         const result = await eliminatePlayer('test-game', 'nonexistent-user');
 
         expect(result.success).toBe(false);
-        expect(result.error).toBe('Failed to eliminate player.');
+        expect(result.code).toBe(ERROR_CODES.ERR_INVALID_SIGNATURE);
     });
 
     it('should handle Redis errors', async () => {
+        const now = Date.now();
+        vi.mocked(redis.get).mockResolvedValueOnce({
+            id: 'test-game',
+            status: 'IN_PROGRESS',
+            createdAt: now,
+            revision: 1,
+            updatedAt: now,
+            players: [{ id: 'user1', name: 'Player 1', isAlive: true }],
+        });
         vi.mocked(redis.atomicUpdate).mockRejectedValue(new Error('Redis connection failed'));
 
         const result = await eliminatePlayer('test-game', 'user1');
