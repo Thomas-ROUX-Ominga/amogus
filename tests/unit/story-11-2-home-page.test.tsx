@@ -60,7 +60,7 @@ describe('Home Page - Story 11.2', () => {
       expect(screen.queryByText('SCANNER')).not.toBeInTheDocument();
     });
 
-    it('should display only Join a game and Login options (AC: 1)', () => {
+    it('should display join, login and register options (AC: 1)', () => {
       render(
         <AuthProvider>
           <Home />
@@ -71,9 +71,9 @@ describe('Home Page - Story 11.2', () => {
       expect(screen.getByPlaceholderText('CODE 6 CAR...')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /rejoindre la session/i })).toBeInTheDocument();
       
-      // Check for login option
-      expect(screen.getByRole('button', { name: /portail de connexion/i })).toBeInTheDocument();
-      expect(screen.getByText('Organisateur')).toBeInTheDocument();
+      // Check for auth options below divider
+      expect(screen.getByRole('button', { name: /se connecter/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /créer un compte/i })).toBeInTheDocument();
     });
 
     it('should handle join by code correctly', async () => {
@@ -105,10 +105,23 @@ describe('Home Page - Story 11.2', () => {
         </AuthProvider>
       );
       
-      const loginButton = screen.getByRole('button', { name: /portail de connexion/i });
+      const loginButton = screen.getByRole('button', { name: /se connecter/i });
       fireEvent.click(loginButton);
 
       expect(mockPush).toHaveBeenCalledWith('/login');
+    });
+
+    it('should handle register redirection', () => {
+      render(
+        <AuthProvider>
+          <Home />
+        </AuthProvider>
+      );
+
+      const registerButton = screen.getByRole('button', { name: /créer un compte/i });
+      fireEvent.click(registerButton);
+
+      expect(mockPush).toHaveBeenCalledWith('/register');
     });
   });
 });

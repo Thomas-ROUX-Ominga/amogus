@@ -2,20 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Terminal, Shield, ChevronRight, Hash, LogOut, User } from "lucide-react";
+import { Terminal, ChevronRight, Hash, LogIn, UserPlus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { isValidShortCode, normalizeShortCode } from "@/lib/utils/short-code";
-import { useAuth } from "@/hooks/use-auth";
-import { clearSession } from "@/lib/redis/auth-actions";
 
 export default function Home() {
   const t = useTranslations();
   const [gameId, setGameId] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
-  const { authState, refreshAuth } = useAuth();
-  const { isAuthenticated, session } = authState;
 
   const handleJoinByCode = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,19 +38,12 @@ export default function Home() {
     setError("");
   };
 
-  const handleLogout = async () => {
-    await clearSession();
-    await refreshAuth();
-    router.refresh();
-  };
-
   return (
-    <main className="min-h-screen bg-black text-foreground font-mono overflow-hidden flex flex-col md:flex-row">
-      {/* LEFT PANEL: GUEST ACCESS (PRIMARY) */}
-      <section className="flex-1 flex flex-col items-center justify-center p-8 relative border-b md:border-b-0 md:border-r border-primary/10">
+    <main className="min-h-screen bg-black text-foreground font-mono overflow-hidden flex items-center justify-center p-8 relative">
+      <section className="w-full max-w-md relative">
         <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
         
-        <div className="max-w-md w-full space-y-12 relative z-10">
+        <div className="w-full space-y-12 relative z-10">
           <header className="space-y-4">
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
@@ -100,80 +89,43 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={!gameId.trim() || !!error}
-                className="w-full bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground border-2 border-primary/30 hover:border-primary font-black py-4 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full h-14 rounded-xl bg-primary text-primary-foreground border border-primary font-semibold text-base transition-all hover:opacity-95 hover:shadow-[0_0_20px_hsl(var(--primary)/0.25)] cursor-pointer flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
               >
-                <span className="tracking-[0.4em] uppercase text-sm">{t("home.joinSession")}</span>
+                <span>{t("home.joinSession")}</span>
                 <ChevronRight className="group-hover:translate-x-1 transition-transform" />
               </button>
             </form>
-          </div>
-        </div>
-      </section>
 
-      {/* RIGHT PANEL: ORGANIZER ACCESS (SECONDARY) */}
-      <section className="md:w-1/4 bg-primary/5 flex flex-col items-center justify-center p-8 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10 flex items-center justify-center pointer-events-none">
-          <Shield className="w-64 h-64 text-primary" />
-        </div>
-
-        <div className="space-y-8 relative z-10 text-center w-full">
-          {isAuthenticated && session ? (
-            <>
-              <div className="space-y-4">
-                <div className="w-16 h-16 rounded-full border-2 border-primary/30 flex items-center justify-center bg-primary/10 mx-auto">
-                  <User className="text-primary w-8 h-8" />
-                </div>
-                <div className="space-y-1">
-                  <h2 className="text-xs font-black uppercase tracking-[0.3em] text-primary">
-                    {session.username}
-                  </h2>
-                  <p className="text-[8px] text-muted-foreground uppercase tracking-widest">
-                    {t("home.organizerAuthorized")}
-                  </p>
-                </div>
+            <div className="relative py-2">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-primary/20" />
               </div>
-
-              <div className="space-y-3">
-                <button
-                  onClick={() => router.push("/batches")}
-                  className="w-full border border-primary/30 py-3 px-4 text-[10px] uppercase tracking-[0.2em] bg-primary/10 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all font-bold"
-                >
-                  {t("home.manageBatches")}
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="w-full border border-primary/10 py-3 px-4 text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-all flex items-center justify-center gap-2"
-                >
-                  <LogOut size={12} />
-                  {t("home.terminate")}
-                </button>
+              <div className="relative flex justify-center">
+                <span className="bg-black px-4 text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+                  {t("home.or")}
+                </span>
               </div>
-            </>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <Shield className="w-12 h-12 text-primary/40 mx-auto" />
-                <h2 className="text-sm font-black uppercase tracking-[0.3em] font-orbitron">
-                  {t("home.organizer")}
-                </h2>
-              </div>
+            </div>
 
-              <p className="text-[9px] text-muted-foreground uppercase leading-relaxed tracking-widest max-w-[180px] mx-auto">
-                {t("home.organizerDescription")}
-              </p>
-
+            <div className="space-y-3">
               <button
+                type="button"
                 onClick={() => router.push("/login")}
-                className="w-full max-w-[200px] border border-primary/30 py-3 px-4 text-[10px] uppercase tracking-[0.2em] hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all font-bold"
+                className="w-full h-12 rounded-lg border border-primary/35 bg-background/40 text-foreground font-medium text-sm transition-all hover:bg-primary/10 hover:border-primary hover:-translate-y-0.5 hover:shadow-[0_10px_24px_hsl(var(--primary)/0.16)] cursor-pointer flex items-center justify-center gap-2"
               >
-                {t("home.loginPortal")}
+                <LogIn size={18} />
+                {t("home.signIn")}
               </button>
-            </>
-          )}
-        </div>
-
-        <div className="absolute bottom-4 text-[8px] text-primary/20 uppercase tracking-widest">
-          {t("home.secureTerminal")}
+              <button
+                type="button"
+                onClick={() => router.push("/register")}
+                className="w-full h-12 rounded-lg border border-primary/25 bg-transparent text-muted-foreground font-medium text-sm transition-all hover:text-foreground hover:border-primary/45 hover:bg-primary/10 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_hsl(var(--primary)/0.12)] cursor-pointer flex items-center justify-center gap-2"
+              >
+                <UserPlus size={16} />
+                {t("home.createAccount")}
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
