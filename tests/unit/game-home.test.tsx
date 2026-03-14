@@ -214,7 +214,7 @@ describe("GameHome", () => {
         expect(screen.queryByText("SCANNER")).toBeNull();
     });
 
-    it("should keep SCAN button visible for Impostor sabotage actions", () => {
+    it("should hide SCAN button for Impostor", () => {
         vi.mocked(useGameStore).mockReturnValue({
             questsCompleted: 0,
             questsTotal: 0,
@@ -222,7 +222,17 @@ describe("GameHome", () => {
         } as Partial<ReturnType<typeof useGameStore>>);
 
         render(<GameHome gameState={mockGameState} currentPlayer={impostorPlayer} userId="user-2" />);
-        expect(screen.getByText("SCANNER")).toBeTruthy();
+        expect(screen.queryByText("SCANNER")).toBeNull();
+    });
+
+    it("should render elimination button for Crewmate", () => {
+        render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
+        expect(screen.getByText("Signaler mon élimination")).toBeTruthy();
+    });
+
+    it("should hide elimination button for Impostor", () => {
+        render(<GameHome gameState={mockGameState} currentPlayer={impostorPlayer} userId="user-2" />);
+        expect(screen.queryByText("Signaler mon élimination")).toBeNull();
     });
 
     it("should show 'MORT' status when player is dead", () => {

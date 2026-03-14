@@ -210,6 +210,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     }
     
     const role = currentPlayer.role;
+    const isImpostor = role === "IMPOSTOR";
     const hasUsedBuzzer = Boolean(currentPlayer.meetingBuzzUsedAt);
     const canUseBuzzer =
         currentPlayer.isAlive &&
@@ -331,7 +332,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     )}
 
                     {/* SCAN Button (thumb zone — bottom) */}
-                    {gameState.creatorId !== userId && !allQuestsDone && !isMeetingActive && (
+                    {gameState.creatorId !== userId && !isImpostor && !allQuestsDone && !isMeetingActive && (
                         <ScanButton 
                             disabled={false} 
                             onClick={() => {
@@ -342,7 +343,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     )}
 
                     {/* Camera Scanner Overlay */}
-                    {gameState.creatorId !== userId && !allQuestsDone && !isMeetingActive && (
+                    {gameState.creatorId !== userId && !isImpostor && !allQuestsDone && !isMeetingActive && (
                         <CameraScanner
                             isOpen={isOpen}
                             onClose={closeScanner}
@@ -390,7 +391,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                                 meetingActive={isMeetingActive}
                             />
                         )}
-                        {gameState.creatorId !== userId && (
+                        {gameState.creatorId !== userId && !isImpostor && (
                             <EliminationButton
                                 onEliminate={handleElimination}
                                 disabled={isEliminating || !currentPlayer.isAlive || isMeetingActive}
