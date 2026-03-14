@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Camera, AlertCircle, Loader2 } from "lucide-react";
+import { X, AlertCircle, Loader2 } from "lucide-react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { useTranslations } from "next-intl";
 import { EliminatedScreen } from "@/components/game/eliminated-screen";
@@ -13,9 +13,17 @@ export interface CameraScannerProps {
     onScan: (questId: string) => void | boolean | Promise<void | boolean>;
     isPlayerEliminated?: boolean;
     playerRole?: string;
+    statusMessage?: string | null;
 }
 
-export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = false, playerRole }: CameraScannerProps) {
+export function CameraScanner({
+    isOpen,
+    onClose,
+    onScan,
+    isPlayerEliminated = false,
+    playerRole,
+    statusMessage = null,
+}: CameraScannerProps) {
     const t = useTranslations();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -24,9 +32,10 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
     const hasScannedRef = useRef(false);
     const scanCooldownUntilRef = useRef(0);
     const scannerRegionId = 'qr-scanner-region';
+    const scannerReservedHeight = statusMessage ? 208 : 136;
     const scannerSquareSize = viewportHeight
-        ? Math.max(220, Math.min(448, viewportHeight - 192))
-        : 448;
+        ? Math.max(220, Math.min(520, viewportHeight - scannerReservedHeight))
+        : 420;
 
     useEffect(() => {
         if (!isOpen) {
@@ -247,115 +256,106 @@ export function CameraScanner({ isOpen, onClose, onScan, isPlayerEliminated = fa
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-x-0 top-0 z-50 h-screen overflow-hidden overscroll-none bg-black/90 backdrop-blur-sm"
+                    className="fixed inset-0 z-[120] h-screen overflow-hidden overscroll-none bg-black"
                     style={viewportHeight ? { height: `${viewportHeight}px` } : undefined}
                 >
-                    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
-                        {/* Header */}
-                        <div className="flex items-center justify-between p-4 bg-black/50">
-                            <div className="flex items-center gap-3">
-                                <Camera className="w-6 h-6 text-primary" />
-                                <h2 className="text-lg font-bold text-primary font-orbitron tracking-wider">
-                                    {t("game.scanner.title")}
-                                </h2>
-                            </div>
-                            <button
-                                onClick={onClose}
-                                className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors"
-                                aria-label={t("game.scanner.closeScannerAria")}
-                            >
-                                <X className="w-5 h-5 text-primary" />
-                            </button>
-                        </div>
+                    <div className="relative flex h-full w-full items-center justify-center overflow-hidden p-4 sm:p-6">
+                        <button
+                            onClick={onClose}
+                            className="absolute right-4 top-4 z-30 rounded-full border border-primary/40 bg-black/80 p-2 transition-colors hover:bg-primary/20"
+                            aria-label={t("game.scanner.closeScannerAria")}
+                        >
+                            <X className="h-5 w-5 text-primary" />
+                        </button>
 
-                        {/* Scanner Area */}
-                        <div className="relative flex flex-1 min-h-0 items-center justify-center overflow-hidden p-4">
-                            {/* Eliminated Player Overlay - Only block Impostors, allow Crewmates in Ghost Mode */}
-                            {isPlayerEliminated && playerRole === "IMPOSTOR" && (
-                                <EliminatedScreen onDismiss={onClose} playerRole={playerRole} />
-                            )}
-
-                            {/* Ghost Mode Overlay for Eliminated Crewmates */}
-                            {isPlayerEliminated && playerRole === "CREWMATE" && (
-                                <div className="absolute inset-0 bg-blue-500/10 backdrop-blur-sm border border-blue-500/30 rounded-lg p-4 m-4">
-                                    <div className="text-center space-y-2">
-                                        <h3 className="text-sm font-bold text-blue-400 font-orbitron uppercase tracking-wider">
-                                            {t("game.scanner.ghostModeTitle")}
-                                        </h3>
-                                        <p className="text-xs text-blue-300 font-rajdhani">
-                                            {t("game.scanner.ghostModeDescription")}
-                                        </p>
-                                    </div>
+                        <div className="flex w-full max-w-[560px] flex-col items-center gap-4">
+                            {statusMessage && (
+                                <div className="w-full border border-primary/40 bg-black/85 px-4 py-3 text-center text-sm text-primary font-rajdhani tracking-wide">
+                                    {statusMessage}
                                 </div>
                             )}
 
-                            {/* Scanner Area Container - Always rendered to keep #qr-scanner-region in DOM */}
-                            {!(isPlayerEliminated && playerRole === "IMPOSTOR") && (
-                                <div
-                                    className={`relative shrink-0 transition-opacity duration-300 ${isLoading || error ? 'opacity-0' : 'opacity-100'}`}
-                                    style={{
-                                        width: `min(100%, ${scannerSquareSize}px)`,
-                                        height: `min(100%, ${scannerSquareSize}px)`,
-                                    }}
-                                >
-                                    <div
-                                        id={scannerRegionId}
-                                        className="w-full h-full rounded-lg overflow-hidden bg-black [&_video]:object-cover [&_video]:w-full [&_video]:h-full"
-                                        aria-label={t("game.scanner.cameraViewAria")}
-                                        role="img"
-                                    />
-                                    {/* Scanning overlay frame */}
-                                    <div className="absolute inset-0 pointer-events-none">
-                                        <div className="absolute inset-4 border-2 border-primary/50 rounded-lg shadow-[0_0_15px_rgba(var(--primary),0.3)]">
-                                            <motion.div
-                                                className="absolute top-0 left-0 right-0 h-0.5 bg-primary shadow-[0_0_10px_rgba(var(--primary),0.8)]"
-                                                animate={{ y: ["0%", "100%"] }}
-                                                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                            <div className="relative flex w-full items-center justify-center overflow-hidden">
+                                {/* Eliminated Player Overlay - Only block Impostors, allow Crewmates in Ghost Mode */}
+                                {isPlayerEliminated && playerRole === "IMPOSTOR" && (
+                                    <EliminatedScreen onDismiss={onClose} playerRole={playerRole} />
+                                )}
 
-                            {isLoading && !(isPlayerEliminated && playerRole === "IMPOSTOR") && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
-                                    <div className="text-center space-y-4">
-                                        <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
-                                        <p className="text-primary font-rajdhani tracking-wider">
-                                            {t("game.scanner.initializingCamera")}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {error && !(isPlayerEliminated && playerRole === "IMPOSTOR") && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 p-4 z-10">
-                                    <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 max-w-sm w-full text-center space-y-4">
-                                        <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
-                                        <div>
-                                            <h3 className="text-lg font-bold text-destructive font-orbitron mb-2">
-                                                {t("game.scanner.cameraErrorTitle")}
+                                {/* Ghost Mode Overlay for Eliminated Crewmates */}
+                                {isPlayerEliminated && playerRole === "CREWMATE" && (
+                                    <div className="absolute inset-0 m-4 rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 backdrop-blur-sm">
+                                        <div className="space-y-2 text-center">
+                                            <h3 className="text-sm font-bold uppercase tracking-wider text-blue-400 font-orbitron">
+                                                {t("game.scanner.ghostModeTitle")}
                                             </h3>
-                                            <p className="text-sm text-muted-foreground font-rajdhani">
-                                                {error}
+                                            <p className="text-xs text-blue-300 font-rajdhani">
+                                                {t("game.scanner.ghostModeDescription")}
                                             </p>
                                         </div>
-                                        <button
-                                            onClick={handleRetry}
-                                            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-orbitron tracking-wider hover:bg-primary/80 transition-colors"
-                                        >
-                                            {t("game.scanner.retry")}
-                                        </button>
                                     </div>
-                                </div>
-                            )}
-                        </div>
+                                )}
 
-                        {/* Instructions */}
-                        <div className="p-4 bg-black/50 text-center">
-                            <p className="text-sm text-primary/80 font-rajdhani tracking-wider">
-                                {t("game.scanner.instruction")}
-                            </p>
+                                {/* Scanner Area Container - Always rendered to keep #qr-scanner-region in DOM */}
+                                {!(isPlayerEliminated && playerRole === "IMPOSTOR") && (
+                                    <div
+                                        className={`relative shrink-0 transition-opacity duration-300 ${isLoading || error ? 'opacity-0' : 'opacity-100'}`}
+                                        style={{
+                                            width: `min(100%, ${scannerSquareSize}px)`,
+                                            height: `min(100%, ${scannerSquareSize}px)`,
+                                        }}
+                                    >
+                                        <div
+                                            id={scannerRegionId}
+                                            className="h-full w-full overflow-hidden rounded-lg bg-black [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
+                                            aria-label={t("game.scanner.cameraViewAria")}
+                                            role="img"
+                                        />
+                                        {/* Scanning overlay frame */}
+                                        <div className="pointer-events-none absolute inset-0">
+                                            <div className="absolute inset-4 rounded-lg border-2 border-primary/50 shadow-[0_0_15px_rgba(var(--primary),0.3)]">
+                                                <motion.div
+                                                    className="absolute left-0 right-0 top-0 h-0.5 bg-primary shadow-[0_0_10px_rgba(var(--primary),0.8)]"
+                                                    animate={{ y: ["0%", "100%"] }}
+                                                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {isLoading && !(isPlayerEliminated && playerRole === "IMPOSTOR") && (
+                                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
+                                        <div className="space-y-4 text-center">
+                                            <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+                                            <p className="font-rajdhani tracking-wider text-primary">
+                                                {t("game.scanner.initializingCamera")}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {error && !(isPlayerEliminated && playerRole === "IMPOSTOR") && (
+                                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 p-4">
+                                        <div className="w-full max-w-sm space-y-4 rounded-lg border border-destructive/20 bg-destructive/10 p-6 text-center">
+                                            <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
+                                            <div>
+                                                <h3 className="mb-2 text-lg font-bold text-destructive font-orbitron">
+                                                    {t("game.scanner.cameraErrorTitle")}
+                                                </h3>
+                                                <p className="text-sm text-muted-foreground font-rajdhani">
+                                                    {error}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={handleRetry}
+                                                className="rounded-lg bg-primary px-4 py-2 font-orbitron tracking-wider text-primary-foreground transition-colors hover:bg-primary/80"
+                                            >
+                                                {t("game.scanner.retry")}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </motion.div>

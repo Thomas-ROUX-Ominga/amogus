@@ -334,7 +334,10 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     {gameState.creatorId !== userId && !allQuestsDone && !isMeetingActive && (
                         <ScanButton 
                             disabled={false} 
-                            onClick={openScanner}
+                            onClick={() => {
+                                setScanFeedback(null);
+                                openScanner();
+                            }}
                         />
                     )}
 
@@ -346,6 +349,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                             onScan={handleScan}
                             isPlayerEliminated={!currentPlayer.isAlive}
                             playerRole={currentPlayer.role}
+                            statusMessage={scanFeedback}
                         />
                     )}
 
@@ -418,7 +422,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         })}
                     </div>
                 )}
-                {scanFeedback && (
+                {scanFeedback && !isOpen && (
                     <div className="mt-2 p-2 border border-primary/20 bg-primary/10 text-primary text-xs text-center">
                         {scanFeedback}
                     </div>
