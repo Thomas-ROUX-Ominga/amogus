@@ -94,7 +94,7 @@ export function QuestProgress({
                         setSabotageFeedback(t("game.sabotage.messages.communicationsActivated"));
                         break;
                     case "LIGHTS_ACTIVATED":
-                        setSabotageFeedback(t("game.sabotage.messages.lightsActivated"));
+                        // Lights state is already visible on the sabotage button; avoid redundant toast text.
                         break;
                     case "REACTOR_ACTIVATED":
                         setSabotageFeedback(t("game.sabotage.messages.reactorActivated"));
