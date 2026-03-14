@@ -1,12 +1,8 @@
 import { Batch, BatchCreateInput, BatchSabotages, Quest, QuestDuration, QuestType } from '@/types/quest';
 
-// Classic quest types — mini-game is never randomly assigned here
+// Classic quest types — deterministic rotation for maximum fairness.
 const AVAILABLE_QUEST_TYPES: QuestType[] = ['true-false', 'qcm', 'single-input', 'number-input', 'intrus'];
-
-function getRandomQuestType(): QuestType {
-  const randomIndex = Math.floor(Math.random() * AVAILABLE_QUEST_TYPES.length);
-  return AVAILABLE_QUEST_TYPES[randomIndex];
-}
+const DURATIONS: QuestDuration[] = ['short', 'medium', 'long'];
 
 function distributeQuests(totalCount: number): { short: number; medium: number; long: number } {
   const baseCount = Math.floor(totalCount / 3);
@@ -19,9 +15,7 @@ function distributeQuests(totalCount: number): { short: number; medium: number; 
   };
 }
 
-function createQuest(duration: QuestDuration): Quest {
-  const type = getRandomQuestType();
-
+function createQuest(duration: QuestDuration, type: QuestType): Quest {
   return {
     id: globalThis.crypto.randomUUID(),
     type,
@@ -33,47 +27,29 @@ export function generateBatch(input: BatchCreateInput): Batch {
   const { totalQuests } = input;
 
   // Validate input
-  if (totalQuests < 3 || totalQuests > 100) {
-    throw new Error('Total quests must be between 3 and 100');
+  if (!Number.isInteger(totalQuests) || totalQuests < 1) {
+    throw new Error('Total quests must be at least 1');
   }
 
-  // Reserve 3 slots for mini-games (one for each duration), distribute the rest as classic quests
-  const miniGameDurations: QuestDuration[] = ['short', 'medium', 'long'];
-  const classicCount = totalQuests - miniGameDurations.length;
-  
-  if (classicCount < 0) {
-    throw new Error('Total quests must be at least 3 to include all mini-game durations');
-  }
-
-  const distribution = distributeQuests(classicCount);
+  // Deterministic duration split: short, medium, long.
+  const distribution = distributeQuests(totalQuests);
   const quests: Quest[] = [];
 
-  // Generate classic quests for each duration
-  for (let i = 0; i < distribution.short; i++) {
-    quests.push(createQuest('short'));
-  }
-  for (let i = 0; i < distribution.medium; i++) {
-    quests.push(createQuest('medium'));
-  }
-  for (let i = 0; i < distribution.long; i++) {
-    quests.push(createQuest('long'));
-  }
+  DURATIONS.forEach((duration) => {
+    const totalForDuration = distribution[duration];
+    const miniGameCount = Math.floor(totalForDuration / 3);
+    const classicCount = totalForDuration - miniGameCount;
 
-  // Shuffle classic quests
-  for (let i = quests.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [quests[i], quests[j]] = [quests[j], quests[i]];
-  }
+    // First, add mini-games (1/3 target by duration, rounded down).
+    for (let i = 0; i < miniGameCount; i++) {
+      quests.push(createQuest(duration, 'mini-game'));
+    }
 
-  // Insert one mini-game for each duration at random positions
-  miniGameDurations.forEach(duration => {
-    const miniGame = {
-      id: globalThis.crypto.randomUUID(),
-      type: 'mini-game' as QuestType,
-      duration,
-    };
-    const insertAt = Math.floor(Math.random() * (quests.length + 1));
-    quests.splice(insertAt, 0, miniGame);
+    // Then add classic quests with deterministic type rotation for equitable spread.
+    for (let i = 0; i < classicCount; i++) {
+      const classicType = AVAILABLE_QUEST_TYPES[i % AVAILABLE_QUEST_TYPES.length];
+      quests.push(createQuest(duration, classicType));
+    }
   });
 
   const sabotages: BatchSabotages = {

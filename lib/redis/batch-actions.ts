@@ -21,7 +21,7 @@ export async function createBatch(input: BatchCreateInput): Promise<ActionRespon
     }
 
     // Validate input
-    if (!input?.totalQuests || typeof input.totalQuests !== 'number') {
+    if (typeof input?.totalQuests !== 'number' || Number.isNaN(input.totalQuests)) {
       return {
         success: false,
         error: "Valid quest count is required",
@@ -29,10 +29,10 @@ export async function createBatch(input: BatchCreateInput): Promise<ActionRespon
       };
     }
 
-    if (input.totalQuests < 3 || input.totalQuests > 100) {
+    if (!Number.isInteger(input.totalQuests) || input.totalQuests < 1) {
       return {
         success: false,
-        error: "Total quests must be between 3 and 100",
+        error: "Total quests must be at least 1",
         code: ERROR_CODES.ERR_INVALID_INPUT,
       };
     }

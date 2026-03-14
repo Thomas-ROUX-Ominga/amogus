@@ -496,14 +496,14 @@ const fr = {
       title: "Créer un nouveau lot",
       subtitle: "Génère un nouveau lot de quêtes avec distribution automatique",
       totalQuestsLabel: "Nombre total de quêtes",
-      totalQuestsPlaceholder: "Entrer un nombre (3-100)",
+      totalQuestsPlaceholder: "Entrer un nombre (minimum 1)",
       totalQuestsHint:
         "Le système distribue automatiquement: 1/3 court, 1/3 moyen, 1/3 long",
       cancel: "ANNULER",
       creating: "CRÉATION...",
       createBatch: "CRÉER LE LOT",
       errors: {
-        questRange: "Le total de quêtes doit être entre 3 et 100",
+        questRange: "Le total de quêtes doit être au minimum de 1",
       },
     },
     batchDetail: {

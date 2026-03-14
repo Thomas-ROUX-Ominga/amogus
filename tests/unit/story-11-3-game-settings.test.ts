@@ -54,7 +54,7 @@ describe("Story 11.3: Game Settings from Batch", () => {
                 questCount: 4,
                 createdAt: new Date().toISOString(),
                 quests: [
-                    { id: "quest-1", type: "true-false" as QuestType, duration: "short" as QuestDuration },
+                    { id: "quest-1", type: "mini-game" as QuestType, duration: "short" as QuestDuration },
                     { id: "quest-2", type: "qcm" as QuestType, duration: "short" as QuestDuration },
                     { id: "quest-3", type: "true-false" as QuestType, duration: "medium" as QuestDuration },
                     { id: "quest-4", type: "qcm" as QuestType, duration: "long" as QuestDuration },
@@ -105,11 +105,11 @@ describe("Story 11.3: Game Settings from Batch", () => {
                 questCount: 6,
                 createdAt: new Date().toISOString(),
                 quests: [
-                    { id: "s-1", type: "qcm" as QuestType, duration: "short" as QuestDuration },
+                    { id: "s-1", type: "mini-game" as QuestType, duration: "short" as QuestDuration },
                     { id: "s-2", type: "true-false" as QuestType, duration: "short" as QuestDuration },
-                    { id: "m-1", type: "qcm" as QuestType, duration: "medium" as QuestDuration },
+                    { id: "m-1", type: "mini-game" as QuestType, duration: "medium" as QuestDuration },
                     { id: "m-2", type: "true-false" as QuestType, duration: "medium" as QuestDuration },
-                    { id: "l-1", type: "qcm" as QuestType, duration: "long" as QuestDuration },
+                    { id: "l-1", type: "mini-game" as QuestType, duration: "long" as QuestDuration },
                     { id: "l-2", type: "true-false" as QuestType, duration: "long" as QuestDuration },
                 ],
             };

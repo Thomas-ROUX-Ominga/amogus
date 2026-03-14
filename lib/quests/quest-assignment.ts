@@ -10,10 +10,6 @@ export interface QuestAssignment {
 
 type QuestDuration = Quest["duration"];
 
-function pickRandom<T>(items: T[]): T {
-  return items[Math.floor(Math.random() * items.length)];
-}
-
 function pickLeastUsedQuest(candidates: Quest[], usageByQuestId: Record<string, number>): Quest {
   const minUsage = candidates.reduce(
     (currentMin, quest) => Math.min(currentMin, usageByQuestId[quest.id] ?? 0),
@@ -21,7 +17,11 @@ function pickLeastUsedQuest(candidates: Quest[], usageByQuestId: Record<string, 
   );
 
   const leastUsed = candidates.filter((quest) => (usageByQuestId[quest.id] ?? 0) === minUsage);
-  return pickRandom(leastUsed);
+  // Deterministic tie-breaker:
+  // 1) Prefer non-mini quests to preserve mini-games for the "at least one mini per player" guarantee.
+  // 2) Keep original order from the batch for stable assignment.
+  const nonMiniCandidate = leastUsed.find((quest) => quest.type !== "mini-game");
+  return nonMiniCandidate ?? leastUsed[0];
 }
 
 function buildQuestUsageMap(players: GameState["players"] | undefined, batchQuests: Quest[]): Record<string, number> {
@@ -102,10 +102,15 @@ export function assignQuestsFromLoadedBatch(
   // Build usage frequency from players already assigned in this game.
   const usageByQuestId = buildQuestUsageMap(gameState.players, batch.quests);
 
-  // Keep mini-game guarantee, but pick the least-used eligible mini-game first.
+  // Guarantee at least one mini-game per player whenever quests are assigned.
   const miniGameCandidates = batch.quests.filter(
     (q) => q.type === "mini-game" && distribution[q.duration] > 0
   );
+  const totalRequested = distribution.short + distribution.medium + distribution.long;
+  if (totalRequested > 0 && miniGameCandidates.length === 0) {
+    throw new Error("No mini-game available for the configured quest distribution.");
+  }
+
   const forcedMiniGame = miniGameCandidates.length > 0
     ? pickLeastUsedQuest(miniGameCandidates, usageByQuestId)
     : null;

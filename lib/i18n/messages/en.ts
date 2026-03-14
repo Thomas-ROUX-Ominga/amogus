@@ -492,14 +492,14 @@ const en = {
       title: "Create new batch",
       subtitle: "Generate a new batch of quests with automatic distribution",
       totalQuestsLabel: "Total number of quests",
-      totalQuestsPlaceholder: "Enter number (3-100)",
+      totalQuestsPlaceholder: "Enter number (minimum 1)",
       totalQuestsHint:
         "System automatically distributes: 1/3 short, 1/3 medium, 1/3 long",
       cancel: "CANCEL",
       creating: "CREATING...",
       createBatch: "CREATE BATCH",
       errors: {
-        questRange: "Total quests must be between 3 and 100",
+        questRange: "Total quests must be at least 1",
       },
     },
     batchDetail: {

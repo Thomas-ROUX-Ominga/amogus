@@ -26,7 +26,7 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
     try {
       const questCount = parseInt(totalQuests);
       
-      if (isNaN(questCount) || questCount < 3 || questCount > 100) {
+      if (isNaN(questCount) || questCount < 1) {
         setError(t("admin.batchForm.errors.questRange"));
         return;
       }
@@ -106,8 +106,7 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
               <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/50 to-primary/0 rounded-sm opacity-20 group-focus-within:opacity-100 transition duration-500 blur-sm"></div>
               <input
                 type="number"
-                min="3"
-                max="100"
+                min="1"
                 value={totalQuests}
                 onChange={(e) => setTotalQuests(e.target.value)}
                 placeholder={t("admin.batchForm.totalQuestsPlaceholder")}
