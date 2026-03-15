@@ -35,7 +35,6 @@ export default function CreateGamePage() {
   const isBatchLimitsReady = !selectedBatch || selectedBatchLimits !== null;
   const minimumPlayersForLaunch = impostorMode === "manual" ? manualImpostorCount + 1 : 2;
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const batchAutocompleteRef = useRef<HTMLDivElement>(null);
 
   // Load batches on component mount
@@ -121,9 +120,9 @@ export default function CreateGamePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    let shouldResetCreatingState = true;
     setIsCreating(true);
     setError("");
-    setSuccess("");
 
     try {
       if (!selectedBatch) {
@@ -170,11 +169,9 @@ export default function CreateGamePage() {
       const response = await createGame(input);
       
       if (response.success && response.data) {
-        setSuccess(t("organizer.gamesCreate.successCreated", { code: response.data }));
-        // Redirect directly to the game lobby after a short delay
-        setTimeout(() => {
-          router.push(`/game/${response.data}`);
-        }, 2000);
+        shouldResetCreatingState = false;
+        router.push(`/game/${response.data}`);
+        return;
       } else {
         setError(
           getLocalizedErrorMessage({
@@ -188,7 +185,9 @@ export default function CreateGamePage() {
       console.error("Failed to create game:", error);
       setError(getLocalizedErrorMessage({ t, code: "ERR_SIGNAL_LOST" }));
     } finally {
-      setIsCreating(false);
+      if (shouldResetCreatingState) {
+        setIsCreating(false);
+      }
     }
   };
 
@@ -573,12 +572,6 @@ export default function CreateGamePage() {
         {error && (
           <div className="border border-destructive/30 bg-destructive/10 p-3">
             <p className="text-destructive text-[10px] uppercase tracking-wider">{error}</p>
-          </div>
-        )}
-
-        {success && (
-          <div className="border border-green-500/30 bg-green-500/10 p-3">
-            <p className="text-green-400 text-[10px] uppercase tracking-wider">{success}</p>
           </div>
         )}
 

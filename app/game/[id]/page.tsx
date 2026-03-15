@@ -198,13 +198,13 @@ export default function LobbyPage() {
     }
 
     return (
-        <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
-            <div className="max-w-2xl w-full border-2 border-primary/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgba(var(--primary),0.05)]">
-                <div className="flex items-center justify-between border-b border-primary/20 pb-4">
-                    <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
+        <main className="flex h-[100dvh] overflow-hidden flex-col items-center justify-start bg-background text-foreground font-mono px-4 pb-4 pt-20 md:pt-24">
+            <div className="max-w-2xl w-full h-full max-h-full border-2 border-primary/20 p-8 md:p-12 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgba(var(--primary),0.05)] flex flex-col gap-6 overflow-hidden">
+                <div className="flex flex-col items-start gap-3 border-b border-primary/20 pb-4 sm:flex-row sm:items-center sm:justify-between">
+                    <h1 className="text-lg sm:text-xl font-bold uppercase tracking-[0.22em] sm:tracking-[0.3em] text-primary font-orbitron leading-tight">
                         {isJoined ? t("game.lobby.cockpitTerminal") : t("game.lobby.inboundEntry")}
                     </h1>
-                    <div className="flex items-center gap-4">
+                    <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 sm:w-auto sm:justify-end">
                         {/* Connection Status Indicator */}
                         <div className="flex items-center gap-1">
                             {isConnected ? (
@@ -232,11 +232,11 @@ export default function LobbyPage() {
                     </div>
                 </div>
 
-                <div className="space-y-4 py-8 min-h-[300px] flex items-center justify-center">
+                <div className={isJoined ? "py-4 flex-1 min-h-0" : "space-y-4 py-8 min-h-[300px] flex items-center justify-center"}>
                     {!isJoined ? (
                         <JoinForm gameId={id as string} userId={userId} />
                     ) : (
-                        <div className="w-full space-y-6 animate-in fade-in zoom-in-95 duration-500">
+                        <div className="w-full h-full min-h-0 flex flex-col gap-6 animate-in fade-in zoom-in-95 duration-500">
                             <div className="bg-primary/5 p-6 border border-primary/10 rounded-sm">
                                 <label className="text-[8px] text-primary/50 uppercase block mb-1 tracking-widest">
                                     {t("game.lobby.gameIdentifier")}
@@ -246,11 +246,11 @@ export default function LobbyPage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="space-y-4 flex-1 min-h-0 flex flex-col">
                                 <label className="text-[8px] text-primary/50 uppercase block tracking-widest">
                                     {t("game.lobby.crewManifest", { count: String(currentPlayerCount) })}
                                 </label>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 overflow-y-auto min-h-0 px-1 py-1 pr-3">
                                     {currentGameState?.players.map((player, index) => {
                                         const isNewPlayer = newPlayers?.some(np => np.id === player.id);
                                         return (
