@@ -109,6 +109,15 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         try {
             const sabotageResponse = await scanSabotage(gameState.id, userId, questId);
             const wasHandled = Boolean(sabotageResponse.data?.handled);
+            const shouldKeepScannerOpenForCommunicationsBlock =
+                currentPlayer.role === "CREWMATE" &&
+                communicationsSabotaged &&
+                sabotageResponse.code === "ERR_SABOTAGE_NOT_ACTIVE";
+
+            if (shouldKeepScannerOpenForCommunicationsBlock) {
+                setScanFeedback(t("game.sabotage.messages.communicationsQuestBlocked"));
+                return false;
+            }
 
             if (wasHandled) {
                 if (sabotageResponse.success && sabotageResponse.data) {
@@ -159,13 +168,19 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
             }
 
             if (!sabotageResponse.success && sabotageCodes.has(sabotageResponse.code || "")) {
-                setScanFeedback(
-                    getLocalizedErrorMessage({
-                        t,
-                        code: sabotageResponse.code,
-                        fallback: sabotageResponse.error,
-                    }),
-                );
+                const shouldHideInactiveSabotageMessage =
+                    currentPlayer.role === "CREWMATE" &&
+                    sabotageResponse.code === "ERR_SABOTAGE_NOT_ACTIVE";
+
+                if (!shouldHideInactiveSabotageMessage) {
+                    setScanFeedback(
+                        getLocalizedErrorMessage({
+                            t,
+                            code: sabotageResponse.code,
+                            fallback: sabotageResponse.error,
+                        }),
+                    );
+                }
                 return true;
             }
 
@@ -217,8 +232,12 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     const role = currentPlayer.role;
     const isImpostor = role === "IMPOSTOR";
     const hasUsedBuzzer = Boolean(currentPlayer.meetingBuzzUsedAt);
+    const hasPostEliminationBuzzerWindow =
+        !currentPlayer.isAlive &&
+        Boolean(currentPlayer.postEliminationBuzzerGrantedAt) &&
+        (currentPlayer.postEliminationBuzzerGrantedAt ?? 0) > (gameState.meeting?.startedAt ?? 0);
     const canUseBuzzer =
-        currentPlayer.isAlive &&
+        (currentPlayer.isAlive || hasPostEliminationBuzzerWindow) &&
         !(currentPlayer.role === "CREWMATE" && communicationsSabotaged) &&
         !hasUsedBuzzer &&
         !isMeetingActive &&
@@ -292,6 +311,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     {!isImpostor && !allQuestsDone && !isMeetingActive && (
                         <ScanButton 
                             disabled={false} 
+                            communicationsSabotaged={communicationsSabotaged}
                             onClick={() => {
                                 setScanFeedback(null);
                                 openScanner();
@@ -402,13 +422,6 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                             {t("game.home.meetingTriggeredMessage")}
                         </p>
                         <div className="flex gap-3 justify-end">
-                            <button
-                                type="button"
-                                onClick={dismissMeetingPopup}
-                                className="px-4 py-2 text-sm border border-primary/20 hover:bg-primary/10 transition-colors font-rajdhani uppercase tracking-widest"
-                            >
-                                {t("game.home.meetingLater")}
-                            </button>
                             <Link
                                 href={`/game/${gameState.id}/meeting`}
                                 onClick={dismissMeetingPopup}

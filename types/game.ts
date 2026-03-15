@@ -75,6 +75,7 @@ export interface Player {
     lastQuestCompleted?: number; // Timestamp of last completed quest
     assignedQuests?: string[]; // Story 11.3: Quests assigned to this player from batch
     meetingBuzzUsedAt?: number; // Timestamp when player used their one-time buzzer
+    postEliminationBuzzerGrantedAt?: number; // One-time exception: dead player can buzz until the next meeting starts
 }
 
 export interface GameState {

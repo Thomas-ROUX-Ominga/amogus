@@ -132,9 +132,9 @@ describe("QuestView - Impostor Silent Success", () => {
         expect(screen.queryByText("SIGNAL OVERRIDE")).not.toBeInTheDocument();
         
         // Assert - Duration badge should not be visible for impostors
-        expect(screen.queryByText("COURT")).not.toBeInTheDocument();
-        expect(screen.queryByText("MOYEN")).not.toBeInTheDocument();
-        expect(screen.queryByText("LONG")).not.toBeInTheDocument();
+        expect(screen.queryByText("FACILE")).not.toBeInTheDocument();
+        expect(screen.queryByText("INTERMÉDIAIRE")).not.toBeInTheDocument();
+        expect(screen.queryByText("DIFFICILE")).not.toBeInTheDocument();
         
         // Assert - Quest content area should be empty
         const questContentArea = container!.querySelector('.flex-1');
@@ -175,9 +175,9 @@ describe("QuestView - Impostor Silent Success", () => {
         });
 
         // Assert - Duration badge should not be visible
-        expect(screen.queryByText("COURT")).not.toBeInTheDocument();
-        expect(screen.queryByText("MOYEN")).not.toBeInTheDocument();
-        expect(screen.queryByText("LONG")).not.toBeInTheDocument();
+        expect(screen.queryByText("FACILE")).not.toBeInTheDocument();
+        expect(screen.queryByText("INTERMÉDIAIRE")).not.toBeInTheDocument();
+        expect(screen.queryByText("DIFFICILE")).not.toBeInTheDocument();
     });
 
     it("should trigger haptic feedback on success", async () => {
@@ -237,7 +237,7 @@ describe("QuestView - Impostor Silent Success", () => {
         // Assert - Should show quest content for crewmates (not loading)
         expect(screen.getByText("Test Quest")).toBeInTheDocument();
         expect(screen.getByText("Test instruction")).toBeInTheDocument();
-        expect(screen.getByText("COURT")).toBeInTheDocument();
+        expect(screen.getByText("FACILE")).toBeInTheDocument();
     });
 
     it("should not call recordFailedQuest for impostors on error", async () => {

@@ -21,12 +21,16 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
     const [hasEditedPseudo, setHasEditedPseudo] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [hasAutoJoinAttempted, setHasAutoJoinAttempted] = useState(false);
-    const { join, isJoining, error, errorCode } = useGameStore();
+    const { join, isJoining, isLoading, gameState, error, errorCode } = useGameStore();
     const { setAnonymousSession, authState } = useAuth();
     const sessionUsername = authState.session?.username?.trim() || "";
     const resolvedPseudo = (pseudo.trim() || sessionUsername).slice(0, 20).trim();
     const shouldShowLoginAction = errorCode === ERROR_CODES.ERR_LOGIN_REQUIRED_FOR_AUTH_PLAYER;
     const loginRedirect = `/game/${gameId}`;
+    const hasLoadedGameSnapshot = !isLoading && gameState?.id === gameId;
+    const isAlreadyMember = Boolean(
+        gameState?.id === gameId && gameState.players.some((player) => player.id === userId),
+    );
 
     useEffect(() => {
         if (!hasEditedPseudo && !pseudo.trim() && sessionUsername) {
@@ -40,6 +44,8 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
             !hasAutoJoinAttempted &&
             !isJoining &&
             !isSuccess &&
+            hasLoadedGameSnapshot &&
+            !isAlreadyMember &&
             Boolean(sessionUsername) &&
             Boolean(resolvedPseudo) &&
             Boolean(gameId) &&
@@ -60,8 +66,12 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
         void autoJoin();
     }, [
         gameId,
+        gameState?.id,
         hasAutoJoinAttempted,
+        hasLoadedGameSnapshot,
         hasEditedPseudo,
+        isAlreadyMember,
+        isLoading,
         isJoining,
         isSuccess,
         join,

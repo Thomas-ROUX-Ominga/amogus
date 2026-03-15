@@ -9,9 +9,15 @@ interface ScanButtonProps {
     disabled?: boolean;
     onClick?: () => void;
     href?: string;
+    communicationsSabotaged?: boolean;
 }
 
-export function ScanButton({ disabled = true, onClick, href }: ScanButtonProps) {
+export function ScanButton({
+    disabled = true,
+    onClick,
+    href,
+    communicationsSabotaged = false,
+}: ScanButtonProps) {
     const t = useTranslations();
     const prefersReducedMotion = useReducedMotion();
 
@@ -59,8 +65,16 @@ export function ScanButton({ disabled = true, onClick, href }: ScanButtonProps) 
 
     const content = (
         <>
-            <Scan className="w-10 h-10 text-primary" />
-            <span className="text-xl font-black text-primary tracking-[0.3em]">
+            <Scan
+                className={`w-10 h-10 ${
+                    communicationsSabotaged ? "text-red-200" : "text-primary"
+                }`}
+            />
+            <span
+                className={`text-xl font-black tracking-[0.3em] ${
+                    communicationsSabotaged ? "text-red-100" : "text-primary"
+                }`}
+            >
                 {t("game.scanButton.label")}
             </span>
             {disabled && (
@@ -73,13 +87,21 @@ export function ScanButton({ disabled = true, onClick, href }: ScanButtonProps) 
 
     const className = `
         w-full min-h-[120px] p-6
+        relative overflow-hidden
         flex flex-col items-center justify-center gap-3
-        border-2 border-primary bg-primary/10
+        border-2
         font-orbitron uppercase tracking-wider
         touch-manipulation
-        transition-opacity duration-200
+        transition-all duration-200
+        ${
+            communicationsSabotaged
+                ? "border-red-400/70 bg-[linear-gradient(150deg,rgba(239,68,68,0.22)_0%,rgba(153,27,27,0.22)_45%,rgba(2,6,23,0.85)_100%)] shadow-[0_0_28px_rgba(239,68,68,0.22)]"
+                : "border-primary bg-primary/10"
+        }
         ${disabled
             ? "opacity-50 cursor-not-allowed"
+            : communicationsSabotaged
+            ? "hover:bg-red-500/20 cursor-pointer"
             : "hover:bg-primary/20 cursor-pointer"
         }
     `;
@@ -115,6 +137,12 @@ export function ScanButton({ disabled = true, onClick, href }: ScanButtonProps) 
                 style={{ willChange: prefersReducedMotion ? "auto" : "transform" }}
                 className={className}
             >
+                {communicationsSabotaged && (
+                    <span
+                        aria-hidden="true"
+                        className="absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,transparent_42%,rgba(254,202,202,0.2)_50%,transparent_58%,transparent_100%)] motion-safe:animate-[pulse_1.8s_ease-in-out_infinite]"
+                    />
+                )}
                 {content}
             </motion.button>
         </div>

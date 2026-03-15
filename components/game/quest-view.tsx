@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
-import { X, Clock, AlertTriangle } from "lucide-react";
+import { X, Brain, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Quest, QuestDuration, QuestGame } from "@/types/quest";
@@ -26,10 +26,10 @@ const DURATION_COLORS: Record<QuestDuration, string> = {
     long: "border-[#DA3633] text-[#DA3633] bg-[#DA3633]/10",
 };
 
-const DURATION_LABELS: Record<QuestDuration, string> = {
-    short: "COURT",
-    medium: "MOYEN",
-    long: "LONG",
+const DIFFICULTY_LABELS: Record<QuestDuration, string> = {
+    short: "FACILE",
+    medium: "INTERMÉDIAIRE",
+    long: "DIFFICILE",
 };
 
 const SUCCESS_OVERLAY_DURATION_MS = 2000;
@@ -193,148 +193,150 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
         <motion.div
             {...containerVariants}
             transition={containerTransition}
-            className="flex flex-col min-h-screen bg-background text-foreground p-4"
+            className="flex h-[100dvh] flex-col overflow-hidden bg-background px-4 pt-20 text-foreground md:pt-24"
             data-quest-id={quest.id}
         >
             {gameState && <ReactorSabotageAlert gameState={gameState} />}
 
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-primary/20 pb-4 mb-6">
-                <h1 className="text-sm font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
-                    {t("game.questView.activeTitle")}
-                </h1>
-                {!isImpostor && (
-                    <div
-                        className={`flex items-center gap-1.5 px-3 py-1 border text-[10px] uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)] ${DURATION_COLORS[quest.duration]}`}
-                        role="status"
-                    >
-                        <Clock className="w-3 h-3" aria-hidden="true" />
-                        <span aria-hidden="true">{DURATION_LABELS[quest.duration]}</span>
-                        <span className="sr-only">
-                            {t("game.questView.durationSr", { duration: DURATION_LABELS[quest.duration] })}
-                        </span>
-                    </div>
-                )}
-            </div>
-
-            {/* Quest Content — top section */}
-            <div className="flex-1 space-y-6">
-                {/* Story 9.1: Show NO content for impostors */}
-                {!isImpostor && (
-                    <>
-                        {isLoadingGame ? (
-                            <div className="p-6 border border-primary/20 bg-black/50 backdrop-blur-sm relative overflow-hidden">
-                                <div className="text-center space-y-4">
-                                    <div className="animate-pulse">
-                                        <div className="h-6 bg-primary/20 rounded mb-4"></div>
-                                        <div className="h-4 bg-primary/10 rounded mb-2"></div>
-                                        <div className="h-4 bg-primary/10 rounded w-3/4 mx-auto"></div>
-                                    </div>
-                                    <p className="text-sm text-primary/60 font-rajdhani">{t("game.questView.loadingQuest")}</p>
-                                </div>
-                            </div>
-                        ) : !questGame ? (
-                            <div className="p-6 border border-destructive/30 bg-destructive/5 backdrop-blur-sm text-center space-y-4">
-                                <AlertTriangle className="w-8 h-8 text-destructive mx-auto" />
-                                <p className="text-sm text-destructive/80 font-rajdhani">
-                                    {t("game.questView.invalidQuestData")}
-                                </p>
-                                <a 
-                                    href={`/game/${gameId}`}
-                                    className="inline-block min-h-[44px] leading-[44px] px-6 border border-primary/30 text-primary/70 font-rajdhani text-sm uppercase tracking-widest hover:bg-primary/10 transition-colors touch-manipulation"
-                                >
-                                    {t("game.questView.returnToGameHome")}
-                                </a>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="p-6 border border-primary/20 bg-black/50 backdrop-blur-sm relative overflow-hidden">
-                                    <h2 className="text-xl font-bold font-orbitron text-primary mb-4 tracking-wide">
-                                        {questGame.title}
-                                    </h2>
-                                    <div className="w-full h-px bg-primary/20 mb-4" />
-                                    <p className="text-base text-foreground/90 font-rajdhani leading-relaxed">
-                                        {questGame.instruction}
-                                    </p>
-                                </div>
-
-                                {/* Interactive Quest Area */}
-                                <QuestRenderer
-                                    key={questGame.id}
-                                    quest={questGame}
-                                    gameId={gameId}
-                                    onSuccess={handleSuccess}
-                                    onError={handleError}
-                                />
-                            </>
-                        )}
-                    </>
-                )}
-            </div>
-
-            {/* Loading and Error States - Success completion shows atomic overlay */}
-            {questAnswered && (
-                <>
-                    {isCompletingQuest && (
-                        <div className="p-4 border border-primary/20 bg-black/30 text-center" role="status" aria-live="polite">
-                            <span className="text-sm text-primary/80 font-rajdhani tracking-wide animate-pulse">
-                                {t("game.questView.saving")}
+            <div className="mx-auto flex h-full w-full max-w-[920px] flex-col">
+                {/* Header */}
+                <div className="mb-6 flex items-center justify-between gap-3 border-b border-primary/20 pb-4">
+                    <h1 className="min-w-0 text-sm font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
+                        {t("game.questView.activeTitle")}
+                    </h1>
+                    {!isImpostor && (
+                        <div
+                            className={`inline-flex items-center gap-1.5 self-start border px-3 py-1 text-[10px] uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)] ${DURATION_COLORS[quest.duration]}`}
+                            role="status"
+                        >
+                            <Brain className="h-3 w-3" aria-hidden="true" />
+                            <span aria-hidden="true">{DIFFICULTY_LABELS[quest.duration]}</span>
+                            <span className="sr-only">
+                                {t("game.questView.durationSr", { duration: DIFFICULTY_LABELS[quest.duration] })}
                             </span>
                         </div>
                     )}
+                </div>
 
-                    {completionError && (
-                        <div className="p-4 border border-destructive/30 bg-destructive/10 space-y-3" role="alert" aria-live="assertive">
-                            <div className="flex items-center justify-center gap-2">
-                                <AlertTriangle className="w-5 h-5 text-destructive" aria-hidden="true" />
-                                <span className="text-sm font-bold text-destructive font-orbitron tracking-wide">
-                                    {t("game.questView.saveErrorTitle")}
-                                </span>
-                            </div>
-                            <p className="text-xs text-destructive/80 text-center font-rajdhani">
-                                {completionError}
-                            </p>
-                            
-                            {completionErrorCode === ERROR_CODES.GAME_NOT_FOUND ? (
-                                <button
-                                    onClick={() => router.push(`/game/${gameId}`)}
-                                    className="w-full min-h-[44px] flex items-center justify-center border-2 border-destructive/50 bg-transparent text-destructive font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-destructive/10 active:scale-95 transition-all touch-manipulation"
-                                >
-                                    {t("game.questView.returnHome")}
-                                </button>
+                {/* Quest Content — top section */}
+                <div className="flex-1 space-y-6 overflow-y-auto pb-6">
+                    {/* Story 9.1: Show NO content for impostors */}
+                    {!isImpostor && (
+                        <>
+                            {isLoadingGame ? (
+                                <div className="p-6 border border-primary/20 bg-black/50 backdrop-blur-sm relative overflow-hidden">
+                                    <div className="text-center space-y-4">
+                                        <div className="animate-pulse">
+                                            <div className="h-6 bg-primary/20 rounded mb-4"></div>
+                                            <div className="h-4 bg-primary/10 rounded mb-2"></div>
+                                            <div className="h-4 bg-primary/10 rounded w-3/4 mx-auto"></div>
+                                        </div>
+                                        <p className="text-sm text-primary/60 font-rajdhani">{t("game.questView.loadingQuest")}</p>
+                                    </div>
+                                </div>
+                            ) : !questGame ? (
+                                <div className="p-6 border border-destructive/30 bg-destructive/5 backdrop-blur-sm text-center space-y-4">
+                                    <AlertTriangle className="w-8 h-8 text-destructive mx-auto" />
+                                    <p className="text-sm text-destructive/80 font-rajdhani">
+                                        {t("game.questView.invalidQuestData")}
+                                    </p>
+                                    <a 
+                                        href={`/game/${gameId}`}
+                                        className="inline-block min-h-[44px] leading-[44px] px-6 border border-primary/30 text-primary/70 font-rajdhani text-sm uppercase tracking-widest hover:bg-primary/10 transition-colors touch-manipulation"
+                                    >
+                                        {t("game.questView.returnToGameHome")}
+                                    </a>
+                                </div>
                             ) : (
-                                <button
-                                    onClick={handleRetryCompletion}
-                                    aria-label={t("game.questView.retrySaveAria")}
-                                    className="w-full min-h-[44px] flex items-center justify-center border-2 border-primary/50 bg-transparent text-primary font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-primary/10 active:scale-95 transition-all touch-manipulation"
-                                >
-                                    {t("common.actions.retry")}
-                                </button>
+                                <>
+                                    <div className="p-6 border border-primary/20 bg-black/50 backdrop-blur-sm relative overflow-hidden">
+                                        <h2 className="text-xl font-bold font-orbitron text-primary mb-4 tracking-wide">
+                                            {questGame.title}
+                                        </h2>
+                                        <div className="w-full h-px bg-primary/20 mb-4" />
+                                        <p className="text-base text-foreground/90 font-rajdhani leading-relaxed">
+                                            {questGame.instruction}
+                                        </p>
+                                    </div>
+
+                                    {/* Interactive Quest Area */}
+                                    <QuestRenderer
+                                        key={questGame.id}
+                                        quest={questGame}
+                                        gameId={gameId}
+                                        onSuccess={handleSuccess}
+                                        onError={handleError}
+                                    />
+                                </>
+                            )}
+                        </>
+                    )}
+                </div>
+
+                <div className="shrink-0 bg-background/95 px-1 pb-[calc(0.625rem+env(safe-area-inset-bottom))] pt-6 backdrop-blur-sm">
+                    {/* Loading and Error States - Success completion shows atomic overlay */}
+                    {questAnswered && (
+                        <div className="mb-4 space-y-3">
+                            {isCompletingQuest && (
+                                <div className="border border-primary/20 bg-black/30 p-4 text-center" role="status" aria-live="polite">
+                                    <span className="text-sm text-primary/80 font-rajdhani tracking-wide animate-pulse">
+                                        {t("game.questView.saving")}
+                                    </span>
+                                </div>
+                            )}
+
+                            {completionError && (
+                                <div className="space-y-3 border border-destructive/30 bg-destructive/10 p-4" role="alert" aria-live="assertive">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <AlertTriangle className="h-5 w-5 text-destructive" aria-hidden="true" />
+                                        <span className="text-sm font-bold text-destructive font-orbitron tracking-wide">
+                                            {t("game.questView.saveErrorTitle")}
+                                        </span>
+                                    </div>
+                                    <p className="text-center text-xs text-destructive/80 font-rajdhani">
+                                        {completionError}
+                                    </p>
+                                    
+                                    {completionErrorCode === ERROR_CODES.GAME_NOT_FOUND ? (
+                                        <button
+                                            onClick={() => router.push(`/game/${gameId}`)}
+                                            className="w-full min-h-[44px] flex items-center justify-center border-2 border-destructive/50 bg-transparent text-destructive font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-destructive/10 active:scale-95 transition-all touch-manipulation"
+                                        >
+                                            {t("game.questView.returnHome")}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={handleRetryCompletion}
+                                            aria-label={t("game.questView.retrySaveAria")}
+                                            className="w-full min-h-[44px] flex items-center justify-center border-2 border-primary/50 bg-transparent text-primary font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-primary/10 active:scale-95 transition-all touch-manipulation"
+                                        >
+                                            {t("common.actions.retry")}
+                                        </button>
+                                    )}
+                                </div>
                             )}
                         </div>
                     )}
-                </>
-            )}
 
-            {/* Flee Button — bottom thumb zone */}
-            <div className="pt-6 pb-4">
-                <button
-                    onClick={handleFlee}
-                    aria-label={t("game.questView.fleeAria")}
-                    className="w-full min-h-[56px] flex items-center justify-center gap-3 border-2 border-destructive/50 bg-transparent text-destructive font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-destructive/10 active:scale-95 transition-all touch-manipulation"
-                >
-                    <X className="w-5 h-5" />
-                    {t("game.questView.flee")}
-                </button>
-            </div>
+                    {/* Flee Button — anchored bottom zone */}
+                    <button
+                        onClick={handleFlee}
+                        aria-label={t("game.questView.fleeAria")}
+                        className="w-full min-h-[56px] flex items-center justify-center gap-3 border-2 border-destructive/50 bg-transparent text-destructive font-rajdhani font-bold uppercase tracking-widest text-sm hover:bg-destructive/10 active:scale-95 transition-all touch-manipulation"
+                    >
+                        <X className="w-5 h-5" />
+                        {t("game.questView.flee")}
+                    </button>
 
-            {/* Footer */}
-            <div className="flex justify-between items-center opacity-40 pt-2">
-                <div className="text-[8px] text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
-                    {t("game.questView.questLabel", { questId: quest.id })}
-                </div>
-                <div className="text-[8px] text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
-                    {t("game.questView.typeLabel", { questType: quest.type })}
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-4 opacity-40">
+                        <div className="text-[8px] text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
+                            {t("game.questView.questLabel", { questId: quest.id })}
+                        </div>
+                        <div className="text-[8px] text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
+                            {t("game.questView.typeLabel", { questType: quest.type })}
+                        </div>
+                    </div>
                 </div>
             </div>
 

@@ -218,7 +218,11 @@ function resolveMeetingState(
                 .filter((entry) => entry.votes === maxVotes)
                 .map((entry) => entry.playerId)
                 .sort((left, right) => left.localeCompare(right));
-            eliminatedPlayerId = topPlayers[0];
+            const randomIndex = Math.min(
+                topPlayers.length - 1,
+                Math.floor(Math.random() * topPlayers.length)
+            );
+            eliminatedPlayerId = topPlayers[randomIndex];
 
             const targetPlayer = state.players.find((player) => player.id === eliminatedPlayerId);
             if (targetPlayer) {
@@ -497,6 +501,7 @@ function sanitizeGameStateForViewer(state: GameState, scope: ViewerScope): GameS
                     lastQuestCompleted: player.lastQuestCompleted,
                     assignedQuests: player.assignedQuests ? [...player.assignedQuests] : undefined,
                     meetingBuzzUsedAt: player.meetingBuzzUsedAt,
+                    postEliminationBuzzerGrantedAt: player.postEliminationBuzzerGrantedAt,
                 };
             }
 
@@ -2559,7 +2564,11 @@ export async function triggerMeeting(
             }
 
             const player = workingState.players[playerIndex];
-            const isEligible = player.isAlive && !!player.role;
+            const lastMeetingStartedAt = workingState.meeting?.startedAt ?? 0;
+            const hasPostEliminationBuzzerGrant =
+                Boolean(player.postEliminationBuzzerGrantedAt) &&
+                (player.postEliminationBuzzerGrantedAt ?? 0) > lastMeetingStartedAt;
+            const isEligible = !!player.role && (player.isAlive || hasPostEliminationBuzzerGrant);
             if (!isEligible) {
                 validationError = {
                     success: false,
@@ -2616,11 +2625,12 @@ export async function triggerMeeting(
                 totalVotes: 0,
             };
 
-            const updatedPlayers = [...workingState.players];
-            updatedPlayers[playerIndex] = {
-                ...updatedPlayers[playerIndex],
-                meetingBuzzUsedAt: now,
-            };
+            // Starting a new meeting clears any post-elimination buzzer grants.
+            const updatedPlayers = workingState.players.map((entry, index) => ({
+                ...entry,
+                postEliminationBuzzerGrantedAt: undefined,
+                ...(index === playerIndex ? { meetingBuzzUsedAt: now } : {}),
+            }));
 
             return {
                 ...workingState,
@@ -3221,6 +3231,7 @@ export async function eliminatePlayer(
             updatedPlayers[playerIndex] = {
                 ...updatedPlayers[playerIndex],
                 isAlive: false,
+                postEliminationBuzzerGrantedAt: now,
             };
 
             // Check for victory after player elimination

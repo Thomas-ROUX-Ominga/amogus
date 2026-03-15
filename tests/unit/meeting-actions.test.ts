@@ -147,6 +147,83 @@ describe("meeting actions", () => {
         expect(result.code).toBe(ERROR_CODES.ERR_SABOTAGE_COMMUNICATIONS_ACTIVE);
     });
 
+    it("allows a just-eliminated player to trigger buzzer until the next meeting", async () => {
+        const now = Date.now();
+        await redis.set(stateKey, {
+            id: gameId,
+            status: "IN_PROGRESS",
+            createdAt: now,
+            revision: 1,
+            updatedAt: now,
+            players: [
+                { id: "admin", name: "Admin", isAlive: true },
+                {
+                    id: "u1",
+                    name: "Alice",
+                    role: "CREWMATE",
+                    isAlive: false,
+                    postEliminationBuzzerGrantedAt: now,
+                },
+                { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
+                { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true, completedQuests: [] },
+            ],
+        });
+
+        const result = await triggerMeeting(gameId, "u1");
+        expect(result.success).toBe(true);
+        expect(result.data?.meeting?.status).toBe("ACTIVE");
+    });
+
+    it("removes post-elimination buzzer access after a meeting has started", async () => {
+        const grantAt = Date.now() - 10_000;
+        const meetingStartedAt = Date.now() - 5_000;
+        await redis.set(stateKey, {
+            id: gameId,
+            status: "IN_PROGRESS",
+            createdAt: grantAt - 60_000,
+            revision: 1,
+            updatedAt: grantAt - 60_000,
+            players: [
+                { id: "admin", name: "Admin", isAlive: true },
+                {
+                    id: "u1",
+                    name: "Alice",
+                    role: "CREWMATE",
+                    isAlive: false,
+                    postEliminationBuzzerGrantedAt: grantAt,
+                },
+                { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
+                { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true, completedQuests: [] },
+            ],
+            meeting: {
+                id: "meeting-prev",
+                status: "COMPLETED",
+                startedAt: meetingStartedAt,
+                endsAt: meetingStartedAt + 90_000,
+                startedBy: "u2",
+                snapshot: {
+                    capturedAt: meetingStartedAt,
+                    progress: { completed: 0, total: 3, percentage: 0 },
+                    players: [
+                        { id: "u1", name: "Alice", role: "CREWMATE", isAlive: true },
+                        { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true },
+                        { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true },
+                    ],
+                },
+                eligibleVoterIds: ["u2", "u3"],
+                voteCounts: { u2: 0, u3: 0 },
+                totalEligibleVoters: 2,
+                totalVotes: 0,
+                endReason: "TIMEOUT",
+                endedAt: meetingStartedAt + 90_000,
+            },
+        });
+
+        const result = await triggerMeeting(gameId, "u1");
+        expect(result.success).toBe(false);
+        expect(result.code).toBe(ERROR_CODES.ERR_MEETING_FORBIDDEN);
+    });
+
     it("rejects self-vote", async () => {
         await triggerMeeting(gameId, "u1");
 
@@ -176,6 +253,25 @@ describe("meeting actions", () => {
         const state = await redis.get<GameState>(stateKey);
         const eliminated = state?.players.find((player) => player.id === "u1");
         expect(eliminated?.isAlive).toBe(false);
+        randomSpy.mockRestore();
+    });
+
+    it("breaks tie by randomly eliminating one of the top-voted players", async () => {
+        const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.99);
+        await triggerMeeting(gameId, "u1");
+
+        await castMeetingVote(gameId, "u1", "u2");
+        const finalVote = await castMeetingVote(gameId, "u2", "u1");
+
+        expect(finalVote.success).toBe(true);
+        expect(finalVote.data?.meeting?.status).toBe("COMPLETED");
+
+        const state = await redis.get<GameState>(stateKey);
+        const u1 = state?.players.find((player) => player.id === "u1");
+        const u2 = state?.players.find((player) => player.id === "u2");
+
+        expect(u1?.isAlive).toBe(true);
+        expect(u2?.isAlive).toBe(false);
         randomSpy.mockRestore();
     });
 

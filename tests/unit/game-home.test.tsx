@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, act, waitFor } from "@testing-library/react";
 import { GameHome } from "@/components/game/game-home";
 import { useGameStore } from "@/lib/store/game-store";
+import { useCameraScanner } from "@/hooks/use-camera-scanner";
+import { scanSabotage } from "@/lib/redis/actions";
 import { GameState, Player } from "@/types/game";
 
 vi.mock("@/lib/store/game-store");
@@ -22,8 +24,17 @@ vi.mock("@/hooks/use-camera-scanner", () => ({
         handleScan: vi.fn(),
     }),
 }));
+
+let latestCameraScannerProps: {
+    onScan: (questId: string) => Promise<boolean>;
+    statusMessage?: string | null;
+} | null = null;
+
 vi.mock("@/components/game/camera-scanner", () => ({
-    CameraScanner: () => null,
+    CameraScanner: (props: { onScan: (questId: string) => Promise<boolean>; statusMessage?: string | null }) => {
+        latestCameraScannerProps = props;
+        return props.statusMessage ? <span data-testid="camera-scanner-status">{props.statusMessage}</span> : null;
+    },
 }));
 vi.mock("@/components/game/reactor-sabotage-alert", () => ({
     ReactorSabotageAlert: () => null,
@@ -71,6 +82,13 @@ const impostorPlayer: Player = { id: "user-2", name: "Bob", role: "IMPOSTOR", is
 describe("GameHome", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        latestCameraScannerProps = null;
+        vi.mocked(useCameraScanner).mockReturnValue({
+            isOpen: false,
+            openScanner: vi.fn(),
+            closeScanner: vi.fn(),
+            handleScan: vi.fn(),
+        });
         vi.mocked(useGameStore).mockReturnValue({
             questsCompleted: 0,
             questsTotal: 0,
@@ -194,6 +212,43 @@ describe("GameHome", () => {
         expect(screen.getByText("COMMUNICATIONS SABOTÉES")).toBeTruthy();
     });
 
+    it("keeps scanner open and shows communications-blocked feedback when lights is scanned during communications sabotage", async () => {
+        vi.mocked(useCameraScanner).mockReturnValue({
+            isOpen: true,
+            openScanner: vi.fn(),
+            closeScanner: vi.fn(),
+            handleScan: vi.fn(),
+        });
+        vi.mocked(scanSabotage).mockResolvedValueOnce({
+            success: false,
+            code: "ERR_SABOTAGE_NOT_ACTIVE",
+            error: "LIGHTS sabotage is not active.",
+            data: { handled: true },
+        });
+
+        const sabotagedState: GameState = {
+            ...mockGameState,
+            sabotageState: {
+                active: "COMMUNICATIONS",
+                reactor: null,
+                cooldowns: { communicationsAvailableAt: 0, lightsAvailableAt: 0, reactorAvailableAt: 0 },
+            },
+        };
+
+        render(<GameHome gameState={sabotagedState} currentPlayer={crewmatePlayer} userId="user-1" />);
+
+        await act(async () => {
+            const shouldClose = await latestCameraScannerProps?.onScan("lights-qr");
+            expect(shouldClose).toBe(false);
+        });
+
+        await waitFor(() => {
+            expect(screen.getByTestId("camera-scanner-status")).toHaveTextContent(
+                "Communications sabotées: impossible de scanner une quête.",
+            );
+        });
+    });
+
     it("should hide SCAN button for Crewmate when all quests are completed", () => {
         vi.mocked(useGameStore).mockReturnValue({
             questsCompleted: 5,
@@ -242,6 +297,17 @@ describe("GameHome", () => {
         render(<GameHome gameState={mockGameState} currentPlayer={deadPlayer} userId="user-1" />);
         const button = screen.getByRole("button", { name: /(Already eliminated|Déjà éliminé)/i });
         expect(button).toBeDisabled();
+    });
+
+    it("should allow buzzer for a just-eliminated player until the next meeting", () => {
+        const deadWithBuzzerWindow: Player = {
+            ...crewmatePlayer,
+            isAlive: false,
+            postEliminationBuzzerGrantedAt: Date.now(),
+        };
+        render(<GameHome gameState={mockGameState} currentPlayer={deadWithBuzzerWindow} userId="user-1" />);
+        const buzzerButton = screen.getByRole("button", { name: /buzzer/i });
+        expect(buzzerButton).not.toBeDisabled();
     });
 
     it("should show 'ELIMINÉ' status in footer when player is dead", () => {

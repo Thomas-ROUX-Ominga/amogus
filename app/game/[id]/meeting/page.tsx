@@ -296,15 +296,17 @@ export default function MeetingPage() {
                     </>
                 )}
 
-                <div className="pt-2">
-                    <Link
-                        href={`/game/${gameId}`}
-                        className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors uppercase tracking-widest font-rajdhani touch-manipulation min-h-[44px]"
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                        {t("game.meeting.returnCockpit")}
-                    </Link>
-                </div>
+                {!active && (
+                    <div className="pt-2">
+                        <Link
+                            href={`/game/${gameId}`}
+                            className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors uppercase tracking-widest font-rajdhani touch-manipulation min-h-[44px]"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            {t("game.meeting.returnCockpit")}
+                        </Link>
+                    </div>
+                )}
             </div>
         </main>
     );

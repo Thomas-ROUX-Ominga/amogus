@@ -14,13 +14,17 @@ interface ErrorViewProps {
     message?: string;
     code?: string;
     onRetry?: () => void;
+    showRecoverSignalAction?: boolean;
+    retryActionPrimary?: boolean;
 }
 
 export function ErrorView({
     title,
     message,
     code,
-    onRetry
+    onRetry,
+    showRecoverSignalAction = true,
+    retryActionPrimary = false,
 }: ErrorViewProps) {
     const t = useTranslations();
     const router = useRouter();
@@ -116,20 +120,28 @@ export function ErrorView({
                 transition={{ delay: 0.6 }}
                 className="flex flex-col gap-4 w-full max-w-xs"
             >
-                <button
-                    onClick={() => router.push("/")}
-                    className="flex items-center justify-center gap-2 w-full h-14 bg-destructive text-destructive-foreground font-bold rounded-md hover:bg-destructive/90 transition-colors shadow-[0_0_20px_rgba(239,68,68,0.3)] active:scale-95 touch-manipulation"
-                >
-                    <Home className="w-5 h-5" />
-                    <span className="font-orbitron tracking-wide text-lg">{t("errors.recoverSignal")}</span>
-                </button>
+                {showRecoverSignalAction ? (
+                    <button
+                        onClick={() => router.push("/")}
+                        className="flex items-center justify-center gap-2 w-full h-14 bg-destructive text-destructive-foreground font-bold rounded-md hover:bg-destructive/90 transition-colors shadow-[0_0_20px_rgba(239,68,68,0.3)] active:scale-95 touch-manipulation"
+                    >
+                        <Home className="w-5 h-5" />
+                        <span className="font-orbitron tracking-wide text-lg">{t("errors.recoverSignal")}</span>
+                    </button>
+                ) : null}
 
                 <button
                     onClick={handleRetry}
-                    className="flex items-center justify-center gap-2 w-full h-12 border border-destructive/30 text-destructive/70 font-mono text-sm rounded-md hover:bg-destructive/5 transition-colors active:scale-95 touch-manipulation"
+                    className={
+                        retryActionPrimary
+                            ? "flex items-center justify-center gap-2 w-full h-14 bg-destructive text-destructive-foreground font-bold rounded-md hover:bg-destructive/90 transition-colors shadow-[0_0_20px_rgba(239,68,68,0.3)] active:scale-95 touch-manipulation"
+                            : "flex items-center justify-center gap-2 w-full h-12 border border-destructive/30 text-destructive/70 font-mono text-sm rounded-md hover:bg-destructive/5 transition-colors active:scale-95 touch-manipulation"
+                    }
                 >
-                    <RefreshCw className="w-4 h-4" />
-                    {t("errors.retrySync")}
+                    <RefreshCw className={retryActionPrimary ? "w-5 h-5" : "w-4 h-4"} />
+                    <span className={retryActionPrimary ? "font-orbitron tracking-wide text-lg" : undefined}>
+                        {t("errors.retrySync")}
+                    </span>
                 </button>
             </motion.div>
 

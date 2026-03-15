@@ -371,6 +371,8 @@ function QuestPageContent() {
                                 message={t("game.questPage.questNotAssignedMessage")}
                                 code={ERROR_CODES.ERR_QUEST_NOT_ASSIGNED}
                                 onRetry={() => { router.push(`/game/${gameId}`); }}
+                                showRecoverSignalAction={false}
+                                retryActionPrimary
                             />
                         </main>
                     );

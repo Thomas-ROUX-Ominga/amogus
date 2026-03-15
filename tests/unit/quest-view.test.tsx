@@ -71,19 +71,19 @@ describe("QuestView", () => {
 
     it("should render duration badge with correct label", () => {
         render(<QuestView quest={mockQuest} gameId="game-123" />);
-        expect(screen.getByText("COURT")).toBeTruthy();
+        expect(screen.getByText("FACILE")).toBeTruthy();
     });
 
     it("should render medium duration badge", () => {
         const mediumQuest: Quest = { ...mockQuest, duration: "medium" };
         render(<QuestView quest={mediumQuest} gameId="game-123" />);
-        expect(screen.getByText("MOYEN")).toBeTruthy();
+        expect(screen.getByText("INTERMÉDIAIRE")).toBeTruthy();
     });
 
     it("should render long duration badge", () => {
         const longQuest: Quest = { ...mockQuest, duration: "long" };
         render(<QuestView quest={longQuest} gameId="game-123" />);
-        expect(screen.getByText("LONG")).toBeTruthy();
+        expect(screen.getByText("DIFFICILE")).toBeTruthy();
     });
 
     it("should render quest active header", () => {

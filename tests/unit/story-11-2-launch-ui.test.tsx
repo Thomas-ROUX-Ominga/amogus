@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from '@testing-library/react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import LobbyPage from '@/app/game/[id]/page';
 import { useGameStore, useRealTimeGamePolling } from '@/lib/store/game-store';
 import { useAuth } from '@/hooks/use-auth';
@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/use-auth';
 // Mock dependencies
 vi.mock('next/navigation', () => ({
   useParams: vi.fn(),
+  useRouter: vi.fn(),
 }));
 
 vi.mock('@/lib/store/game-store', () => ({
@@ -23,6 +24,9 @@ vi.mock('@/hooks/use-auth', () => ({
 describe('Task 3: Restrict Game Launch to Admin - UI', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useRouter).mockReturnValue({
+      push: vi.fn(),
+    } as ReturnType<typeof useRouter>);
   });
 
   it('should show launch button for admin player', () => {
@@ -153,5 +157,74 @@ describe('Task 3: Restrict Game Launch to Admin - UI', () => {
 
     // Regular player should not see a launch button
     expect(screen.queryByText(/LANCER LA MISSION/i)).not.toBeInTheDocument();
+  });
+
+  it("should show role reveal for host already in lobby when game starts", async () => {
+    vi.mocked(useParams).mockReturnValue({ id: "TEST123" });
+    vi.mocked(useAuth).mockReturnValue({
+      authState: {
+        session: { userId: "admin-user-id", username: "admin", role: "organizer" } as any,
+        isLoading: false,
+        isAuthenticated: true,
+        isAnonymous: false,
+      },
+      refreshAuth: vi.fn(),
+      setAnonymousSession: vi.fn(),
+      clearAnonymousSession: vi.fn(),
+    } as ReturnType<typeof useAuth>);
+
+    let mockGameState = {
+      id: "TEST123",
+      status: "LOBBY" as const,
+      players: [{ id: "admin-user-id", name: "Admin", isAlive: true }],
+      createdAt: Date.now(),
+      revision: 1,
+      updatedAt: Date.now(),
+      creatorId: "admin-user-id",
+    };
+
+    vi.mocked(useGameStore).mockImplementation(() => ({
+      gameState: mockGameState,
+      isLoading: false,
+      isJoining: false,
+      isLaunching: false,
+      fatalError: null,
+      fatalErrorCode: null,
+      error: null,
+      errorCode: null,
+      launchError: null,
+      selectedRole: null,
+      fetchGame: vi.fn(),
+      launch: vi.fn(),
+      reset: vi.fn(),
+    } as any));
+
+    vi.mocked(useRealTimeGamePolling).mockImplementation(() => ({
+      isConnected: true,
+      syncStatus: "connected",
+      playerCount: mockGameState.players.length,
+      isGameInProgress: mockGameState.status === "IN_PROGRESS",
+      isGameFinished: false,
+      newPlayers: [],
+      isLoading: false,
+      error: null,
+      mutate: vi.fn(),
+    } as any));
+
+    const { rerender } = render(<LobbyPage />);
+
+    mockGameState = {
+      ...mockGameState,
+      status: "IN_PROGRESS",
+      revision: 2,
+      updatedAt: Date.now(),
+      players: [{ id: "admin-user-id", name: "Admin", isAlive: true, role: "IMPOSTOR" as const }],
+    };
+    rerender(<LobbyPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Rôle attribué")).toBeInTheDocument();
+      expect(screen.getByText("IMPOSTEUR")).toBeInTheDocument();
+    });
   });
 });

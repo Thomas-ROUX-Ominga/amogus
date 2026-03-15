@@ -18,10 +18,14 @@ export default function LobbyPage() {
     const { id } = useParams();
     const [showRoleReveal, setShowRoleReveal] = useState(false);
     const previousIsJoinedRef = useRef(false);
+    const previousIsJoiningRef = useRef(false);
+    const isJoinedRef = useRef(false);
+    const roleRevealEligibleRef = useRef(false);
     const pendingRoleRevealRef = useRef(false);
     const {
         gameState,
         isLoading,
+        isJoining,
         isLaunching,
         fatalError,
         fatalErrorCode,
@@ -107,11 +111,37 @@ export default function LobbyPage() {
     const shouldShowGameHome = isGameStarted && hasRole;
 
     useEffect(() => {
+        isJoinedRef.current = Boolean(isJoined);
+    }, [isJoined]);
+
+    useEffect(() => {
+        const wasJoining = previousIsJoiningRef.current;
+
+        if (isJoining && !wasJoining) {
+            roleRevealEligibleRef.current = true;
+        }
+        if (!isJoining && wasJoining && !isJoinedRef.current) {
+            roleRevealEligibleRef.current = false;
+        }
+
+        previousIsJoiningRef.current = isJoining;
+    }, [isJoining]);
+
+    useEffect(() => {
+        if (!isJoined) return;
+        if (currentGameState?.status !== "LOBBY") return;
+        if (currentPlayer?.role !== undefined) return;
+
+        // Hosts and already-joined players skip the join action, so arm reveal in lobby.
+        roleRevealEligibleRef.current = true;
+    }, [isJoined, currentGameState?.status, currentPlayer?.role]);
+
+    useEffect(() => {
         const nowJoined = Boolean(isJoined);
         const wasJoined = previousIsJoinedRef.current;
 
         if (nowJoined && !wasJoined) {
-            pendingRoleRevealRef.current = true;
+            pendingRoleRevealRef.current = roleRevealEligibleRef.current;
         } else if (!nowJoined) {
             pendingRoleRevealRef.current = false;
             setShowRoleReveal(false);
@@ -129,6 +159,7 @@ export default function LobbyPage() {
         if (!shouldTriggerReveal) return;
 
         pendingRoleRevealRef.current = false;
+        roleRevealEligibleRef.current = false;
         setShowRoleReveal(true);
     }, [currentGameState, currentPlayer]);
 

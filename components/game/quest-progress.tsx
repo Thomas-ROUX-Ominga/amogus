@@ -7,7 +7,6 @@ import { QuestList } from "./quest-list";
 import { useGameStore } from "@/lib/store/game-store";
 import { Quest, SabotageType } from "@/types/quest";
 import { triggerSabotage } from "@/lib/redis/actions";
-import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 interface QuestProgressProps {
     role: PlayerRole;
@@ -78,40 +77,14 @@ export function QuestProgress({
     const [crewQuests, setCrewQuests] = useState<Array<Quest & { completed: boolean; location?: string }>>([]);
     const [isCrewQuestsLoading, setIsCrewQuestsLoading] = useState(false);
     const [isTriggeringSabotage, setIsTriggeringSabotage] = useState<SabotageType | null>(null);
-    const [sabotageFeedback, setSabotageFeedback] = useState<string | null>(null);
     const lastQuestCatalogFetchRef = useRef<{ gameId: string; at: number } | null>(null);
 
     const triggerImpostorSabotage = async (type: SabotageType) => {
         if (!currentPlayerId || !activeGameState?.id) return;
-        setSabotageFeedback(null);
         setIsTriggeringSabotage(type);
 
         try {
-            const response = await triggerSabotage(activeGameState.id, currentPlayerId, type);
-            if (response.success) {
-                switch (response.data?.event) {
-                    case "COMMUNICATIONS_ACTIVATED":
-                        setSabotageFeedback(t("game.sabotage.messages.communicationsActivated"));
-                        break;
-                    case "LIGHTS_ACTIVATED":
-                        // Lights state is already visible on the sabotage button; avoid redundant toast text.
-                        break;
-                    case "REACTOR_ACTIVATED":
-                        setSabotageFeedback(t("game.sabotage.messages.reactorActivated"));
-                        break;
-                    default:
-                        setSabotageFeedback(t("game.sabotage.messages.scanHandled"));
-                }
-            } else {
-                setSabotageFeedback(
-                    getLocalizedErrorMessage({
-                        t,
-                        code: response.code,
-                        fallback: response.error,
-                    }),
-                );
-            }
-
+            await triggerSabotage(activeGameState.id, currentPlayerId, type);
             await refreshGameData(activeGameState.id, currentPlayerId);
         } finally {
             setIsTriggeringSabotage(null);
@@ -275,45 +248,68 @@ export function QuestProgress({
         }) => {
             const isTriggeringThis = isTriggeringSabotage === type;
             const isCoolingDown = cooldownMs > 0;
-            const isBlockedByOtherAction = isAnySabotageTriggering && !isTriggeringThis;
+            const isAnotherSabotageAlreadyActive =
+                Boolean(sabotageState?.active) && sabotageState?.active !== type;
+            const isBlockedByOtherAction =
+                (isAnySabotageTriggering && !isTriggeringThis) || isAnotherSabotageAlreadyActive;
             const isDisabled =
                 isTriggeringThis || isBlockedByOtherAction || isUnavailable || isActive || isCoolingDown;
 
             let statusLabel = t("game.sabotage.statusReady");
             let actionLabel = t("game.sabotage.triggerButton");
-            let cardClassName = "border-emerald-400/30 bg-emerald-500/5";
-            let statusClassName = "text-emerald-200/90 border border-emerald-300/30 bg-emerald-500/10";
+            let cardClassName =
+                "border-emerald-300/35 bg-[linear-gradient(130deg,rgba(16,185,129,0.14)_0%,rgba(4,22,16,0.8)_58%,rgba(2,6,23,0.82)_100%)] shadow-[0_10px_32px_rgba(16,185,129,0.12)]";
+            let accentClassName = "bg-emerald-300/90";
+            let statusClassName =
+                "rounded-full text-emerald-100 border border-emerald-300/35 bg-emerald-500/14 shadow-[0_0_18px_rgba(16,185,129,0.15)]";
             let buttonClassName =
-                "border-emerald-300/50 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25";
+                "border-emerald-300/50 bg-[linear-gradient(140deg,rgba(16,185,129,0.24),rgba(6,95,70,0.2))] text-emerald-100 hover:bg-emerald-500/28 shadow-[inset_0_1px_0_rgba(167,243,208,0.2)]";
 
             if (isTriggeringThis) {
                 statusLabel = t("game.sabotage.triggeringButton");
                 actionLabel = t("game.sabotage.triggeringButton");
-                cardClassName = "border-sky-300/40 bg-sky-500/10 shadow-[0_0_24px_rgba(56,189,248,0.15)]";
-                statusClassName = "text-sky-100 border border-sky-300/40 bg-sky-500/15";
-                buttonClassName = "border-sky-300/60 bg-sky-500/25 text-sky-50 animate-pulse";
+                cardClassName =
+                    "border-sky-300/45 bg-[linear-gradient(130deg,rgba(14,165,233,0.2)_0%,rgba(2,52,75,0.7)_56%,rgba(2,6,23,0.82)_100%)] shadow-[0_0_26px_rgba(56,189,248,0.2)]";
+                accentClassName = "bg-sky-200/95";
+                statusClassName =
+                    "rounded-full text-sky-100 border border-sky-300/40 bg-sky-500/18 shadow-[0_0_20px_rgba(56,189,248,0.2)]";
+                buttonClassName =
+                    "border-sky-300/60 bg-[linear-gradient(140deg,rgba(56,189,248,0.3),rgba(6,78,115,0.24))] text-sky-50 animate-pulse shadow-[0_0_20px_rgba(56,189,248,0.25)]";
             } else if (isActive) {
                 statusLabel = activeLabelOverride ?? t("game.sabotage.statusActive");
                 actionLabel = t("game.sabotage.statusActive");
-                cardClassName = "border-rose-300/40 bg-rose-500/10 shadow-[0_0_24px_rgba(251,113,133,0.16)]";
-                statusClassName = "text-rose-100 border border-rose-300/40 bg-rose-500/15";
-                buttonClassName = "border-rose-300/55 bg-rose-500/20 text-rose-50";
+                cardClassName =
+                    "border-rose-300/42 bg-[linear-gradient(130deg,rgba(244,63,94,0.2)_0%,rgba(96,15,45,0.72)_58%,rgba(2,6,23,0.82)_100%)] shadow-[0_0_28px_rgba(244,63,94,0.22)]";
+                accentClassName = "bg-rose-200/95";
+                statusClassName =
+                    "rounded-full text-rose-100 border border-rose-300/40 bg-rose-500/18 shadow-[0_0_20px_rgba(244,63,94,0.2)]";
+                buttonClassName =
+                    "border-rose-300/55 bg-[linear-gradient(140deg,rgba(244,63,94,0.27),rgba(136,19,55,0.24))] text-rose-50";
             } else if (isCoolingDown) {
                 statusLabel = t("game.sabotage.statusCooldown", {
                     time: formatCooldown(cooldownMs),
                 });
                 actionLabel = `T-${formatCooldown(cooldownMs)}`;
-                cardClassName = "border-amber-300/40 bg-amber-500/10";
-                statusClassName = "text-amber-100 border border-amber-300/40 bg-amber-500/15";
-                buttonClassName = "border-amber-300/60 bg-amber-500/25 text-amber-50";
+                cardClassName =
+                    "border-amber-300/40 bg-[linear-gradient(130deg,rgba(245,158,11,0.2)_0%,rgba(120,53,15,0.7)_58%,rgba(2,6,23,0.82)_100%)]";
+                accentClassName = "bg-amber-200/95";
+                statusClassName =
+                    "rounded-full text-amber-100 border border-amber-300/40 bg-amber-500/18";
+                buttonClassName =
+                    "border-amber-300/60 bg-[linear-gradient(140deg,rgba(245,158,11,0.28),rgba(146,64,14,0.25))] text-amber-50";
             } else if (isUnavailable) {
                 statusLabel = t("game.sabotage.statusUnavailable");
                 actionLabel = t("game.sabotage.statusUnavailable");
-                cardClassName = "border-slate-400/30 bg-slate-800/40";
-                statusClassName = "text-slate-200/80 border border-slate-300/30 bg-slate-700/35";
-                buttonClassName = "border-slate-300/40 bg-slate-700/45 text-slate-300";
+                cardClassName =
+                    "border-slate-400/35 bg-[linear-gradient(130deg,rgba(100,116,139,0.16)_0%,rgba(30,41,59,0.65)_58%,rgba(2,6,23,0.82)_100%)]";
+                accentClassName = "bg-slate-300/75";
+                statusClassName =
+                    "rounded-full text-slate-200/85 border border-slate-300/30 bg-slate-700/35";
+                buttonClassName =
+                    "border-slate-300/40 bg-[linear-gradient(140deg,rgba(71,85,105,0.6),rgba(51,65,85,0.55))] text-slate-300";
             } else if (isBlockedByOtherAction) {
-                buttonClassName = "border-emerald-300/35 bg-emerald-500/10 text-emerald-100/70";
+                buttonClassName =
+                    "border-emerald-300/35 bg-[linear-gradient(140deg,rgba(16,185,129,0.14),rgba(6,95,70,0.12))] text-emerald-100/70";
             }
 
             return {
@@ -321,6 +317,7 @@ export function QuestProgress({
                 statusLabel,
                 actionLabel,
                 cardClassName,
+                accentClassName,
                 statusClassName,
                 buttonClassName,
             };
@@ -380,16 +377,20 @@ export function QuestProgress({
                         {t("game.sabotage.impostorActionsTitle")}
                     </div>
                     <div className="space-y-2 text-sm font-rajdhani">
-                        <div className={`p-3 border bg-black/35 transition-colors ${communicationsUi.cardClassName}`}>
+                        <div className={`group relative overflow-hidden rounded-lg p-3.5 border transition-colors ${communicationsUi.cardClassName}`}>
+                            <span
+                                aria-hidden="true"
+                                className={`absolute inset-y-0 left-0 w-[3px] ${communicationsUi.accentClassName}`}
+                            />
                             <div className="flex items-start justify-between gap-2">
-                                <div className="text-slate-100 uppercase tracking-wide">
+                                <div className="text-slate-100 uppercase tracking-[0.09em]">
                                     {t("game.sabotage.locationCommunications")}
                                 </div>
-                                <div className={`inline-flex px-2 py-1 text-[10px] uppercase tracking-widest shrink-0 ${communicationsUi.statusClassName}`}>
+                                <div className={`inline-flex px-2.5 py-1 text-[10px] uppercase tracking-widest shrink-0 ${communicationsUi.statusClassName}`}>
                                     {communicationsUi.statusLabel}
                                 </div>
                             </div>
-                            <div className="text-slate-300/90">
+                            <div className="text-slate-300/90 mt-1">
                                 {sabotageConfig?.communications.location?.trim() ||
                                     t("game.sabotage.locationUnknown")}
                             </div>
@@ -397,38 +398,54 @@ export function QuestProgress({
                                 type="button"
                                 onClick={() => triggerImpostorSabotage("COMMUNICATIONS")}
                                 disabled={communicationsUi.isDisabled}
-                                className={`mt-2 w-full min-h-[40px] border uppercase tracking-widest text-xs transition-all ${communicationsUi.buttonClassName} ${communicationsUi.isDisabled ? "cursor-not-allowed" : ""}`}
+                                className={`relative overflow-hidden mt-3 w-full min-h-[42px] border uppercase tracking-[0.22em] text-[11px] transition-all ${communicationsUi.buttonClassName} ${communicationsUi.isDisabled ? "cursor-not-allowed" : ""}`}
                             >
-                                {communicationsUi.actionLabel}
+                                <span
+                                    aria-hidden="true"
+                                    className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.22)_50%,transparent_100%)]"
+                                />
+                                <span className="relative">{communicationsUi.actionLabel}</span>
                             </button>
                         </div>
 
-                        <div className={`p-3 border bg-black/35 transition-colors ${lightsUi.cardClassName}`}>
+                        <div className={`group relative overflow-hidden rounded-lg p-3.5 border transition-colors ${lightsUi.cardClassName}`}>
+                            <span
+                                aria-hidden="true"
+                                className={`absolute inset-y-0 left-0 w-[3px] ${lightsUi.accentClassName}`}
+                            />
                             <div className="flex items-start justify-between gap-2">
-                                <div className="text-slate-100 uppercase tracking-wide">
+                                <div className="text-slate-100 uppercase tracking-[0.09em]">
                                     {t("game.sabotage.locationLights")}
                                 </div>
-                                <div className={`inline-flex px-2 py-1 text-[10px] uppercase tracking-widest shrink-0 ${lightsUi.statusClassName}`}>
+                                <div className={`inline-flex px-2.5 py-1 text-[10px] uppercase tracking-widest shrink-0 ${lightsUi.statusClassName}`}>
                                     {lightsUi.statusLabel}
                                 </div>
                             </div>
-                            <div className="text-slate-300/90">
+                            <div className="text-slate-300/90 mt-1">
                                 {lightsConfig?.location?.trim() || t("game.sabotage.locationUnknown")}
                             </div>
                             <button
                                 type="button"
                                 onClick={() => triggerImpostorSabotage("LIGHTS")}
                                 disabled={lightsUi.isDisabled}
-                                className={`mt-2 w-full min-h-[40px] border uppercase tracking-widest text-xs transition-all ${lightsUi.buttonClassName} ${lightsUi.isDisabled ? "cursor-not-allowed" : ""}`}
+                                className={`relative overflow-hidden mt-3 w-full min-h-[42px] border uppercase tracking-[0.22em] text-[11px] transition-all ${lightsUi.buttonClassName} ${lightsUi.isDisabled ? "cursor-not-allowed" : ""}`}
                             >
-                                {lightsUi.actionLabel}
+                                <span
+                                    aria-hidden="true"
+                                    className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.22)_50%,transparent_100%)]"
+                                />
+                                <span className="relative">{lightsUi.actionLabel}</span>
                             </button>
                         </div>
 
-                        <div className={`p-3 border bg-black/35 transition-colors ${reactorUi.cardClassName}`}>
+                        <div className={`group relative overflow-hidden rounded-lg p-3.5 border transition-colors ${reactorUi.cardClassName}`}>
+                            <span
+                                aria-hidden="true"
+                                className={`absolute inset-y-0 left-0 w-[3px] ${reactorUi.accentClassName}`}
+                            />
                             <div className="flex items-start justify-between gap-2">
-                                <div className="text-slate-100 uppercase tracking-wide">{t("game.sabotage.reactorCardTitle")}</div>
-                                <div className={`inline-flex px-2 py-1 text-[10px] uppercase tracking-widest shrink-0 ${reactorUi.statusClassName}`}>
+                                <div className="text-slate-100 uppercase tracking-[0.09em]">{t("game.sabotage.reactorCardTitle")}</div>
+                                <div className={`inline-flex px-2.5 py-1 text-[10px] uppercase tracking-widest shrink-0 ${reactorUi.statusClassName}`}>
                                     {reactorUi.statusLabel}
                                 </div>
                             </div>
@@ -446,19 +463,18 @@ export function QuestProgress({
                                 type="button"
                                 onClick={() => triggerImpostorSabotage("REACTOR")}
                                 disabled={reactorUi.isDisabled}
-                                className={`mt-2 w-full min-h-[40px] border uppercase tracking-widest text-xs transition-all ${reactorUi.buttonClassName} ${reactorUi.isDisabled ? "cursor-not-allowed" : ""}`}
+                                className={`relative overflow-hidden mt-3 w-full min-h-[42px] border uppercase tracking-[0.22em] text-[11px] transition-all ${reactorUi.buttonClassName} ${reactorUi.isDisabled ? "cursor-not-allowed" : ""}`}
                             >
-                                {reactorUi.actionLabel}
+                                <span
+                                    aria-hidden="true"
+                                    className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.22)_50%,transparent_100%)]"
+                                />
+                                <span className="relative">{reactorUi.actionLabel}</span>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                {sabotageFeedback && (
-                    <div className="text-xs text-primary/90 border border-primary/25 bg-primary/10 p-2">
-                        {sabotageFeedback}
-                    </div>
-                )}
             </div>
         );
     }
@@ -491,12 +507,17 @@ export function QuestProgress({
                 </div>
             )}
 
-            <div className="text-xs text-primary/60 uppercase tracking-widest font-rajdhani shrink-0">
-                {t("game.questProgress.questsProgress")}
+            <div className="mt-1 flex items-center justify-between gap-2 shrink-0">
+                <div className="text-xs text-primary/60 uppercase tracking-widest font-rajdhani">
+                    {t("game.questProgress.questsProgress")}
+                </div>
+                <div className="text-[11px] text-primary/75 font-rajdhani tracking-[0.22em] uppercase">
+                    {percentage}%
+                </div>
             </div>
-            <div className="w-full h-2 bg-white/10 overflow-hidden shrink-0 mt-4">
+            <div className="relative mt-3 w-full h-2.5 overflow-hidden shrink-0 rounded-full border border-white/10 bg-slate-900/80">
                 <div
-                    className={`h-full bg-[#2DA44E] transition-all duration-500 ${
+                    className={`relative h-full rounded-full bg-[linear-gradient(90deg,#22c55e_0%,#34d399_50%,#7dd3fc_100%)] transition-all duration-700 ease-out ${
                         isLoading ? "animate-pulse" : ""
                     }`}
                     style={{ width: `${percentage}%` }}
@@ -505,9 +526,16 @@ export function QuestProgress({
                     aria-valuemin={0}
                     aria-valuemax={total}
                     aria-busy={isLoading}
-                />
+                >
+                    {percentage > 0 && (
+                        <span
+                            aria-hidden="true"
+                            className="absolute top-1/2 right-0 h-3.5 w-3.5 -translate-y-1/2 translate-x-1/4 rounded-full border border-emerald-100/70 bg-emerald-200/80 shadow-[0_0_14px_rgba(52,211,153,0.9)]"
+                        />
+                    )}
+                </div>
             </div>
-            <div className="text-sm text-muted-foreground font-rajdhani tracking-wide shrink-0 mt-4">
+            <div className="text-sm text-muted-foreground font-rajdhani tracking-wide shrink-0 mt-3">
                 {isLoading ? (
                     <span className="animate-pulse">{t("game.questProgress.loading")}</span>
                 ) : total > 0 ? (
