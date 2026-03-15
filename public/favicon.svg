@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="AMOGUS">
+  <rect width="64" height="64" rx="14" fill="#070b14"/>
+  <path d="M22 10c-7 0-12 6-12 13v21h10V24c0-2 2-4 4-4h14c2 0 4 2 4 4v20h8V23c0-7-5-13-12-13z" fill="#ef4444"/>
+  <rect x="42" y="20" width="10" height="20" rx="4" fill="#b91c1c"/>
+  <ellipse cx="30" cy="27" rx="11" ry="7.5" fill="#baf3ff"/>
+  <ellipse cx="30" cy="27" rx="11" ry="7.5" fill="none" stroke="#38bdf8" stroke-width="2"/>
+  <rect x="18" y="43" width="11" height="11" rx="3" fill="#ef4444"/>
+  <rect x="32" y="43" width="11" height="11" rx="3" fill="#ef4444"/>
+  <rect x="29" y="43" width="3" height="11" fill="#070b14"/>
+  <circle cx="27" cy="15" r="2.5" fill="#fda4af" opacity="0.55"/>
+</svg>

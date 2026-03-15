@@ -1,0 +1,166 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { Shield, User, ChevronDown, LayoutGrid, LogOut, Plus } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { clearSession } from "@/lib/redis/auth-actions";
+import {
+  AppLocale,
+  LOCALE_COOKIE_MAX_AGE_SECONDS,
+  LOCALE_COOKIE_NAME,
+} from "@/lib/i18n/config";
+
+const HIDDEN_ROUTES = new Set(["/", "/login", "/register"]);
+
+export function GlobalTopHeader() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const locale = useLocale();
+  const t = useTranslations();
+  const { authState, refreshAuth, clearAnonymousSession } = useAuth();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const shouldHide = HIDDEN_ROUTES.has(pathname);
+
+  const nextLocale: AppLocale = locale === "fr" ? "en" : "fr";
+  const nextLanguageLabel =
+    nextLocale === "fr" ? t("common.language.french") : t("common.language.english");
+
+  const handleSwitchLanguage = () => {
+    document.cookie = `${LOCALE_COOKIE_NAME}=${nextLocale}; path=/; max-age=${LOCALE_COOKIE_MAX_AGE_SECONDS}; samesite=lax`;
+    router.refresh();
+  };
+
+  const isOrganizer = authState.isAuthenticated && authState.session?.sessionType === "admin";
+  const displayName = authState.isLoading
+    ? t("common.actions.loading")
+    : authState.session?.username || t("common.user.guest");
+
+  useEffect(() => {
+    if (shouldHide) return;
+
+    const handleClickOutside = (event: globalThis.MouseEvent) => {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(event.target as globalThis.Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [shouldHide]);
+
+  const handleGoToBatches = () => {
+    setIsMenuOpen(false);
+    router.push("/batches");
+  };
+
+  const handleGoToCreateGame = () => {
+    setIsMenuOpen(false);
+    router.push("/games/create");
+  };
+
+  const handleLogout = async () => {
+    setIsMenuOpen(false);
+    try {
+      if (isOrganizer) {
+        await clearSession();
+        await refreshAuth();
+      } else {
+        clearAnonymousSession();
+      }
+    } catch {
+      // no-op: fallback navigation below
+    } finally {
+      router.push("/");
+      router.refresh();
+    }
+  };
+
+  if (shouldHide) {
+    return null;
+  }
+
+  return (
+    <div className="fixed top-3 left-3 right-3 z-[999] flex items-center justify-between">
+      <button
+        type="button"
+        onClick={() => router.push("/")}
+        className="h-10 px-1 bg-transparent text-foreground hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-2"
+        aria-label={t("game.meeting.home")}
+      >
+        <span className="h-7 w-7 border border-primary/35 bg-black inline-flex items-center justify-center text-primary text-[11px] font-bold leading-none">
+          {">_"}
+        </span>
+        <span className="font-orbitron font-black tracking-[0.12em] text-sm text-foreground">
+          AMOGUS
+        </span>
+      </button>
+
+      <div className="flex items-center gap-2">
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen((prev) => !prev)}
+            className="h-10 px-3 border border-primary/25 bg-black/75 inline-flex items-center gap-2 text-[10px] uppercase tracking-wider text-foreground/90 hover:bg-primary/10 hover:border-primary/45 transition-colors cursor-pointer"
+          >
+            {isOrganizer ? (
+              <Shield className="h-3.5 w-3.5 text-primary" />
+            ) : (
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
+            )}
+            <span className="max-w-[150px] truncate">{displayName}</span>
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isMenuOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {isMenuOpen && (
+            <div className="absolute right-0 mt-2 w-44 border border-primary/25 bg-black/95 backdrop-blur-sm">
+              {isOrganizer && (
+                <button
+                  type="button"
+                  onClick={handleGoToCreateGame}
+                  className="w-full h-10 px-3 text-left inline-flex items-center gap-2 text-[10px] uppercase tracking-wider text-foreground/90 hover:bg-primary/10 transition-colors cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5 text-primary" />
+                  {t("home.createGame")}
+                </button>
+              )}
+              {isOrganizer && (
+                <button
+                  type="button"
+                  onClick={handleGoToBatches}
+                  className="w-full h-10 px-3 text-left inline-flex items-center gap-2 text-[10px] uppercase tracking-wider text-foreground/90 hover:bg-primary/10 transition-colors cursor-pointer border-t border-primary/15"
+                >
+                  <LayoutGrid className="h-3.5 w-3.5 text-primary" />
+                  {t("common.user.myBatches")}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className={`w-full h-10 px-3 text-left inline-flex items-center gap-2 text-[10px] uppercase tracking-wider text-foreground/90 hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer ${
+                  isOrganizer ? "border-t border-primary/15" : ""
+                }`}
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                {t("common.user.signOut")}
+              </button>
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSwitchLanguage}
+          className="h-10 px-3 text-[10px] uppercase tracking-wider border border-primary/30 bg-black/75 text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+          aria-label={t("common.language.switchTo", { language: nextLanguageLabel })}
+          title={t("common.language.currentLocale", { locale })}
+        >
+          {nextLocale.toUpperCase()}
+        </button>
+      </div>
+    </div>
+  );
+}
