@@ -209,4 +209,34 @@ describe("meeting actions", () => {
         expect(view.data?.meeting?.endReason).toBe("TIMEOUT");
         expect(view.data?.meeting?.eliminatedPlayerId).toBeUndefined();
     });
+
+    it("ends the game with CREWMATE victory when the last impostor is eliminated in meeting", async () => {
+        const now = Date.now();
+        await redis.set(stateKey, {
+            id: gameId,
+            status: "IN_PROGRESS",
+            createdAt: now,
+            revision: 1,
+            updatedAt: now,
+            players: [
+                { id: "admin", name: "Admin", isAlive: true },
+                { id: "u1", name: "Alice", role: "CREWMATE", isAlive: true, completedQuests: [] },
+                { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
+                { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true, completedQuests: [] },
+            ],
+        });
+
+        const meeting = await triggerMeeting(gameId, "u1");
+        expect(meeting.success).toBe(true);
+
+        await castMeetingVote(gameId, "u1", "u2");
+        await castMeetingVote(gameId, "u3", "u2");
+        const finalVote = await castMeetingVote(gameId, "u2", "u1");
+        expect(finalVote.success).toBe(true);
+
+        const state = await redis.get<GameState>(stateKey);
+        expect(state?.status).toBe("FINISHED");
+        expect(state?.winner).toBe("CREWMATE");
+        expect(state?.players.find((player) => player.id === "u2")?.isAlive).toBe(false);
+    });
 });

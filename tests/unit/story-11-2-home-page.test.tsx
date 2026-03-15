@@ -69,7 +69,7 @@ describe('Home Page - Story 11.2', () => {
       
       // Check for join form elements
       expect(screen.getByPlaceholderText('CODE 6 CAR...')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /rejoindre la session/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /rejoindre la partie/i })).toBeInTheDocument();
       
       // Check for auth options below divider
       expect(screen.getByRole('button', { name: /se connecter/i })).toBeInTheDocument();
@@ -88,7 +88,7 @@ describe('Home Page - Story 11.2', () => {
       );
       
       const input = screen.getByPlaceholderText('CODE 6 CAR...');
-      const submitButton = screen.getByRole('button', { name: /rejoindre la session/i });
+      const submitButton = screen.getByRole('button', { name: /rejoindre la partie/i });
 
       fireEvent.change(input, { target: { value: 'abc123' } });
       fireEvent.click(submitButton);

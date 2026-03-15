@@ -93,6 +93,7 @@ export async function getAllBatches(): Promise<ActionResponse<BatchListItem[]>> 
       .filter((batch): batch is Batch => batch !== null)
       .map((batch: Batch) => ({
         id: batch.id,
+        name: batch.name,
         questCount: batch.questCount,
         createdAt: batch.createdAt,
       }))
@@ -238,6 +239,74 @@ export async function getBatch(batchId: string): Promise<ActionResponse<Batch>> 
     return {
       success: false,
       error: "Failed to get batch",
+      code: ERROR_CODES.ERR_SIGNAL_LOST,
+    };
+  }
+}
+
+export async function updateBatchName(batchId: string, name: string): Promise<ActionResponse<Batch>> {
+  try {
+    const session = await verifyAdminSession();
+    if (!session.success) {
+      return {
+        success: false,
+        error: "Unauthorized",
+        code: ERROR_CODES.ERR_UNAUTHORIZED,
+      };
+    }
+
+    if (!batchId?.trim()) {
+      return {
+        success: false,
+        error: "Batch ID is required",
+        code: ERROR_CODES.ERR_INVALID_INPUT,
+      };
+    }
+
+    const normalizedName = name?.trim();
+    if (!normalizedName) {
+      return {
+        success: false,
+        error: "Batch name is required",
+        code: ERROR_CODES.ERR_INVALID_INPUT,
+      };
+    }
+
+    if (normalizedName.length > 60) {
+      return {
+        success: false,
+        error: "Batch name is too long",
+        code: ERROR_CODES.ERR_INVALID_INPUT,
+      };
+    }
+
+    const batchKey = `batch:${batchId}`;
+    const batch = await redis.get<Batch>(batchKey);
+
+    if (!batch) {
+      return {
+        success: false,
+        error: "Batch not found",
+        code: ERROR_CODES.ERR_NOT_FOUND,
+      };
+    }
+
+    const updatedBatch: Batch = {
+      ...batch,
+      name: normalizedName,
+    };
+
+    await redis.set(batchKey, updatedBatch);
+
+    return {
+      success: true,
+      data: updatedBatch,
+    };
+  } catch (error) {
+    console.error("Error updating batch name:", error);
+    return {
+      success: false,
+      error: "Failed to update batch name",
       code: ERROR_CODES.ERR_SIGNAL_LOST,
     };
   }

@@ -4,7 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { AuthProvider } from "@/hooks/use-auth";
-import { LanguageSwitcher } from "@/components/common/language-switcher";
+import { GlobalTopHeader } from "@/components/common/global-top-header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,6 +41,14 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: t("title"),
     description: t("description"),
+    icons: {
+      icon: [
+        { url: "/favicon.svg", type: "image/svg+xml" },
+        { url: "/favicon.ico", sizes: "any" },
+      ],
+      shortcut: "/favicon.ico",
+      apple: [{ url: "/apple-touch-icon.svg", type: "image/svg+xml" }],
+    },
   };
 }
 
@@ -59,7 +67,7 @@ export default async function RootLayout({
       >
         <NextIntlClientProvider locale={locale} messages={messages}>
           <AuthProvider>
-            <LanguageSwitcher />
+            <GlobalTopHeader />
             {children}
           </AuthProvider>
         </NextIntlClientProvider>

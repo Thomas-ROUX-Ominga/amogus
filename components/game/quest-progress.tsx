@@ -348,7 +348,7 @@ export function QuestProgress({
         });
 
         return (
-            <div className="p-4 border border-primary/25 bg-slate-950/45 space-y-4">
+            <div className="p-4 border border-primary/25 bg-slate-950/45 space-y-4 h-full min-h-0 overflow-y-auto">
                 <div className="text-xs text-primary/90 uppercase tracking-widest font-rajdhani">
                     {t("game.sabotage.impostorPanelTitle")}
                 </div>
@@ -381,15 +381,17 @@ export function QuestProgress({
                     </div>
                     <div className="space-y-2 text-sm font-rajdhani">
                         <div className={`p-3 border bg-black/35 transition-colors ${communicationsUi.cardClassName}`}>
-                            <div className="text-slate-100 uppercase tracking-wide">
-                                {t("game.sabotage.locationCommunications")}
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="text-slate-100 uppercase tracking-wide">
+                                    {t("game.sabotage.locationCommunications")}
+                                </div>
+                                <div className={`inline-flex px-2 py-1 text-[10px] uppercase tracking-widest shrink-0 ${communicationsUi.statusClassName}`}>
+                                    {communicationsUi.statusLabel}
+                                </div>
                             </div>
                             <div className="text-slate-300/90">
                                 {sabotageConfig?.communications.location?.trim() ||
                                     t("game.sabotage.locationUnknown")}
-                            </div>
-                            <div className={`mt-2 inline-flex px-2 py-1 text-[10px] uppercase tracking-widest ${communicationsUi.statusClassName}`}>
-                                {communicationsUi.statusLabel}
                             </div>
                             <button
                                 type="button"
@@ -402,14 +404,16 @@ export function QuestProgress({
                         </div>
 
                         <div className={`p-3 border bg-black/35 transition-colors ${lightsUi.cardClassName}`}>
-                            <div className="text-slate-100 uppercase tracking-wide">
-                                {t("game.sabotage.locationLights")}
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="text-slate-100 uppercase tracking-wide">
+                                    {t("game.sabotage.locationLights")}
+                                </div>
+                                <div className={`inline-flex px-2 py-1 text-[10px] uppercase tracking-widest shrink-0 ${lightsUi.statusClassName}`}>
+                                    {lightsUi.statusLabel}
+                                </div>
                             </div>
                             <div className="text-slate-300/90">
                                 {lightsConfig?.location?.trim() || t("game.sabotage.locationUnknown")}
-                            </div>
-                            <div className={`mt-2 inline-flex px-2 py-1 text-[10px] uppercase tracking-widest ${lightsUi.statusClassName}`}>
-                                {lightsUi.statusLabel}
                             </div>
                             <button
                                 type="button"
@@ -422,7 +426,12 @@ export function QuestProgress({
                         </div>
 
                         <div className={`p-3 border bg-black/35 transition-colors ${reactorUi.cardClassName}`}>
-                            <div className="text-slate-100 uppercase tracking-wide">{t("game.sabotage.reactorCardTitle")}</div>
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="text-slate-100 uppercase tracking-wide">{t("game.sabotage.reactorCardTitle")}</div>
+                                <div className={`inline-flex px-2 py-1 text-[10px] uppercase tracking-widest shrink-0 ${reactorUi.statusClassName}`}>
+                                    {reactorUi.statusLabel}
+                                </div>
+                            </div>
                             <div className="text-slate-300/90 text-xs mt-1">
                                 {t("game.sabotage.reactorPositions", {
                                     locationA:
@@ -432,9 +441,6 @@ export function QuestProgress({
                                         sabotageConfig?.reactor[1]?.location?.trim() ||
                                         t("game.sabotage.locationUnknown"),
                                 })}
-                            </div>
-                            <div className={`mt-2 inline-flex px-2 py-1 text-[10px] uppercase tracking-widest ${reactorUi.statusClassName}`}>
-                                {reactorUi.statusLabel}
                             </div>
                             <button
                                 type="button"
@@ -473,9 +479,9 @@ export function QuestProgress({
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     return (
-        <div className="p-4 border border-primary/20 bg-black/30 space-y-4 relative">
+        <div className="p-4 border border-primary/20 bg-black/30 relative h-full min-h-0 flex flex-col">
             {role === "CREWMATE" && communicationsSabotaged && (
-                <div className="border border-red-500/30 bg-red-950/30 p-3 text-center">
+                <div className="border border-red-500/30 bg-red-950/30 p-3 text-center shrink-0 mb-3">
                     <div className="text-xs text-red-100 font-orbitron uppercase tracking-wider">
                         {t("game.sabotage.communicationsOverlayTitle")}
                     </div>
@@ -485,10 +491,10 @@ export function QuestProgress({
                 </div>
             )}
 
-            <div className="text-xs text-primary/60 uppercase tracking-widest font-rajdhani">
+            <div className="text-xs text-primary/60 uppercase tracking-widest font-rajdhani shrink-0">
                 {t("game.questProgress.questsProgress")}
             </div>
-            <div className="w-full h-2 bg-white/10 overflow-hidden">
+            <div className="w-full h-2 bg-white/10 overflow-hidden shrink-0 mt-4">
                 <div
                     className={`h-full bg-[#2DA44E] transition-all duration-500 ${
                         isLoading ? "animate-pulse" : ""
@@ -501,7 +507,7 @@ export function QuestProgress({
                     aria-busy={isLoading}
                 />
             </div>
-            <div className="text-sm text-muted-foreground font-rajdhani tracking-wide">
+            <div className="text-sm text-muted-foreground font-rajdhani tracking-wide shrink-0 mt-4">
                 {isLoading ? (
                     <span className="animate-pulse">{t("game.questProgress.loading")}</span>
                 ) : total > 0 ? (
@@ -515,7 +521,9 @@ export function QuestProgress({
             </div>
 
             {role === "CREWMATE" && (
-                <QuestList quests={crewQuests} isLoading={isLoading || isCrewQuestsLoading} />
+                <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
+                    <QuestList quests={crewQuests} isLoading={isLoading || isCrewQuestsLoading} />
+                </div>
             )}
         </div>
     );

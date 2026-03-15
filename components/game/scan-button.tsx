@@ -86,33 +86,37 @@ export function ScanButton({ disabled = true, onClick, href }: ScanButtonProps) 
 
     if (href && !disabled) {
         return (
-            <Link
-                href={href}
-                onClick={handlePress}
-                aria-label={t("game.scanButton.scannerAria")}
-                className={className}
-            >
-                {content}
-            </Link>
+            <div className="w-full px-1 overflow-visible">
+                <Link
+                    href={href}
+                    onClick={handlePress}
+                    aria-label={t("game.scanButton.scannerAria")}
+                    className={className}
+                >
+                    {content}
+                </Link>
+            </div>
         );
     }
 
     return (
-        <motion.button
-            animate={pulseAnimation}
-            transition={pulseTransition}
-            onClick={handlePress}
-            onKeyDown={handleKeyDown}
-            disabled={disabled}
-            aria-label={
-                disabled
-                    ? t("game.scanButton.scannerComingSoonAria")
-                    : t("game.scanButton.scannerAria")
-            }
-            style={{ willChange: prefersReducedMotion ? "auto" : "transform" }}
-            className={className}
-        >
-            {content}
-        </motion.button>
+        <div className="w-full px-1 overflow-visible">
+            <motion.button
+                animate={pulseAnimation}
+                transition={pulseTransition}
+                onClick={handlePress}
+                onKeyDown={handleKeyDown}
+                disabled={disabled}
+                aria-label={
+                    disabled
+                        ? t("game.scanButton.scannerComingSoonAria")
+                        : t("game.scanButton.scannerAria")
+                }
+                style={{ willChange: prefersReducedMotion ? "auto" : "transform" }}
+                className={className}
+            >
+                {content}
+            </motion.button>
+        </div>
     );
 }

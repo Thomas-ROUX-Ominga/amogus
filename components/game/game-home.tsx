@@ -6,7 +6,6 @@ import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { GameState, Player } from "@/types/game";
 import { useGameStore } from "@/lib/store/game-store";
-import { RoleBadge } from "@/components/game/role-badge";
 import { QuestProgress } from "@/components/game/quest-progress";
 import { ScanButton } from "@/components/game/scan-button";
 import { BuzzerButton } from "@/components/game/buzzer-button";
@@ -195,7 +194,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     // Defensive validation: ensure role exists
     if (!currentPlayer.role) {
         return (
-            <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
+            <main className="flex min-h-screen flex-col items-center justify-start bg-background text-foreground font-mono px-4 pt-16 pb-4 sm:pt-20 overflow-y-auto">
                 <div className="max-w-2xl w-full border-2 border-destructive/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm">
                     <div className="text-destructive text-center tracking-[0.2em] uppercase text-sm font-orbitron">
                         {t("game.home.roleAssignmentErrorTitle")}
@@ -240,12 +239,12 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     };
 
     return (
-        <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
-            <div className={`max-w-2xl w-full border-2 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm transition-all duration-500 ${
+        <main className="flex h-[100dvh] overflow-hidden flex-col items-center justify-start bg-background text-foreground font-mono px-4 pt-16 pb-4 sm:pt-20">
+            <div className={`max-w-2xl w-full border-2 p-6 md:p-10 bg-black/50 backdrop-blur-sm transition-all duration-500 ${
                 currentPlayer.isAlive 
                     ? "border-primary/20 shadow-[0_0_50px_rgba(var(--primary),0.05)]" 
                     : "border-red-500/40 shadow-[0_0_50px_rgba(239,68,68,0.2)]"
-            }`}>
+            } h-full min-h-0 flex flex-col`}>
                 {/* Header: Title + Status Indicator */}
                 <div className="flex items-center justify-between border-b border-primary/20 pb-4">
                     <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
@@ -265,68 +264,29 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     <GameOverScreen 
                         winner={gameWinner}
                         userRole={role}
-                        isHost={gameState.creatorId === userId}
                         gameId={gameState.id}
                     />
                 )}
 
-                <div className="space-y-6">
+                <div className="min-h-0 flex-1 overflow-hidden flex flex-col gap-4">
                     <ReactorSabotageAlert gameState={gameState} />
 
-                    {/* Role Badge */}
-                    <RoleBadge role={role} />
-
                     {/* Quest Progress (Crewmate and Host only) */}
-                    <QuestProgress
-                        role={role}
-                        completed={questsCompleted}
-                        total={questsTotal}
-                        isLoading={isLoading}
-                        assignedQuests={currentPlayer.assignedQuests}
-                        completedQuests={currentPlayer.completedQuests}
-                        batchId={gameState.batchId}
-                        currentPlayerId={currentPlayer.id}
-                        communicationsSabotaged={currentPlayer.role === "CREWMATE" && communicationsSabotaged}
-                        lightsSabotaged={currentPlayer.role === "CREWMATE" && lightsSabotaged}
-                        gameStateOverride={gameState}
-                    />
-
-                    {/* Player List (Host Only) */}
-                    {gameState.creatorId === userId && (
-                        <div className="p-6 border border-primary/20 bg-black/30">
-                            <div className="text-xs text-primary/60 uppercase tracking-widest mb-4 font-rajdhani">
-                            {t("game.home.connectedPlayers", { count: String(gameState.players.length) })}
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            {gameState.players
-                                .filter((player) => player.id && player.name)
-                                .map((player) => (
-                                    <div
-                                        key={player.id}
-                                        className={`p-3 border text-xs tracking-widest uppercase flex items-center justify-between ${
-                                            player.id === userId
-                                                ? "border-primary bg-primary/10 text-primary font-bold"
-                                                : "border-white/10 bg-white/5 text-muted-foreground"
-                                        }`}
-                                    >
-                                        <span>{player.name}</span>
-                                        <div className="flex items-center gap-2">
-                                            {player.id === gameState.creatorId && player.id !== userId && (
-                                                <span className="text-[8px] bg-primary/20 text-primary px-2 py-0.5 rounded border border-primary/30 font-bold">
-                                                    {t("game.home.host")}
-                                                </span>
-                                            )}
-                                            {player.id === userId && (
-                                                <span className="text-[8px] opacity-50 px-2 py-0.5 border border-primary/50">
-                                                    {t("game.home.you")}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                        </div>
-                        </div>
-                    )}
+                    <div className="min-h-0 flex-1">
+                        <QuestProgress
+                            role={role}
+                            completed={questsCompleted}
+                            total={questsTotal}
+                            isLoading={isLoading}
+                            assignedQuests={currentPlayer.assignedQuests}
+                            completedQuests={currentPlayer.completedQuests}
+                            batchId={gameState.batchId}
+                            currentPlayerId={currentPlayer.id}
+                            communicationsSabotaged={currentPlayer.role === "CREWMATE" && communicationsSabotaged}
+                            lightsSabotaged={currentPlayer.role === "CREWMATE" && lightsSabotaged}
+                            gameStateOverride={gameState}
+                        />
+                    </div>
 
                     {/* SCAN Button (thumb zone — bottom) */}
                     {!isImpostor && !allQuestsDone && !isMeetingActive && (
@@ -339,8 +299,39 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         />
                     )}
 
+                    {/* Action Buttons: below scanner (crewmate) / below sabotages (impostor) */}
+                    {isImpostor ? (
+                        <div className="shrink-0">
+                            <BuzzerButton
+                                onBuzz={handleBuzz}
+                                disabled={!canUseBuzzer || isTriggeringMeeting}
+                                isBuzzing={isTriggeringMeeting}
+                                hasUsed={hasUsedBuzzer}
+                                meetingActive={isMeetingActive}
+                                className="w-full min-h-[56px] justify-center gap-2 px-4 py-3 text-[11px] border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary-foreground tracking-[0.14em]"
+                            />
+                        </div>
+                    ) : (
+                        <div className="shrink-0 grid grid-cols-2 gap-3">
+                            <BuzzerButton
+                                onBuzz={handleBuzz}
+                                disabled={!canUseBuzzer || isTriggeringMeeting}
+                                isBuzzing={isTriggeringMeeting}
+                                hasUsed={hasUsedBuzzer}
+                                meetingActive={isMeetingActive}
+                                className="w-full min-h-[56px] justify-center gap-2 px-4 py-3 text-[11px] border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary-foreground tracking-[0.12em]"
+                            />
+                            <EliminationButton
+                                onEliminate={handleElimination}
+                                disabled={isEliminating || !currentPlayer.isAlive || isMeetingActive || gameState.status !== "IN_PROGRESS"}
+                                isEliminating={isEliminating}
+                                className="w-full min-h-[56px] justify-center gap-2 px-4 py-3 text-[11px] tracking-[0.12em]"
+                            />
+                        </div>
+                    )}
+
                     {/* Camera Scanner Overlay */}
-                    {!isImpostor && !allQuestsDone && !isMeetingActive && (
+                    {!isImpostor && !allQuestsDone && (
                         <CameraScanner
                             isOpen={isOpen}
                             onClose={closeScanner}
@@ -363,36 +354,12 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         />
                     )}
 
-                    {/* No Dead End — Return link */}
-                    <Link
-                        href="/"
-                        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest font-rajdhani touch-manipulation min-h-[44px]"
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                        {t("game.home.returnHome")}
-                    </Link>
                 </div>
 
                 {/* Footer */}
                 <div className="pt-4 flex justify-between items-center">
                     <div className="text-[8px] opacity-40 text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
                         {t("game.home.footerRole", { role: currentPlayer.role })}
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <BuzzerButton
-                            onBuzz={handleBuzz}
-                            disabled={!canUseBuzzer || isTriggeringMeeting}
-                            isBuzzing={isTriggeringMeeting}
-                            hasUsed={hasUsedBuzzer}
-                            meetingActive={isMeetingActive}
-                        />
-                        {!isImpostor && (
-                            <EliminationButton
-                                onEliminate={handleElimination}
-                                disabled={isEliminating || !currentPlayer.isAlive || isMeetingActive}
-                                isEliminating={isEliminating}
-                            />
-                        )}
                     </div>
                     <div className={`text-[8px] uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)] ${currentPlayer.isAlive ? "opacity-40 text-muted-foreground" : "text-red-500 font-bold"}`}>
                         {currentPlayer.isAlive ? t("game.home.footerStatusReady") : t("game.home.footerStatusEliminated")}

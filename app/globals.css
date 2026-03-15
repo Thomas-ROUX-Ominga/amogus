@@ -100,3 +100,61 @@
     @apply bg-background text-foreground;
   }
 }
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #58a6ff #111827;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #111827;
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #58a6ff;
+  border-radius: 9999px;
+  border: 2px solid #0d1117;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #7db8ff;
+}
+
+/* Consistent dark style for numeric inputs without native gray steppers */
+input[type="number"].number-input-clean {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"].number-input-clean::-webkit-outer-spin-button,
+input[type="number"].number-input-clean::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Strong disabled button state across the app */
+button:disabled,
+button[disabled],
+[role="button"][aria-disabled="true"],
+[data-disabled="true"] {
+  opacity: 0.38 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  filter: saturate(0.35) brightness(0.85);
+}
+
+button:disabled:hover,
+button[disabled]:hover,
+[role="button"][aria-disabled="true"]:hover,
+[data-disabled="true"]:hover {
+  box-shadow: none !important;
+  transform: none !important;
+}

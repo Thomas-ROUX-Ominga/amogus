@@ -13,6 +13,7 @@ interface SnapshotRouteContext {
 function getStatusFromCode(code?: string): number {
     if (code === ERROR_CODES.GAME_NOT_FOUND) return 404;
     if (code === ERROR_CODES.ERR_INVALID_SIGNATURE) return 403;
+    if (code === ERROR_CODES.ERR_INVALID_SESSION) return 403;
     if (code === ERROR_CODES.ERR_INVALID_INPUT) return 400;
     return 500;
 }

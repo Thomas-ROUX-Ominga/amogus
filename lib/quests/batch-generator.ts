@@ -70,6 +70,7 @@ export function generateBatch(input: BatchCreateInput): Batch {
 
   return {
     id: globalThis.crypto.randomUUID(),
+    name: undefined,
     questCount: totalQuests,
     quests,
     sabotages,

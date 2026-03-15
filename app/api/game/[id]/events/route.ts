@@ -125,7 +125,8 @@ export async function GET(request: NextRequest, context: EventsRouteContext) {
 
                         if (
                             snapshot.code === ERROR_CODES.GAME_NOT_FOUND ||
-                            snapshot.code === ERROR_CODES.ERR_INVALID_SIGNATURE
+                            snapshot.code === ERROR_CODES.ERR_INVALID_SIGNATURE ||
+                            snapshot.code === ERROR_CODES.ERR_INVALID_SESSION
                         ) {
                             closeStream();
                         }

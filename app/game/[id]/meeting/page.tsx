@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Skull } from "lucide-react";
+import { ArrowLeft, Skull } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/use-auth";
 import { useGameStore, useRealTimeGamePolling } from "@/lib/store/game-store";
 import { ErrorView } from "@/components/game/error-view";
 import { ReactorSabotageAlert } from "@/components/game/reactor-sabotage-alert";
+import { GameOverScreen } from "@/components/game/game-over-screen";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 function formatRemaining(ms: number): string {
@@ -112,6 +113,11 @@ export default function MeetingPage() {
 
     const meeting = gameState?.meeting ?? meetingView?.meeting ?? null;
     const snapshot = meeting?.snapshot;
+    const currentPlayerRole =
+        gameState?.players.find((player) => player.id === userId)?.role ??
+        snapshot?.players.find((player) => player.id === userId)?.role;
+    const isGameOver = gameState?.status === "FINISHED" && Boolean(gameState?.winner);
+    const shouldShowGameOver = Boolean(isGameOver && gameState?.winner && currentPlayerRole);
     const active = meeting?.status === "ACTIVE";
     const completed = meeting?.status === "COMPLETED";
     const remainingMs = active && meeting ? Math.max(0, meeting.endsAt - now) : 0;
@@ -136,6 +142,13 @@ export default function MeetingPage() {
 
     return (
         <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
+            {shouldShowGameOver && gameState?.winner && currentPlayerRole && (
+                <GameOverScreen
+                    winner={gameState.winner}
+                    userRole={currentPlayerRole}
+                    gameId={gameId}
+                />
+            )}
             <div className="max-w-4xl w-full border-2 border-primary/20 p-6 md:p-8 space-y-6 bg-black/50 backdrop-blur-sm">
                 {gameState && <ReactorSabotageAlert gameState={gameState} />}
 
@@ -283,18 +296,13 @@ export default function MeetingPage() {
                     </>
                 )}
 
-                <div className="pt-2 flex items-center justify-between gap-2">
+                <div className="pt-2">
                     <Link
                         href={`/game/${gameId}`}
-                        className="px-4 py-2 border border-primary/40 text-primary text-xs uppercase tracking-widest hover:bg-primary/10 transition-colors"
+                        className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors uppercase tracking-widest font-rajdhani touch-manipulation min-h-[44px]"
                     >
+                        <ArrowLeft className="w-4 h-4" />
                         {t("game.meeting.returnCockpit")}
-                    </Link>
-                    <Link
-                        href="/"
-                        className="px-4 py-2 border border-white/20 text-muted-foreground text-xs uppercase tracking-widest hover:bg-white/5 transition-colors"
-                    >
-                        {t("game.meeting.home")}
                     </Link>
                 </div>
             </div>

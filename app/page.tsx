@@ -2,16 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Terminal, ChevronRight, Hash, LogIn, UserPlus } from "lucide-react";
+import { Terminal, ChevronRight, Hash, LogIn, UserPlus, LayoutGrid, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { isValidShortCode, normalizeShortCode } from "@/lib/utils/short-code";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Home() {
   const t = useTranslations();
   const [gameId, setGameId] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
+  const { authState } = useAuth();
+  const isOrganizerAuthenticated = authState.isAuthenticated && authState.session?.sessionType === "admin";
 
   const handleJoinByCode = (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,24 +110,45 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={() => router.push("/login")}
-                className="w-full h-12 rounded-lg border border-primary/35 bg-background/40 text-foreground font-medium text-sm transition-all hover:bg-primary/10 hover:border-primary hover:-translate-y-0.5 hover:shadow-[0_10px_24px_hsl(var(--primary)/0.16)] cursor-pointer flex items-center justify-center gap-2"
-              >
-                <LogIn size={18} />
-                {t("home.signIn")}
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/register")}
-                className="w-full h-12 rounded-lg border border-primary/25 bg-transparent text-muted-foreground font-medium text-sm transition-all hover:text-foreground hover:border-primary/45 hover:bg-primary/10 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_hsl(var(--primary)/0.12)] cursor-pointer flex items-center justify-center gap-2"
-              >
-                <UserPlus size={16} />
-                {t("home.createAccount")}
-              </button>
-            </div>
+            {isOrganizerAuthenticated ? (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => router.push("/games/create")}
+                  className="w-full h-12 rounded-lg border border-primary/35 bg-background/40 text-foreground font-medium text-sm transition-all hover:bg-primary/10 hover:border-primary hover:-translate-y-0.5 hover:shadow-[0_10px_24px_hsl(var(--primary)/0.16)] cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Plus size={18} />
+                  {t("home.createGame")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/batches")}
+                  className="w-full h-12 rounded-lg border border-primary/35 bg-background/40 text-foreground font-medium text-sm transition-all hover:bg-primary/10 hover:border-primary hover:-translate-y-0.5 hover:shadow-[0_10px_24px_hsl(var(--primary)/0.16)] cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <LayoutGrid size={18} />
+                  {t("common.user.myBatches")}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => router.push("/login")}
+                  className="w-full h-12 rounded-lg border border-primary/35 bg-background/40 text-foreground font-medium text-sm transition-all hover:bg-primary/10 hover:border-primary hover:-translate-y-0.5 hover:shadow-[0_10px_24px_hsl(var(--primary)/0.16)] cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <LogIn size={18} />
+                  {t("home.signIn")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/register")}
+                  className="w-full h-12 rounded-lg border border-primary/25 bg-transparent text-muted-foreground font-medium text-sm transition-all hover:text-foreground hover:border-primary/45 hover:bg-primary/10 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_hsl(var(--primary)/0.12)] cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <UserPlus size={16} />
+                  {t("home.createAccount")}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </section>

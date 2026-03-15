@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { FileDown, Save, Edit2, Check, Play, Lock } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { Printer, Check, X, Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Batch, Quest } from "@/types/quest";
 import { updateQuestsLocations } from "@/lib/redis/batch-actions";
-import { createGame } from "@/lib/redis/actions";
 import { generateQuestPDF, downloadPDF } from "@/lib/utils/pdf-utils";
 import { useAuthGuard } from "@/hooks/use-auth";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
@@ -14,69 +12,94 @@ import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 interface BatchDetailProps {
   batch: Batch;
   onUpdate: (batch: Batch) => void;
+  className?: string;
 }
 
-export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
-  const router = useRouter();
+export function BatchDetail({ batch, onUpdate, className }: BatchDetailProps) {
   const t = useTranslations();
-  const locale = useLocale();
   const authGuard = useAuthGuard(true); // Require organizer account
   
+  const getDefaultQuestLocation = (index: number) =>
+    `${t("admin.batchDetail.defaultLocation")} ${index + 1}`;
+  const getDefaultSabotageLocation = (index: number) =>
+    `${t("admin.batchDetail.defaultLocation")} ${batch.quests.length + index + 1}`;
+
   const [locations, setLocations] = useState<Record<string, string>>(
-    batch.quests.reduce((acc, quest) => {
-      acc[quest.id] = quest.location || "";
+    batch.quests.reduce((acc, quest, index) => {
+      acc[quest.id] = quest.location?.trim() || getDefaultQuestLocation(index);
       return acc;
     }, {} as Record<string, string>)
   );
   const [sabotageLocations, setSabotageLocations] = useState({
-    communications: batch.sabotages?.communications.location || "",
-    lights: batch.sabotages?.lights?.location || "",
-    reactorA: batch.sabotages?.reactor[0]?.location || "",
-    reactorB: batch.sabotages?.reactor[1]?.location || "",
+    communications: batch.sabotages?.communications.location?.trim() || getDefaultSabotageLocation(0),
+    lights: batch.sabotages?.lights?.location?.trim() || getDefaultSabotageLocation(1),
+    reactorA: batch.sabotages?.reactor[0]?.location?.trim() || getDefaultSabotageLocation(2),
+    reactorB: batch.sabotages?.reactor[1]?.location?.trim() || getDefaultSabotageLocation(3),
   });
-  const [isSaving, setIsSaving] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isLaunching, setIsLaunching] = useState(false);
   const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  
-  // Story 11.3: Game Settings from Batch - Quest distribution state
-  const [questDistribution, setQuestDistribution] = useState({
-    short: 4,
-    medium: 2,
-    long: 1
-  });
+  const [editingValue, setEditingValue] = useState("");
 
-  const handleLocationChange = (questId: string, value: string) => {
-    setLocations((prev) => ({
-      ...prev,
-      [questId]: value,
-    }));
+  const handleStartEditingLocation = (quest: Quest, index: number) => {
+    setEditingId(quest.id);
+    setEditingValue(locations[quest.id] || getDefaultQuestLocation(index));
   };
 
-  // Story 11.3: Game Settings from Batch - Quest distribution handlers
-  const handleQuestDistributionChange = (duration: 'short' | 'medium' | 'long', value: string) => {
-    const numValue = parseInt(value) || 0;
-    setQuestDistribution(prev => ({
-      ...prev,
-      [duration]: Math.max(0, numValue)
-    }));
+  const handleCancelEditingLocation = () => {
+    setEditingId(null);
+    setEditingValue("");
   };
 
-  const handleSaveLocations = async () => {
+  const handleConfirmEditingLocation = async (questId: string, index: number) => {
+    const normalized = editingValue.trim() || getDefaultQuestLocation(index);
+    const nextLocations = {
+      ...locations,
+      [questId]: normalized,
+    };
+    setLocations(nextLocations);
+    await persistLocations(nextLocations, sabotageLocations);
+    handleCancelEditingLocation();
+  };
+
+  const handleStartEditingSabotageLocation = (
+    sabotageKey: keyof typeof sabotageLocations,
+    index: number,
+  ) => {
+    setEditingId(`sabotage:${sabotageKey}`);
+    setEditingValue(sabotageLocations[sabotageKey] || getDefaultSabotageLocation(index));
+  };
+
+  const handleConfirmEditingSabotageLocation = async (
+    sabotageKey: keyof typeof sabotageLocations,
+    index: number,
+  ) => {
+    const normalized = editingValue.trim() || getDefaultSabotageLocation(index);
+    const nextSabotageLocations = {
+      ...sabotageLocations,
+      [sabotageKey]: normalized,
+    };
+    setSabotageLocations(nextSabotageLocations);
+    await persistLocations(locations, nextSabotageLocations);
+    handleCancelEditingLocation();
+  };
+
+  const persistLocations = async (
+    nextLocations: Record<string, string>,
+    nextSabotageLocations: typeof sabotageLocations,
+  ) => {
     if (authGuard.isLoading) return;
     if (!authGuard.canProceed) {
       setError(authGuard.reason || t("admin.batchDetail.authRequired"));
       return;
     }
 
-    setIsSaving(true);
+    setIsAutoSaving(true);
     setError("");
-    setSuccessMessage("");
 
     try {
-      const result = await updateQuestsLocations(batch.id, locations, sabotageLocations);
+      const result = await updateQuestsLocations(batch.id, nextLocations, nextSabotageLocations);
 
       if (!result.success) {
         setError(
@@ -90,12 +113,10 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
       }
 
       onUpdate(result.data!);
-      setSuccessMessage(t("admin.batchDetail.locationsSaved"));
-      setTimeout(() => setSuccessMessage(""), 3000);
     } catch {
       setError(getLocalizedErrorMessage({ t, code: "ERR_SIGNAL_LOST" }));
     } finally {
-      setIsSaving(false);
+      setIsAutoSaving(false);
     }
   };
 
@@ -111,72 +132,6 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const handleLaunchGame = async () => {
-    if (authGuard.isLoading) return;
-    if (!authGuard.canProceed) {
-      setError(authGuard.reason || t("admin.batchDetail.authRequired"));
-      return;
-    }
-
-    setIsLaunching(true);
-    setError("");
-
-    // Story 11.3: Game Settings from Batch - Validate quest distribution
-    const totalQuests = questDistribution.short + questDistribution.medium + questDistribution.long;
-    if (totalQuests < 1) {
-      setError(t("admin.batchDetail.atLeastOneQuest"));
-      setIsLaunching(false);
-      return;
-    }
-
-    if (totalQuests > batch.questCount) {
-      setError(
-        t("admin.batchDetail.tooManyQuests", {
-          selected: String(totalQuests),
-          available: String(batch.questCount),
-        }),
-      );
-      setIsLaunching(false);
-      return;
-    }
-
-    try {
-      // Story 11.3: Game Settings from Batch - Pass quest distribution to createGame
-      const result = await createGame({ 
-        batchId: batch.id,
-        questsPerPlayer: questDistribution
-      });
-
-      if (!result.success) {
-        setError(
-          getLocalizedErrorMessage({
-            t,
-            code: result.code,
-            fallback: result.error,
-          }),
-        );
-        return;
-      }
-
-      router.push(`/game/${result.data}`);
-    } catch {
-      setError(getLocalizedErrorMessage({ t, code: "ERR_SIGNAL_LOST" }));
-    } finally {
-      setIsLaunching(false);
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString(locale, {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
   };
 
   const getFormatLabel = (duration: Quest["duration"]) => {
@@ -209,307 +164,205 @@ export function BatchDetail({ batch, onUpdate }: BatchDetailProps) {
     return t(typeKeyMap[type]);
   };
 
+  const sabotageItems = [
+    { key: "communications" as const, label: t("admin.batchDetail.sabotageCommunications"), offset: 0 },
+    { key: "lights" as const, label: t("admin.batchDetail.sabotageLights"), offset: 1 },
+    { key: "reactorA" as const, label: t("admin.batchDetail.sabotageReactorA"), offset: 2 },
+    { key: "reactorB" as const, label: t("admin.batchDetail.sabotageReactorB"), offset: 3 },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className={`h-full min-h-0 flex flex-col gap-4 ${className || ""}`}>
       {/* Header */}
-      <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-4">
+      <div className="shrink-0">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold uppercase tracking-wider text-primary mb-2">
-              BATCH-{batch.id.slice(-8).toUpperCase()}
+            <h1 className="text-2xl font-black uppercase tracking-[0.2em] text-primary font-orbitron">
+              {batch.name?.trim() || `ZONE-${batch.id.slice(-8).toUpperCase()}`}
             </h1>
-            <div className="flex items-center gap-4 text-[8px] text-muted-foreground uppercase tracking-widest">
-              <span>{t("admin.batchDetail.questsCount", { count: String(batch.questCount) })}</span>
-              <span>•</span>
-              <span>{t("admin.batchDetail.createdAt", { date: formatDate(batch.createdAt) })}</span>
-            </div>
           </div>
 
-          <div className="flex gap-3">
-            {/* Authentication Status - Only show if definitely not authorized and not loading */}
-            {!authGuard.isLoading && !authGuard.canProceed && (
-              <div className="flex items-center gap-2 px-4 py-3 border border-destructive/30 bg-destructive/10 text-destructive">
-                <Lock size={14} />
-                <span className="text-xs font-black tracking-widest uppercase">
-                  {authGuard.reason || t("admin.batchDetail.authRequired")}
-                </span>
-              </div>
-            )}
-
-            <button
-              onClick={handleLaunchGame}
-              disabled={isLaunching || authGuard.isLoading || !authGuard.canProceed}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3 px-6 rounded-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs tracking-widest animate-pulse hover:animate-none"
-            >
-              <Play size={14} />
-              {isLaunching
-                ? t("admin.batchDetail.initializing")
-                : authGuard.isLoading
-                ? t("admin.batchDetail.checkingAuth")
-                : t("admin.batchDetail.launchMission")}
-            </button>
-
-            <button
-              onClick={handleSaveLocations}
-              disabled={isSaving || authGuard.isLoading || !authGuard.canProceed}
-              className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-black font-black py-3 px-6 rounded-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs tracking-widest"
-            >
-              <Save size={14} />
-              {isSaving ? t("admin.batchDetail.saving") : t("admin.batchDetail.saveLocations")}
-            </button>
-
+          <div className="w-full sm:w-auto">
             <button
               onClick={handleGeneratePDF}
               disabled={isGenerating}
-              className="flex items-center gap-2 bg-black/80 border border-primary/30 hover:border-primary/50 text-primary font-black py-3 px-6 rounded-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs tracking-widest"
+              className="w-full sm:w-auto justify-center flex items-center gap-2 bg-primary text-primary-foreground border border-primary font-black py-3 px-6 rounded-sm transition-all hover:opacity-95 hover:shadow-[0_0_20px_hsl(var(--primary)/0.25)] text-xs tracking-widest"
             >
-              <FileDown size={14} />
-              {isGenerating ? t("admin.batchDetail.generating") : t("admin.batchDetail.generatePdf")}
+              <Printer size={14} />
+              {isGenerating ? t("admin.batchDetail.generating") : t("admin.batchDetail.printQuests")}
             </button>
-          </div>
-        </div>
-
-        {/* Story 11.3: Game Settings from Batch - Quest Distribution Settings */}
-        <div className="border border-primary/20 bg-black/30 p-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-3">
-            {t("admin.batchDetail.questDistribution")}
-          </h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-[8px] text-muted-foreground uppercase tracking-widest mb-1">
-                {t("admin.batchDetail.shortQuests")}
-              </label>
-              <input
-                type="number"
-                min="0"
-                max={batch.questCount}
-                value={questDistribution.short}
-                onChange={(e) => handleQuestDistributionChange('short', e.target.value)}
-                className="w-full bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50"
-              />
-            </div>
-            <div>
-              <label className="block text-[8px] text-muted-foreground uppercase tracking-widest mb-1">
-                {t("admin.batchDetail.mediumQuests")}
-              </label>
-              <input
-                type="number"
-                min="0"
-                max={batch.questCount}
-                value={questDistribution.medium}
-                onChange={(e) => handleQuestDistributionChange('medium', e.target.value)}
-                className="w-full bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50"
-              />
-            </div>
-            <div>
-              <label className="block text-[8px] text-muted-foreground uppercase tracking-widest mb-1">
-                {t("admin.batchDetail.longQuests")}
-              </label>
-              <input
-                type="number"
-                min="0"
-                max={batch.questCount}
-                value={questDistribution.long}
-                onChange={(e) => handleQuestDistributionChange('long', e.target.value)}
-                className="w-full bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50"
-              />
-            </div>
-          </div>
-          <div className={`mt-2 text-[8px] uppercase tracking-widest ${
-            questDistribution.short + questDistribution.medium + questDistribution.long > batch.questCount 
-              ? "text-destructive font-bold animate-pulse" 
-              : "text-muted-foreground"
-          }`}>
-            {t("admin.batchDetail.totalPerPlayer", {
-              selected: String(
-                questDistribution.short + questDistribution.medium + questDistribution.long,
-              ),
-              available: String(batch.questCount),
-            })}
           </div>
         </div>
 
         {/* Status Messages */}
+        {isAutoSaving && (
+          <div className="mt-4 p-3 border border-primary/20 bg-primary/5 text-primary text-[10px] uppercase tracking-widest">
+            {t("admin.batchDetail.saving")}
+          </div>
+        )}
+
         {error && (
           <div className="mt-4 p-3 border border-destructive/30 bg-destructive/10 text-destructive text-[10px] uppercase tracking-widest">
             [ERROR] {error}
           </div>
         )}
+      </div>
 
-        {successMessage && (
-          <div className="mt-4 p-3 border border-primary/30 bg-primary/10 text-primary text-[10px] uppercase tracking-widest">
-            ✓ {successMessage}
+      <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-3 gap-4">
+        {/* Quest List */}
+        <div className="xl:col-span-2 border-2 border-primary/20 p-4 sm:p-6 bg-black/50 backdrop-blur-sm flex flex-col min-h-0">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-bold uppercase tracking-wider text-primary">
+              {t("admin.batchDetail.questLocations")}
+            </h2>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-widest shrink-0">
+              {t("admin.batchDetail.totalLabel")}: {batch.quests.length}
+            </span>
+          </div>
+
+          <div className="inventory-scroll flex-1 min-h-0 overflow-y-auto pr-1 grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {batch.quests.map((quest, index) => (
+              <div
+                key={quest.id}
+                className="flex items-center gap-3 p-3 sm:p-4 border border-primary/10 bg-black/30 hover:border-primary/30 transition-all"
+              >
+                <div className="w-10 h-10 rounded-full border border-primary/30 flex items-center justify-center bg-primary/5 shrink-0">
+                  <span className="text-primary text-xs font-bold">{index + 1}</span>
+                </div>
+
+                <div className="min-w-0 w-full">
+                  {editingId === quest.id ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value.slice(0, 50))}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                              void handleConfirmEditingLocation(quest.id, index);
+                          }
+                          if (e.key === "Escape") {
+                            e.preventDefault();
+                            handleCancelEditingLocation();
+                          }
+                        }}
+                        placeholder={t("admin.batchDetail.enterLocation")}
+                        className="flex-1 h-8 bg-black border border-primary/40 text-primary text-xs px-2 focus:outline-none focus:border-primary/60 placeholder:text-muted-foreground/50"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                          onClick={() => void handleConfirmEditingLocation(quest.id, index)}
+                        className="p-1.5 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
+                      >
+                        <Check size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelEditingLocation}
+                        className="p-1.5 border border-primary/25 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="text-[10px] font-mono text-primary uppercase tracking-widest truncate">
+                          {locations[quest.id] || getDefaultQuestLocation(index)}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditingLocation(quest, index)}
+                        className="p-1 border border-primary/25 text-primary/70 hover:text-primary hover:border-primary/45 hover:bg-primary/10 transition-colors shrink-0"
+                        title={t("admin.batchDetail.editLocation")}
+                      >
+                        <Pencil size={10} />
+                      </button>
+                    </div>
+                  )}
+                  <div className="text-[8px] text-muted-foreground uppercase tracking-widest mt-1">
+                    {getQuestTypeLabel(quest.type)} - {getFormatLabel(quest.duration)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {batch.sabotages && (
+          <div className="border-2 border-primary/20 p-4 sm:p-6 bg-black/50 backdrop-blur-sm flex flex-col min-h-0">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-bold uppercase tracking-wider text-primary">
+                {t("admin.batchDetail.sabotageLocations")}
+              </h2>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest shrink-0">
+                {t("admin.batchDetail.totalLabel")}: {sabotageItems.length}
+              </span>
+            </div>
+
+            <div className="inventory-scroll flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
+              {sabotageItems.map((sabotage) => (
+                <div key={sabotage.key} className="p-3 sm:p-4 border border-primary/10 bg-black/30 hover:border-primary/30 transition-all">
+                  {editingId === `sabotage:${sabotage.key}` ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value.slice(0, 50))}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void handleConfirmEditingSabotageLocation(sabotage.key, sabotage.offset);
+                          }
+                          if (e.key === "Escape") {
+                            e.preventDefault();
+                            handleCancelEditingLocation();
+                          }
+                        }}
+                        placeholder={t("admin.batchDetail.enterLocation")}
+                        className="flex-1 h-8 bg-black border border-primary/40 text-primary text-xs px-2 focus:outline-none focus:border-primary/60 placeholder:text-muted-foreground/50"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void handleConfirmEditingSabotageLocation(sabotage.key, sabotage.offset)}
+                        className="p-1.5 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
+                      >
+                        <Check size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelEditingLocation}
+                        className="p-1.5 border border-primary/25 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="text-[10px] font-mono text-primary uppercase tracking-widest truncate">
+                        {sabotageLocations[sabotage.key] || getDefaultSabotageLocation(sabotage.offset)}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditingSabotageLocation(sabotage.key, sabotage.offset)}
+                        className="p-1 border border-primary/25 text-primary/70 hover:text-primary hover:border-primary/45 hover:bg-primary/10 transition-colors shrink-0"
+                        title={t("admin.batchDetail.editLocation")}
+                      >
+                        <Pencil size={10} />
+                      </button>
+                    </div>
+                  )}
+                  <div className="text-[8px] text-muted-foreground uppercase tracking-widest mt-1">
+                    {sabotage.label}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
-
-      {/* Quest List */}
-      <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
-        <h2 className="text-lg font-bold uppercase tracking-wider text-primary mb-6">
-          {t("admin.batchDetail.questLocations")}
-        </h2>
-
-        <div className="space-y-3">
-          {batch.quests.map((quest, index) => (
-            <div
-              key={quest.id}
-              className="flex items-center gap-4 p-4 border border-primary/10 bg-black/30 hover:border-primary/30 transition-all"
-            >
-              {/* Quest Number & Format */}
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full border border-primary/30 flex items-center justify-center bg-primary/5">
-                  <span className="text-primary text-xs font-bold">
-                    {index + 1}
-                  </span>
-                </div>
-                <div className="w-8 h-8 rounded border border-primary/30 flex items-center justify-center bg-primary/5">
-                  <span className="text-primary text-[10px] font-bold">
-                    {getFormatLabel(quest.duration)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Quest Info */}
-              <div className="flex-1">
-                <div className="text-[10px] font-mono text-primary uppercase tracking-widest">
-                  {quest.id}
-                </div>
-                <div className="text-[8px] text-muted-foreground uppercase tracking-widest mt-1">
-                  {getQuestTypeLabel(quest.type)} • {getFormatLabel(quest.duration)}
-                </div>
-              </div>
-
-              {/* Location Input */}
-              <div className="flex items-center gap-2 flex-1">
-                {editingId === quest.id ? (
-                  <>
-                    <input
-                      type="text"
-                      value={locations[quest.id] || ""}
-                      onChange={(e) =>
-                        handleLocationChange(quest.id, e.target.value)
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          setEditingId(null);
-                        }
-                      }}
-                      placeholder={t("admin.batchDetail.enterLocation")}
-                      className="flex-1 bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
-                      autoFocus
-                    />
-                    <button
-                      onClick={() => setEditingId(null)}
-                      className="p-2 text-primary hover:text-primary/80 border border-primary/30 hover:border-primary/50 transition-all"
-                    >
-                      <Check size={14} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex-1 text-xs text-primary px-3 py-2 border border-primary/10 bg-black/20">
-                      {locations[quest.id] || (
-                        <span className="text-muted-foreground/50">
-                          {t("admin.batchDetail.noLocation")}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => setEditingId(quest.id)}
-                      className="p-2 text-primary hover:text-primary/80 border border-primary/30 hover:border-primary/50 transition-all"
-                      title={t("admin.batchDetail.editLocation")}
-                    >
-                      <Edit2 size={14} />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {batch.sabotages && (
-        <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
-          <h2 className="text-lg font-bold uppercase tracking-wider text-primary mb-6">
-            {t("admin.batchDetail.sabotageLocations")}
-          </h2>
-
-          <div className="space-y-3">
-            <div className="p-4 border border-primary/10 bg-black/30">
-              <div className="text-[10px] text-primary uppercase tracking-widest mb-2">
-                {t("admin.batchDetail.sabotageCommunications")}
-              </div>
-              <div className="text-[8px] text-muted-foreground uppercase tracking-widest mb-3 font-mono">
-                {batch.sabotages.communications.qrId}
-              </div>
-              <input
-                type="text"
-                value={sabotageLocations.communications}
-                onChange={(e) =>
-                  setSabotageLocations((prev) => ({ ...prev, communications: e.target.value }))
-                }
-                placeholder={t("admin.batchDetail.enterLocation")}
-                className="w-full bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
-              />
-            </div>
-
-            <div className="p-4 border border-primary/10 bg-black/30">
-              <div className="text-[10px] text-primary uppercase tracking-widest mb-2">
-                {t("admin.batchDetail.sabotageLights")}
-              </div>
-              <div className="text-[8px] text-muted-foreground uppercase tracking-widest mb-3 font-mono">
-                {batch.sabotages.lights?.qrId || "-"}
-              </div>
-              <input
-                type="text"
-                value={sabotageLocations.lights}
-                onChange={(e) =>
-                  setSabotageLocations((prev) => ({ ...prev, lights: e.target.value }))
-                }
-                placeholder={t("admin.batchDetail.enterLocation")}
-                className="w-full bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
-              />
-            </div>
-
-            <div className="p-4 border border-primary/10 bg-black/30">
-              <div className="text-[10px] text-primary uppercase tracking-widest mb-2">
-                {t("admin.batchDetail.sabotageReactorA")}
-              </div>
-              <div className="text-[8px] text-muted-foreground uppercase tracking-widest mb-3 font-mono">
-                {batch.sabotages.reactor[0].qrId}
-              </div>
-              <input
-                type="text"
-                value={sabotageLocations.reactorA}
-                onChange={(e) =>
-                  setSabotageLocations((prev) => ({ ...prev, reactorA: e.target.value }))
-                }
-                placeholder={t("admin.batchDetail.enterLocation")}
-                className="w-full bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
-              />
-            </div>
-
-            <div className="p-4 border border-primary/10 bg-black/30">
-              <div className="text-[10px] text-primary uppercase tracking-widest mb-2">
-                {t("admin.batchDetail.sabotageReactorB")}
-              </div>
-              <div className="text-[8px] text-muted-foreground uppercase tracking-widest mb-3 font-mono">
-                {batch.sabotages.reactor[1].qrId}
-              </div>
-              <input
-                type="text"
-                value={sabotageLocations.reactorB}
-                onChange={(e) =>
-                  setSabotageLocations((prev) => ({ ...prev, reactorB: e.target.value }))
-                }
-                placeholder={t("admin.batchDetail.enterLocation")}
-                className="w-full bg-black/50 border border-primary/30 text-primary text-xs px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

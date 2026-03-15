@@ -53,8 +53,8 @@ describe('CameraScanner', () => {
 
     expect(screen.getByLabelText('Fermer le scanner')).toBeInTheDocument();
     expect(screen.getByLabelText('Vue caméra pour scanner les codes QR')).toBeInTheDocument();
-    expect(screen.queryByText('SCANNER QR')).not.toBeInTheDocument();
-    expect(screen.queryByText('Positionnez le QR code dans le cadre pour scanner')).not.toBeInTheDocument();
+    expect(screen.getByText('SCANNER QR')).toBeInTheDocument();
+    expect(screen.getByText('Positionnez le QR code dans le cadre pour scanner')).toBeInTheDocument();
   });
 
   it('does not render scanner when isOpen is false', () => {

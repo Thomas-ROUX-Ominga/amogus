@@ -21,6 +21,8 @@ vi.mock('@/lib/redis/auth-utils', () => ({
       role: 'organizer'
     } 
   }),
+  createPlayerSession: vi.fn().mockResolvedValue({ success: true }),
+  verifyPlayerSession: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 vi.mock('@/lib/redis/batch-actions', () => ({

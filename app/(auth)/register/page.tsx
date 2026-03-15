@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, User, Eye, EyeOff, ShieldPlus } from "lucide-react";
+import { Lock, User, Eye, EyeOff, ShieldPlus, ChevronLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { register } from "@/lib/redis/auth-actions";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
@@ -169,6 +169,17 @@ export default function RegisterPage() {
               </button>
             </div>
           </form>
+        </div>
+
+        <div>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-[10px] uppercase tracking-widest text-primary/50 hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-1"
+          >
+            <ChevronLeft size={14} />
+            {t("auth.register.backHome")}
+          </button>
         </div>
 
         {/* Security Notice */}

@@ -2,18 +2,17 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { Trophy, Skull, Users, ArrowLeft } from "lucide-react";
+import { Trophy, Skull, ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { PlayerRole } from "@/types/game";
 
 interface GameOverScreenProps {
     winner: PlayerRole;
     userRole: PlayerRole;
-    isHost: boolean;
     gameId: string;
 }
 
-export function GameOverScreen({ winner, userRole, isHost, gameId }: GameOverScreenProps) {
+export function GameOverScreen({ winner, userRole, gameId }: GameOverScreenProps) {
     const router = useRouter();
     const t = useTranslations();
 
@@ -22,12 +21,7 @@ export function GameOverScreen({ winner, userRole, isHost, gameId }: GameOverScr
     let icon;
     let colorClass;
 
-    if (isHost) {
-        title = t("game.gameOver.hostTitle");
-        message = winner === "CREWMATE" ? t("game.gameOver.hostCrewWin") : t("game.gameOver.hostImpostorWin");
-        icon = <Users className="w-16 h-16 text-primary" />;
-        colorClass = "border-primary/40 shadow-[0_0_50px_rgba(var(--primary),0.2)]";
-    } else if (winner === userRole) {
+    if (winner === userRole) {
         title = t("game.gameOver.victoryTitle");
         message = userRole === "IMPOSTOR" ? t("game.gameOver.impostorWin") : t("game.gameOver.crewWin");
         icon = <Trophy className="w-16 h-16 text-green-500 animate-bounce" />;

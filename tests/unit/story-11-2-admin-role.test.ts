@@ -6,6 +6,7 @@ import { verifySession, createPlayerSession } from '@/lib/redis/auth-utils';
 vi.mock('@/lib/redis/auth-utils', () => ({
   verifySession: vi.fn(),
   createPlayerSession: vi.fn(),
+  verifyPlayerSession: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 vi.mock('@/lib/redis/client', () => ({
@@ -24,6 +25,7 @@ vi.mock('@/lib/utils/short-code.server', () => ({
 describe('Task 2: Host Role Assignment on Game Launch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(createPlayerSession).mockResolvedValue({ success: true });
   });
 
   describe('Subtask 2.1 & 2.2: Host role assignment', () => {

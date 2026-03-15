@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Lock, ChevronRight } from "lucide-react";
+import { Lock, ChevronRight, ChevronLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { login } from "@/lib/redis/auth-actions";
 import { useAuth } from "@/hooks/use-auth";
@@ -148,6 +148,17 @@ function LoginContent() {
               </button>
             </div>
           </form>
+        </div>
+
+        <div>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-[10px] uppercase tracking-widest text-primary/50 hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-1"
+          >
+            <ChevronLeft size={14} />
+            {t("auth.login.backHome")}
+          </button>
         </div>
 
         {/* Footer Info */}

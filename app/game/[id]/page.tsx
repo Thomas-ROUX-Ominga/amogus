@@ -8,15 +8,15 @@ import { useGameStore, useRealTimeGamePolling } from "@/lib/store/game-store";
 import { useAuth } from "@/hooks/use-auth";
 import { JoinForm } from "@/components/game/join-form";
 import { ErrorView } from "@/components/game/error-view";
-import { RoleSelection } from "@/components/game/role-selection";
-import { RoleTransition } from "@/components/effects/role-transition";
 import { GameHome } from "@/components/game/game-home";
+import { RoleRevealScreen } from "@/components/game/role-reveal-screen";
 import { Rocket, Loader2, Wifi, WifiOff } from "lucide-react";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 export default function LobbyPage() {
     const t = useTranslations();
     const { id } = useParams();
+    const [showRoleReveal, setShowRoleReveal] = useState(false);
     const {
         gameState,
         isLoading,
@@ -24,7 +24,6 @@ export default function LobbyPage() {
         fatalError,
         fatalErrorCode,
         launchError,
-        selectedRole,
         fetchGame,
         launch,
         reset,
@@ -48,9 +47,6 @@ export default function LobbyPage() {
     // Auth session is now the single source of truth for both admin and anonymous players.
     // AuthProvider ensures at least an anonymous session is always present.
     const userId = authState.session?.userId;
-    const [showTransition, setShowTransition] = useState(false);
-    const [showGameHome, setShowGameHome] = useState(false);
-
     // Real-time polling for lobby updates
     const { 
         isConnected, 
@@ -74,31 +70,6 @@ export default function LobbyPage() {
         }
     }, [id, userId, fetchGame, gameState]);
 
-    // Game start detection - redirect when game starts
-    useEffect(() => {
-        if (isGameStarted && currentGameState && !showTransition && !showGameHome) {
-            const currentPlayer = currentGameState.players.find((p) => p.id === userId);
-            
-            // Haptic feedback for game start
-            try {
-                if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-                    navigator.vibrate([100, 50, 100]);
-                }
-            } catch {
-                // Ignore haptic failures
-            }
-            
-            // If player has no role, they need to select one first
-            if (!currentPlayer?.role) {
-                // Role selection will be handled by existing logic below
-                return;
-            }
-            
-            // Player has role, show game home (using setTimeout to avoid setState in effect)
-            setTimeout(() => setShowGameHome(true), 0);
-        }
-    }, [isGameStarted, currentGameState, userId, showTransition, showGameHome]);
-
     const handleLaunch = useCallback(async () => {
         if (!id || isLaunching) return;
         const success = await launch(id as string);
@@ -119,23 +90,41 @@ export default function LobbyPage() {
     const hasRole = currentPlayer?.role !== undefined;
     
     // Only the game creator can launch the game
-    const canLaunch = currentGameState && 
-                     currentPlayerCount >= 1 && 
-                     currentGameState.status === "LOBBY" &&
-                     currentGameState.creatorId === userId;
+    const minimumPlayersToLaunch =
+        currentGameState?.impostorMode === "manual"
+            ? Math.max(1, currentGameState.manualImpostorCount || 1) + 1
+            : currentGameState?.impostorMode === "auto"
+            ? 2
+            : 1;
+    const canLaunch = Boolean(
+        currentGameState &&
+        currentPlayerCount >= minimumPlayersToLaunch &&
+        currentGameState.status === "LOBBY" &&
+        currentGameState.creatorId === userId
+    );
+    const shouldShowGameHome = isGameStarted && hasRole;
 
-    const handleRoleSelected = useCallback(() => {
-        setShowTransition(true);
-    }, []);
+    useEffect(() => {
+        if (!userId || !currentGameState || !currentPlayer) {
+            setShowRoleReveal(false);
+            return;
+        }
 
-    const handleTransitionComplete = useCallback(() => {
-        setShowTransition(false);
-        setShowGameHome(true);
-    }, []);
+        const shouldTriggerReveal =
+            currentGameState.status === "IN_PROGRESS" && currentPlayer.role !== undefined;
+        if (!shouldTriggerReveal) {
+            return;
+        }
 
-    // Derive whether to show game home: either after transition completes,
-    // or directly if player already has a role (idempotency / page reload)
-    const shouldShowGameHome = isGameStarted && hasRole && (showGameHome || !showTransition);
+        const revealStorageKey = `role-reveal-seen-${currentGameState.id}-${userId}`;
+        const revealAlreadyShown = sessionStorage.getItem(revealStorageKey) === "1";
+        if (revealAlreadyShown) {
+            return;
+        }
+
+        sessionStorage.setItem(revealStorageKey, "1");
+        setShowRoleReveal(true);
+    }, [currentGameState, currentPlayer, userId]);
 
     if (isLoading || !userId) {
         return (
@@ -168,18 +157,22 @@ export default function LobbyPage() {
         );
     }
 
-    // Show role transition animation
-    if (showTransition && selectedRole) {
-        return <RoleTransition role={selectedRole} gameId={id as string} onComplete={handleTransitionComplete} />;
+    if (showRoleReveal && currentPlayer?.role) {
+        return (
+            <RoleRevealScreen
+                role={currentPlayer.role}
+                onComplete={() => setShowRoleReveal(false)}
+            />
+        );
     }
 
-    // Show game home after role selection
+    // Show game home as soon as roles are assigned
     if (shouldShowGameHome && currentPlayer) {
         return <GameHome gameState={currentGameState!} currentPlayer={currentPlayer} userId={userId} />;
     }
 
-    // Show role selection when game is IN_PROGRESS and no role selected yet
-    if (currentGameInProgress && !hasRole) {
+    // In auto-assignment mode, briefly show waiting UI until role assignment arrives
+    if (currentGameInProgress && isJoined && !hasRole) {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
                 <div className="max-w-2xl w-full border-2 border-primary/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgba(var(--primary),0.05)]">
@@ -194,7 +187,11 @@ export default function LobbyPage() {
                             </span>
                         </div>
                     </div>
-                    <RoleSelection gameId={id as string} onRoleSelected={handleRoleSelected} />
+                    <div className="p-6 border border-primary/20 bg-primary/5 text-center">
+                        <div className="text-xs text-primary uppercase tracking-widest animate-pulse">
+                            {t("game.lobby.assigningRoles")}
+                        </div>
+                    </div>
                 </div>
             </main>
         );
@@ -326,9 +323,12 @@ export default function LobbyPage() {
                                 </div>
                             )}
 
-                            {!launchError && !canLaunch && currentPlayerCount === 0 && (
+                            {!launchError && !canLaunch && currentPlayerCount < minimumPlayersToLaunch && (
                                 <div className="p-4 border-l-4 border-yellow-500/30 bg-yellow-500/5 text-xs text-yellow-500/80 italic tracking-wide">
-                                    {t("game.lobby.awaitingCrewMembers")}
+                                    {t("game.lobby.awaitingPlayers", {
+                                        current: String(currentPlayerCount),
+                                        required: String(minimumPlayersToLaunch),
+                                    })}
                                 </div>
                             )}
 

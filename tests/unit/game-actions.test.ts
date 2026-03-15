@@ -286,6 +286,9 @@ describe("completeQuest", () => {
 describe("getGameSnapshot", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(verifySession).mockReset();
+        vi.mocked(verifyPlayerSession).mockReset();
+        vi.mocked(createPlayerSession).mockReset();
         vi.mocked(verifySession).mockResolvedValue({
             success: false,
             error: "No session",
@@ -363,12 +366,12 @@ describe("getGameSnapshot", () => {
             revision: 2,
             updatedAt: now,
         });
-        vi.mocked(verifyPlayerSession).mockResolvedValueOnce({
+        vi.mocked(verifyPlayerSession).mockResolvedValue({
             success: false,
             error: "No player session found",
             code: "ERR_NO_SESSION",
         });
-        vi.mocked(createPlayerSession).mockResolvedValueOnce({
+        vi.mocked(createPlayerSession).mockResolvedValue({
             success: false,
             error: "Failed to create player session",
             code: "ERR_SIGNAL_LOST",
@@ -379,5 +382,6 @@ describe("getGameSnapshot", () => {
         expect(result.success).toBe(false);
         expect(result.code).toBe("ERR_SIGNAL_LOST");
         expect(result.error).toBe("Failed to create player session");
+        expect(createPlayerSession).toHaveBeenCalledWith("known-user", "game-live");
     });
 });

@@ -53,6 +53,7 @@ export interface QuestPool {
 // Batch types for Story 6.2
 export interface Batch {
     id: string;
+    name?: string;
     questCount: number;
     quests: Quest[];
     sabotages?: BatchSabotages;
@@ -65,6 +66,7 @@ export interface BatchCreateInput {
 
 export interface BatchListItem {
     id: string;
+    name?: string;
     questCount: number;
     createdAt: string;
 }

@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { X, AlertCircle, Loader2 } from "lucide-react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { useTranslations } from "next-intl";
+import { createPortal } from "react-dom";
 import { EliminatedScreen } from "@/components/game/eliminated-screen";
 
 export interface CameraScannerProps {
@@ -25,20 +26,20 @@ export function CameraScanner({
     statusMessage = null,
 }: CameraScannerProps) {
     const t = useTranslations();
+    const [mounted, setMounted] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [viewportHeight, setViewportHeight] = useState<number | null>(null);
     const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
     const hasScannedRef = useRef(false);
     const scanCooldownUntilRef = useRef(0);
-    const scannerRegionId = 'qr-scanner-region';
-    const scannerReservedHeight = statusMessage ? 208 : 136;
-    const scannerSquareSize = viewportHeight
-        ? Math.max(220, Math.min(520, viewportHeight - scannerReservedHeight))
-        : 420;
+    const scannerRegionId = "qr-scanner-region";
 
     useEffect(() => {
-        if (!isOpen) {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (!mounted || !isOpen) {
             cleanupScanner();
             hasScannedRef.current = false;
             scanCooldownUntilRef.current = 0;
@@ -47,7 +48,7 @@ export function CameraScanner({
 
         // Initialize scanner if container is ready and no active scanner/error
         if (document.getElementById(scannerRegionId) && !html5QrCodeRef.current && !error && !isLoading) {
-            initializeScanner();
+            void initializeScanner();
         }
 
         return () => {
@@ -55,26 +56,16 @@ export function CameraScanner({
                 cleanupScanner();
             }
         };
-    }, [isOpen, error, isLoading]);
+    }, [mounted, isOpen, error, isLoading]);
 
     useEffect(() => {
-        if (!isOpen || typeof window === "undefined" || typeof document === "undefined") {
-            setViewportHeight(null);
+        if (!isOpen || !mounted || typeof document === "undefined") {
             return;
         }
-
-        const updateViewportHeight = () => {
-            const nextHeight = Math.round(window.visualViewport?.height ?? window.innerHeight);
-            setViewportHeight(nextHeight);
-        };
 
         const originalBodyOverflow = document.body.style.overflow;
         const originalBodyTouchAction = document.body.style.touchAction;
         const originalHtmlOverflow = document.documentElement.style.overflow;
-
-        updateViewportHeight();
-        window.addEventListener("resize", updateViewportHeight);
-        window.visualViewport?.addEventListener("resize", updateViewportHeight);
 
         // Lock page scroll so the scanner stays fixed to the visible viewport on mobile.
         document.body.style.overflow = "hidden";
@@ -82,13 +73,11 @@ export function CameraScanner({
         document.documentElement.style.overflow = "hidden";
 
         return () => {
-            window.removeEventListener("resize", updateViewportHeight);
-            window.visualViewport?.removeEventListener("resize", updateViewportHeight);
             document.body.style.overflow = originalBodyOverflow;
             document.body.style.touchAction = originalBodyTouchAction;
             document.documentElement.style.overflow = originalHtmlOverflow;
         };
-    }, [isOpen]);
+    }, [mounted, isOpen]);
 
     const initializeScanner = async () => {
         if (!document.getElementById(scannerRegionId)) return;
@@ -104,10 +93,9 @@ export function CameraScanner({
 
             // Configure scanner for mobile-first environment usage
             const config = {
-                fps: 15,
-                qrbox: { width: 250, height: 250 }, // Standard box size
+                fps: 12,
                 aspectRatio: 1.0,
-                formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+                formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
             };
 
             // Start scanning immediately with environment camera
@@ -249,117 +237,130 @@ export function CameraScanner({
         // Reactive useEffect will trigger initializeScanner once error is null and container renders
     };
 
-    return (
-        <AnimatePresence>
-            {isOpen && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[120] h-screen overflow-hidden overscroll-none bg-black"
-                    style={viewportHeight ? { height: `${viewportHeight}px` } : undefined}
-                >
-                    <div className="relative flex h-full w-full items-center justify-center overflow-hidden p-4 sm:p-6">
-                        <button
-                            onClick={onClose}
-                            className="absolute right-4 top-4 z-30 rounded-full border border-primary/40 bg-black/80 p-2 transition-colors hover:bg-primary/20"
-                            aria-label={t("game.scanner.closeScannerAria")}
-                        >
-                            <X className="h-5 w-5 text-primary" />
-                        </button>
+    if (!mounted) {
+        return null;
+    }
 
-                        <div className="flex w-full max-w-[560px] flex-col items-center gap-4">
-                            {statusMessage && (
-                                <div className="w-full border border-primary/40 bg-black/85 px-4 py-3 text-center text-sm text-primary font-rajdhani tracking-wide">
-                                    {statusMessage}
-                                </div>
-                            )}
+    if (!isOpen) {
+        return null;
+    }
 
-                            <div className="relative flex w-full items-center justify-center overflow-hidden">
-                                {/* Eliminated Player Overlay - Only block Impostors, allow Crewmates in Ghost Mode */}
-                                {isPlayerEliminated && playerRole === "IMPOSTOR" && (
-                                    <EliminatedScreen onDismiss={onClose} playerRole={playerRole} />
-                                )}
-
-                                {/* Ghost Mode Overlay for Eliminated Crewmates */}
-                                {isPlayerEliminated && playerRole === "CREWMATE" && (
-                                    <div className="absolute inset-0 m-4 rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 backdrop-blur-sm">
-                                        <div className="space-y-2 text-center">
-                                            <h3 className="text-sm font-bold uppercase tracking-wider text-blue-400 font-orbitron">
-                                                {t("game.scanner.ghostModeTitle")}
-                                            </h3>
-                                            <p className="text-xs text-blue-300 font-rajdhani">
-                                                {t("game.scanner.ghostModeDescription")}
-                                            </p>
-                                        </div>
+    return createPortal(
+        <motion.div
+            key="camera-scanner-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-[9999] bg-black/55 backdrop-blur-md"
+            onClick={onClose}
+        >
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(88,166,255,0.14),transparent_65%)]" />
+                        <div className="relative z-10 flex h-full w-full items-center justify-center p-3 sm:p-6">
+                            <div
+                                className="w-full max-w-3xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto border border-primary/35 bg-black/70 backdrop-blur-xl p-4 sm:p-5"
+                                onClick={(event) => event.stopPropagation()}
+                            >
+                                <div className="mb-4 flex items-start justify-between gap-3">
+                                    <div>
+                                        <h2 className="text-sm sm:text-base font-black uppercase tracking-[0.2em] text-primary font-orbitron">
+                                            {t("game.scanner.title")}
+                                        </h2>
+                                        <p className="mt-1 text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground font-rajdhani">
+                                            {t("game.scanner.instruction")}
+                                        </p>
                                     </div>
-                                )}
-
-                                {/* Scanner Area Container - Always rendered to keep #qr-scanner-region in DOM */}
-                                {!(isPlayerEliminated && playerRole === "IMPOSTOR") && (
-                                    <div
-                                        className={`relative shrink-0 transition-opacity duration-300 ${isLoading || error ? 'opacity-0' : 'opacity-100'}`}
-                                        style={{
-                                            width: `min(100%, ${scannerSquareSize}px)`,
-                                            height: `min(100%, ${scannerSquareSize}px)`,
-                                        }}
+                                    <button
+                                        onClick={onClose}
+                                        className="shrink-0 h-9 w-9 border border-primary/35 bg-black/70 text-primary inline-flex items-center justify-center hover:bg-primary/15 transition-colors"
+                                        aria-label={t("game.scanner.closeScannerAria")}
                                     >
-                                        <div
-                                            id={scannerRegionId}
-                                            className="h-full w-full overflow-hidden rounded-lg bg-black [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
-                                            aria-label={t("game.scanner.cameraViewAria")}
-                                            role="img"
-                                        />
-                                        {/* Scanning overlay frame */}
-                                        <div className="pointer-events-none absolute inset-0">
-                                            <div className="absolute inset-4 rounded-lg border-2 border-primary/50 shadow-[0_0_15px_rgba(var(--primary),0.3)]">
-                                                <motion.div
-                                                    className="absolute left-0 right-0 top-0 h-0.5 bg-primary shadow-[0_0_10px_rgba(var(--primary),0.8)]"
-                                                    animate={{ y: ["0%", "100%"] }}
-                                                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                                                />
-                                            </div>
-                                        </div>
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
+
+                                {statusMessage && (
+                                    <div className="mb-4 w-full border border-primary/35 bg-primary/10 px-3 py-2 text-center text-xs text-primary font-rajdhani tracking-wide">
+                                        {statusMessage}
                                     </div>
                                 )}
 
-                                {isLoading && !(isPlayerEliminated && playerRole === "IMPOSTOR") && (
-                                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
-                                        <div className="space-y-4 text-center">
-                                            <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
-                                            <p className="font-rajdhani tracking-wider text-primary">
-                                                {t("game.scanner.initializingCamera")}
-                                            </p>
-                                        </div>
+                                {isPlayerEliminated && playerRole === "CREWMATE" && (
+                                    <div className="mb-4 border border-blue-500/30 bg-blue-500/10 p-3 text-center">
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-blue-300 font-orbitron">
+                                            {t("game.scanner.ghostModeTitle")}
+                                        </h3>
+                                        <p className="text-xs text-blue-200/90 font-rajdhani mt-1">
+                                            {t("game.scanner.ghostModeDescription")}
+                                        </p>
                                     </div>
                                 )}
 
-                                {error && !(isPlayerEliminated && playerRole === "IMPOSTOR") && (
-                                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 p-4">
-                                        <div className="w-full max-w-sm space-y-4 rounded-lg border border-destructive/20 bg-destructive/10 p-6 text-center">
-                                            <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
-                                            <div>
-                                                <h3 className="mb-2 text-lg font-bold text-destructive font-orbitron">
-                                                    {t("game.scanner.cameraErrorTitle")}
-                                                </h3>
-                                                <p className="text-sm text-muted-foreground font-rajdhani">
-                                                    {error}
-                                                </p>
+                                <div className="relative mx-auto w-full max-w-[560px]">
+                                    {isPlayerEliminated && playerRole === "IMPOSTOR" ? (
+                                        <EliminatedScreen onDismiss={onClose} playerRole={playerRole} />
+                                    ) : (
+                                        <div className="relative aspect-square w-full overflow-hidden border border-primary/35 bg-black/90 shadow-[0_0_40px_rgba(88,166,255,0.15)]">
+                                            <div
+                                                id={scannerRegionId}
+                                                className="h-full w-full overflow-hidden bg-black [&_video]:h-full [&_video]:w-full [&_video]:object-cover [&_canvas]:hidden [&_img]:hidden"
+                                                aria-label={t("game.scanner.cameraViewAria")}
+                                                role="img"
+                                            />
+
+                                            <div className="pointer-events-none absolute inset-0">
+                                                <div className="absolute inset-5 border border-primary/45" />
+
+                                                <div className="absolute left-5 top-5 h-8 w-8 border-l-2 border-t-2 border-white/80" />
+                                                <div className="absolute right-5 top-5 h-8 w-8 border-r-2 border-t-2 border-white/80" />
+                                                <div className="absolute left-5 bottom-5 h-8 w-8 border-l-2 border-b-2 border-white/80" />
+                                                <div className="absolute right-5 bottom-5 h-8 w-8 border-r-2 border-b-2 border-white/80" />
+
+                                                <div className="absolute inset-5">
+                                                    <motion.div
+                                                        className="absolute left-3 right-3 h-[2px] bg-primary shadow-[0_0_14px_rgba(88,166,255,0.9)]"
+                                                        animate={{ top: ["calc(100% - 2px)", "0%"] }}
+                                                        transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
+                                                    />
+                                                </div>
                                             </div>
-                                            <button
-                                                onClick={handleRetry}
-                                                className="rounded-lg bg-primary px-4 py-2 font-orbitron tracking-wider text-primary-foreground transition-colors hover:bg-primary/80"
-                                            >
-                                                {t("game.scanner.retry")}
-                                            </button>
+
+                                            {isLoading && (
+                                                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/65">
+                                                    <div className="space-y-3 text-center">
+                                                        <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" />
+                                                        <p className="text-xs uppercase tracking-wider text-primary font-rajdhani">
+                                                            {t("game.scanner.initializingCamera")}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {error && (
+                                                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/65 p-4">
+                                                    <div className="w-full max-w-sm space-y-3 border border-destructive/35 bg-destructive/10 p-4 text-center">
+                                                        <AlertCircle className="mx-auto h-9 w-9 text-destructive" />
+                                                        <div>
+                                                            <h3 className="mb-1 text-sm font-bold text-destructive font-orbitron uppercase tracking-wider">
+                                                                {t("game.scanner.cameraErrorTitle")}
+                                                            </h3>
+                                                            <p className="text-xs text-muted-foreground font-rajdhani">
+                                                                {error}
+                                                            </p>
+                                                        </div>
+                                                        <button
+                                                            onClick={handleRetry}
+                                                            className="h-10 px-4 border border-primary bg-primary text-primary-foreground text-xs uppercase tracking-widest font-orbitron hover:opacity-90 transition-opacity"
+                                                        >
+                                                            {t("game.scanner.retry")}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </motion.div>
-            )}
-        </AnimatePresence>
+        </motion.div>,
+        document.body,
     );
 }

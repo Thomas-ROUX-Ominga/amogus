@@ -9,12 +9,14 @@ interface EliminationButtonProps {
     onEliminate: () => Promise<void>;
     disabled?: boolean;
     isEliminating?: boolean;
+    className?: string;
 }
 
 export function EliminationButton({ 
     onEliminate, 
     disabled = false, 
-    isEliminating = false 
+    isEliminating = false,
+    className = "",
 }: EliminationButtonProps) {
     const t = useTranslations();
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -69,7 +71,7 @@ export function EliminationButton({
                                 ? t("game.actions.eliminationAriaAlready")
                                 : t("game.actions.eliminationAriaSignal")
                     }
-                    className="
+                    className={`
                         flex items-center gap-1 px-3 py-1.5
                         text-xs text-destructive/80 
                         border border-destructive/20 
@@ -79,7 +81,8 @@ export function EliminationButton({
                         transition-colors duration-200
                         touch-manipulation min-h-[32px]
                         font-rajdhani uppercase tracking-widest
-                    "
+                        ${className}
+                    `}
                 >
                     <AlertTriangle className="w-3 h-3" />
                     {isEliminating 

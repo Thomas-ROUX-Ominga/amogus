@@ -9,6 +9,7 @@ interface BuzzerButtonProps {
     isBuzzing?: boolean;
     hasUsed?: boolean;
     meetingActive?: boolean;
+    className?: string;
 }
 
 export function BuzzerButton({
@@ -17,6 +18,7 @@ export function BuzzerButton({
     isBuzzing = false,
     hasUsed = false,
     meetingActive = false,
+    className = "",
 }: BuzzerButtonProps) {
     const t = useTranslations();
     const handleClick = async () => {
@@ -47,7 +49,7 @@ export function BuzzerButton({
             onClick={handleClick}
             disabled={disabled || isBuzzing}
             aria-label={label}
-            className="
+            className={`
                 flex items-center gap-1 px-3 py-1.5
                 text-xs text-red-300
                 border border-red-500/50
@@ -57,7 +59,8 @@ export function BuzzerButton({
                 transition-colors duration-200
                 touch-manipulation min-h-[32px]
                 font-rajdhani uppercase tracking-widest
-            "
+                ${className}
+            `}
         >
             <Siren className="w-3 h-3" />
             {label}

@@ -74,7 +74,7 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-black py-3 px-6 rounded-sm transition-all relative overflow-hidden group"
+        className="w-full sm:w-auto justify-center flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-black py-3 px-6 rounded-sm transition-all relative overflow-hidden group"
       >
         <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
         <span className="relative flex items-center gap-2 tracking-[0.3em] uppercase text-sm">

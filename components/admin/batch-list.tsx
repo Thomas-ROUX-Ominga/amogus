@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trash2, List, Calendar, AlertTriangle, Settings } from "lucide-react";
+import { Trash2, List, AlertTriangle, Settings, Pencil, Check, X } from "lucide-react";
 import Link from "next/link";
-import { useLocale, useTranslations } from "next-intl";
-import { getAllBatches, deleteBatch } from "@/lib/redis/batch-actions";
+import { useTranslations } from "next-intl";
+import { getAllBatches, deleteBatch, updateBatchName } from "@/lib/redis/batch-actions";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 import { BatchListItem } from "@/types/quest";
 
@@ -15,12 +15,18 @@ interface BatchListProps {
 
 export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
   const t = useTranslations();
-  const locale = useLocale();
+  const maxZones = Number(process.env.NEXT_PUBLIC_MAX_GAME_ZONES || 50);
   const [batches, setBatches] = useState<BatchListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editingBatchId, setEditingBatchId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [savingNameId, setSavingNameId] = useState<string | null>(null);
+
+  const getDefaultZoneName = (batchId: string) => `ZONE-${batchId.slice(-8).toUpperCase()}`;
+  const getZoneDisplayName = (batch: BatchListItem) => batch.name?.trim() || getDefaultZoneName(batch.id);
 
   const loadBatches = async () => {
     setIsLoading(true);
@@ -87,24 +93,66 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
     }
   };
 
+  const handleStartEditing = (batch: BatchListItem) => {
+    setEditingBatchId(batch.id);
+    setEditingName(batch.name?.trim() || getDefaultZoneName(batch.id));
+  };
+
+  const handleCancelEditing = () => {
+    setEditingBatchId(null);
+    setEditingName("");
+  };
+
+  const handleSaveName = async (batchId: string) => {
+    const trimmedName = editingName.trim();
+    if (!trimmedName) return;
+
+    setSavingNameId(batchId);
+    setError("");
+
+    try {
+      const result = await updateBatchName(batchId, trimmedName);
+      if (!result.success) {
+        setError(
+          getLocalizedErrorMessage({
+            t,
+            code: result.code,
+            fallback: result.error,
+          }),
+        );
+        return;
+      }
+
+      setBatches((prev) =>
+        prev.map((batch) =>
+          batch.id === batchId
+            ? {
+                ...batch,
+                name: trimmedName,
+              }
+            : batch,
+        ),
+      );
+      handleCancelEditing();
+    } catch {
+      setError(
+        getLocalizedErrorMessage({
+          t,
+          code: "ERR_SIGNAL_LOST",
+        }),
+      );
+    } finally {
+      setSavingNameId(null);
+    }
+  };
+
   useEffect(() => {
     loadBatches();
   }, [refreshTrigger]);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString(locale, {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  };
-
   if (isLoading) {
     return (
-      <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
+      <div className="flex-1 min-h-0 border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
         <div className="flex items-center justify-center py-8">
           <div className="text-[10px] text-primary uppercase tracking-widest animate-pulse">
             {t("admin.batches.loadingList")}
@@ -116,7 +164,7 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
 
   if (error) {
     return (
-      <div className="border-2 border-destructive/20 p-6 bg-black/50 backdrop-blur-sm">
+      <div className="flex-1 min-h-0 border-2 border-destructive/20 p-6 bg-black/50 backdrop-blur-sm">
         <div className="text-center">
           <div className="text-[10px] text-destructive uppercase tracking-widest">
             [ERROR] {error}
@@ -134,7 +182,7 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
 
   if (batches.length === 0) {
     return (
-      <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
+      <div className="flex-1 min-h-0 border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
         <div className="text-center py-8">
           <List className="text-primary/30 w-12 h-12 mx-auto mb-4" />
           <h3 className="text-lg font-bold uppercase tracking-wider text-primary mb-2">
@@ -149,38 +197,90 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
   }
 
   return (
-    <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm">
-      <h3 className="text-lg font-bold uppercase tracking-wider text-primary mb-6">
-        {t("admin.batches.inventoryTitle")}
-      </h3>
+    <div className="flex-1 min-h-0 border-2 border-primary/20 p-4 sm:p-6 bg-black/50 backdrop-blur-sm flex flex-col">
+      <div className="mb-4 sm:mb-6 flex items-center justify-between gap-3">
+        <h3 className="text-lg font-bold uppercase tracking-wider text-primary">
+          {t("admin.batches.inventoryTitle")}
+        </h3>
+        <span className="text-[10px] text-muted-foreground uppercase tracking-widest shrink-0">
+          {t("admin.batches.totalWithMax", {
+            count: String(batches.length),
+            max: String(maxZones),
+          })}
+        </span>
+      </div>
       
-      <div className="space-y-3">
+      <div className="inventory-scroll flex-1 min-h-0 overflow-y-auto pr-1 grid grid-cols-1 lg:grid-cols-2 gap-3">
         {batches.map((batch) => (
           <div
             key={batch.id}
-            className="flex items-center justify-between p-4 border border-primary/10 bg-black/30 hover:border-primary/30 transition-all"
+            className="flex items-center justify-between p-3 sm:p-4 border border-primary/10 bg-black/30 hover:border-primary/30 transition-all min-h-[96px]"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full border border-primary/30 flex items-center justify-center bg-primary/5">
-                <List className="text-primary w-5 h-5" />
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-primary/30 flex items-center justify-center bg-primary/5 shrink-0">
+                <List className="text-primary w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div>
-                <div className="text-[10px] font-mono text-primary uppercase tracking-widest">
-                  BATCH-{batch.id.slice(-8).toUpperCase()}
-                </div>
-                <div className="flex items-center gap-4 mt-1">
-                  <div className="flex items-center gap-1 text-[8px] text-muted-foreground uppercase tracking-widest">
-                    <Calendar size={10} />
-                    {formatDate(batch.createdAt)}
+              <div className="min-w-0">
+                {editingBatchId === batch.id ? (
+                  <div className="flex items-center gap-2 max-w-full">
+                    <input
+                      type="text"
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value.slice(0, 60))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void handleSaveName(batch.id);
+                        }
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          handleCancelEditing();
+                        }
+                      }}
+                      className="h-8 w-full max-w-[240px] bg-black border border-primary/40 px-2 text-[11px] font-mono text-primary uppercase tracking-wider focus:outline-none focus:border-primary"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveName(batch.id)}
+                      disabled={savingNameId === batch.id || !editingName.trim()}
+                      className="p-1.5 border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={t("common.actions.save")}
+                    >
+                      <Check size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelEditing}
+                      disabled={savingNameId === batch.id}
+                      className="p-1.5 border border-primary/25 text-muted-foreground hover:text-foreground hover:border-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={t("common.actions.cancel")}
+                    >
+                      <X size={12} />
+                    </button>
                   </div>
-                  <div className="text-[8px] text-muted-foreground uppercase tracking-widest">
-                    {t("admin.batchDetail.questsCount", { count: String(batch.questCount) })}
+                ) : (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="text-[10px] font-mono text-primary uppercase tracking-widest truncate">
+                      {getZoneDisplayName(batch)}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleStartEditing(batch)}
+                      className="p-1 border border-primary/25 text-primary/70 hover:text-primary hover:border-primary/45 hover:bg-primary/10 transition-colors shrink-0"
+                      title={t("admin.batches.editZoneName")}
+                    >
+                      <Pencil size={10} />
+                    </button>
                   </div>
+                )}
+                <div className="mt-1 text-[8px] text-muted-foreground uppercase tracking-widest">
+                  {t("admin.batchDetail.questsCount", { count: String(batch.questCount) })}
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Link
                 href={`/batches/${batch.id}`}
                 className="p-2 text-primary hover:text-primary/80 hover:bg-primary/10 border border-primary/30 hover:border-primary/50 transition-all"
@@ -215,7 +315,9 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest leading-relaxed">
                 {t("admin.batches.confirmDeletionMessage", {
-                  batchCode: `BATCH-${confirmDeleteId.slice(-8).toUpperCase()}`,
+                  batchCode:
+                    batches.find((batch) => batch.id === confirmDeleteId)?.name?.trim() ||
+                    `ZONE-${confirmDeleteId.slice(-8).toUpperCase()}`,
                 })}
               </p>
             </div>
@@ -225,7 +327,7 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
                 onClick={() => setConfirmDeleteId(null)}
                 className="flex-1 bg-black/80 border border-primary/30 hover:border-primary/50 text-primary font-black py-3 rounded-sm transition-all text-xs tracking-widest"
               >
-                {t("common.actions.abort")}
+                {t("admin.batches.cancelDelete")}
               </button>
               <button
                 onClick={() => handleDelete(confirmDeleteId)}
@@ -236,7 +338,7 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
                 <span className="relative">
                   {deletingId === confirmDeleteId
                     ? t("admin.batches.purgeInProgress")
-                    : t("admin.batches.confirmPurge")}
+                    : t("admin.batches.deleteNow")}
                 </span>
               </button>
             </div>
@@ -244,16 +346,6 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
         </div>
       )}
       
-      <div className="mt-6 pt-4 border-t border-primary/10">
-        <div className="flex justify-between items-center text-[8px] text-muted-foreground uppercase tracking-widest">
-          <span>{t("admin.batches.totalBatches", { count: String(batches.length) })}</span>
-          <span>
-            {t("admin.batches.totalQuests", {
-              count: String(batches.reduce((sum, batch) => sum + batch.questCount, 0)),
-            })}
-          </span>
-        </div>
-      </div>
     </div>
   );
 }

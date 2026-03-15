@@ -374,7 +374,9 @@ export function useRealTimeGamePolling(gameId: string, userId?: string, enabled 
                     if (isFatalSyncCode(code)) {
                         setFatalError(errorMessage, code);
                     }
-                    throw new Error(errorMessage);
+                    setSyncError(new Error(errorMessage));
+                    recordSyncFailure();
+                    return false;
                 }
 
                 applyRealtimeState(payload.data, userId);

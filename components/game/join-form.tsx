@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useGameStore } from "@/lib/store/game-store";
 import { UserPlus, Terminal } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -15,22 +15,69 @@ interface JoinFormProps {
 export function JoinForm({ gameId, userId }: JoinFormProps) {
     const t = useTranslations();
     const [pseudo, setPseudo] = useState("");
+    const [hasEditedPseudo, setHasEditedPseudo] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [hasAutoJoinAttempted, setHasAutoJoinAttempted] = useState(false);
     const { join, isJoining, error, errorCode } = useGameStore();
-    const { setAnonymousSession } = useAuth();
+    const { setAnonymousSession, authState } = useAuth();
+    const sessionUsername = authState.session?.username?.trim() || "";
+    const resolvedPseudo = (pseudo.trim() || sessionUsername).slice(0, 20).trim();
+
+    useEffect(() => {
+        if (!hasEditedPseudo && !pseudo.trim() && sessionUsername) {
+            setPseudo(sessionUsername.slice(0, 20));
+        }
+    }, [hasEditedPseudo, sessionUsername, pseudo]);
+
+    useEffect(() => {
+        const canAutoJoin =
+            !hasEditedPseudo &&
+            !hasAutoJoinAttempted &&
+            !isJoining &&
+            !isSuccess &&
+            Boolean(sessionUsername) &&
+            Boolean(resolvedPseudo) &&
+            Boolean(gameId) &&
+            Boolean(userId);
+
+        if (!canAutoJoin) return;
+
+        const autoJoin = async () => {
+            setHasAutoJoinAttempted(true);
+            await join(gameId, resolvedPseudo, userId);
+
+            if (!useGameStore.getState().error) {
+                setIsSuccess(true);
+                setAnonymousSession(resolvedPseudo, gameId);
+            }
+        };
+
+        void autoJoin();
+    }, [
+        gameId,
+        hasAutoJoinAttempted,
+        hasEditedPseudo,
+        isJoining,
+        isSuccess,
+        join,
+        resolvedPseudo,
+        sessionUsername,
+        setAnonymousSession,
+        userId,
+    ]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!pseudo.trim() || isJoining || isSuccess) return;
+        if (!resolvedPseudo || isJoining || isSuccess) return;
         
-        await join(gameId, pseudo.trim(), userId);
+        await join(gameId, resolvedPseudo, userId);
         
         // If there's an error in the store, we don't treat it as success
         // Note: we check the CURRENT store state after await
         if (!useGameStore.getState().error) {
             setIsSuccess(true);
             // Sync the anonymous session with the pseudo and gameId
-            setAnonymousSession(pseudo.trim(), gameId);
+            setAnonymousSession(resolvedPseudo, gameId);
         }
     };
 
@@ -56,7 +103,10 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
                     <input
                         type="text"
                         value={pseudo}
-                        onChange={(e) => setPseudo(e.target.value.slice(0, 20))}
+                        onChange={(e) => {
+                            setHasEditedPseudo(true);
+                            setPseudo(e.target.value.slice(0, 20));
+                        }}
                         placeholder={t("game.join.placeholder")}
                         autoFocus
                         className="relative w-full bg-black/80 border border-primary/30 p-4 font-mono text-center text-xl tracking-widest text-foreground placeholder:text-primary/20 focus:outline-none focus:border-primary transition-all rounded-sm uppercase"
@@ -71,7 +121,7 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
 
                 <button
                     type="submit"
-                    disabled={!pseudo.trim() || isJoining || isSuccess}
+                    disabled={!resolvedPseudo || isJoining || isSuccess}
                     className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground font-black py-4 rounded-sm transition-all flex items-center justify-center gap-2 group relative overflow-hidden"
                 >
                     <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>

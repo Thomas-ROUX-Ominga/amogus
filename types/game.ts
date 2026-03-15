@@ -3,6 +3,7 @@ import type { BatchSabotages, SabotageType } from "./quest";
 export type GameStatus = "LOBBY" | "IN_PROGRESS" | "FINISHED";
 
 export type PlayerRole = "CREWMATE" | "IMPOSTOR";
+export type ImpostorAssignmentMode = "auto" | "manual";
 
 export type MeetingStatus = "ACTIVE" | "COMPLETED";
 export type MeetingEndReason = "ALL_VOTED" | "TIMEOUT";
@@ -91,6 +92,9 @@ export interface GameState {
         medium: number;
         long: number;
     }; // Quest distribution configuration
+    impostorMode?: ImpostorAssignmentMode; // Role assignment mode
+    manualImpostorCount?: number; // Used when impostorMode is "manual"
+    assignedImpostorCount?: number; // Final impostor count used once game starts
     winner?: PlayerRole; // Victory condition result
     meeting?: MeetingState;
     sabotages?: BatchSabotages;

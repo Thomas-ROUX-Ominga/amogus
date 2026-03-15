@@ -122,20 +122,12 @@ describe("GameHome", () => {
         expect(screen.getAllByText(/Imp/i).length).toBeGreaterThan(0);
     });
 
-    it("should render player list with all players", () => {
+    it("should not render host player list panel anymore", () => {
         render(<GameHome gameState={hostGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
-        expect(screen.getByText("Alice")).toBeTruthy();
-        expect(screen.getByText("Bob")).toBeTruthy();
-    });
-
-    it("should show player count in player list header", () => {
-        render(<GameHome gameState={hostGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
-        expect(screen.getByText(/Joueurs connectés \(2\)/)).toBeTruthy();
-    });
-
-    it("should highlight current player with VOUS badge", () => {
-        render(<GameHome gameState={hostGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
-        expect(screen.getByText("VOUS")).toBeTruthy();
+        expect(screen.queryByText("Alice")).toBeNull();
+        expect(screen.queryByText("Bob")).toBeNull();
+        expect(screen.queryByText(/Joueurs connectés/i)).toBeNull();
+        expect(screen.queryByText("VOUS")).toBeNull();
     });
 
     it("should render SCAN button", () => {
@@ -170,15 +162,9 @@ describe("GameHome", () => {
         expect(screen.getByText("Panneau sabotage imposteur")).toBeTruthy();
     });
 
-    it("should render 'Retour à l'accueil' link", () => {
+    it("should not render 'Retour à l'accueil' link anymore", () => {
         render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
-        expect(screen.getByText(/Retour à l'accueil/)).toBeTruthy();
-    });
-
-    it("should have a link to home page", () => {
-        render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
-        const link = screen.getByText(/Retour à l'accueil/).closest("a");
-        expect(link?.getAttribute("href")).toBe("/");
+        expect(screen.queryByText(/Retour à l'accueil/)).toBeNull();
     });
 
     it("should render footer with role info", () => {

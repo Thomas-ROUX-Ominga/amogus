@@ -1,10 +1,11 @@
 "use server";
 
-import { redis, GAME_TTL_SECONDS } from "./client";
+import { redis, GAME_TTL_SECONDS } from "@/lib/redis/client";
 import {
     GameState,
     ActionResponse,
     PlayerRole,
+    ImpostorAssignmentMode,
     MeetingSnapshot,
     MeetingState,
     MeetingView,
@@ -12,7 +13,7 @@ import {
     ReactorSabotageState,
 } from "@/types/game";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
-import { getBatchData } from "./batch-actions";
+import { getBatchData } from "@/lib/redis/batch-actions";
 import { getTotalQuestGamesCount } from "@/lib/constants/quest-pool";
 import { generateShortCode } from "@/lib/utils/short-code.server";
 import { Quest, BatchSabotages, SabotageType } from "@/types/quest";
@@ -22,14 +23,15 @@ import {
     getGameNamespacePattern,
     getGameStateKey,
     getMeetingVoteKey,
-} from "./game-state-keys";
+} from "@/lib/redis/game-state-keys";
 
-import { verifySession, createPlayerSession, verifyPlayerSession } from "./auth-utils";
+import { verifySession, createPlayerSession, verifyPlayerSession } from "@/lib/redis/auth-utils";
 import { getGlobalQuestStats } from "@/lib/utils/quest-calculations";
 
 const MEETING_DURATION_MS = 5 * 60 * 1000;
 const REACTOR_SABOTAGE_DURATION_MS = 90 * 1000;
 const SABOTAGE_COOLDOWN_MS = 120 * 1000;
+const MAX_PLAYERS_PER_GAME = 50;
 
 function isWatchConflictError(error: unknown): boolean {
     if (!error || typeof error !== "object") {
@@ -307,6 +309,18 @@ function resolveSabotageIfExpired(state: GameState, now: number): GameState {
 function resolveRuntimeTransitions(state: GameState, now: number): GameState {
     let resolved = resolveMeetingIfExpired(state, now);
     resolved = resolveSabotageIfExpired(resolved, now);
+
+    if (resolved.status === "IN_PROGRESS") {
+        const winCheck = checkWinConditions(resolved);
+        if (winCheck.finished) {
+            return {
+                ...resolved,
+                status: "FINISHED",
+                winner: winCheck.winner,
+            };
+        }
+    }
+
     return resolved;
 }
 
@@ -514,7 +528,19 @@ async function verifyAndRecoverPlayerSession(
         };
     }
 
-    const initialCheck = await verifyPlayerSession(userId, gameId);
+    let initialCheck;
+    try {
+        initialCheck = await verifyPlayerSession(userId, gameId);
+    } catch (error) {
+        console.error("Player-session verification crashed:", error);
+        return {
+            isPlayerSessionValid: false,
+            recoveredSession: false,
+            recoveryAttempted: false,
+            error: "Session verification failed",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
     if (initialCheck.success) {
         return {
             isPlayerSessionValid: true,
@@ -523,7 +549,11 @@ async function verifyAndRecoverPlayerSession(
         };
     }
 
-    if (initialCheck.code !== ERROR_CODES.ERR_NO_SESSION) {
+    const canRecoverFromSessionError =
+        initialCheck.code === ERROR_CODES.ERR_NO_SESSION ||
+        initialCheck.code === ERROR_CODES.ERR_INVALID_SESSION;
+
+    if (!canRecoverFromSessionError) {
         return {
             isPlayerSessionValid: false,
             recoveredSession: false,
@@ -533,7 +563,19 @@ async function verifyAndRecoverPlayerSession(
         };
     }
 
-    const sessionResult = await createPlayerSession(userId, gameId);
+    let sessionResult;
+    try {
+        sessionResult = await createPlayerSession(userId, gameId);
+    } catch (error) {
+        console.error("Player-session recreation crashed:", error);
+        return {
+            isPlayerSessionValid: false,
+            recoveredSession: false,
+            recoveryAttempted: true,
+            error: "Failed to create player session",
+            code: ERROR_CODES.ERR_SIGNAL_LOST,
+        };
+    }
     if (!sessionResult.success) {
         return {
             isPlayerSessionValid: false,
@@ -544,17 +586,8 @@ async function verifyAndRecoverPlayerSession(
         };
     }
 
-    const recoveredCheck = await verifyPlayerSession(userId, gameId);
-    if (!recoveredCheck.success) {
-        return {
-            isPlayerSessionValid: false,
-            recoveredSession: false,
-            recoveryAttempted: true,
-            error: recoveredCheck.error || "Session verification failed",
-            code: recoveredCheck.code || ERROR_CODES.ERR_INVALID_SESSION,
-        };
-    }
-
+    // Cookie writes are committed on response boundaries in Next.js.
+    // Re-verifying immediately in the same request can produce false negatives.
     console.warn(`[session] recovered player-session game=${gameId} user=${userId}`);
     return {
         isPlayerSessionValid: true,
@@ -689,7 +722,14 @@ function checkWinConditions(state: GameState): { finished: boolean; winner?: Pla
         return { finished: true, winner: "CREWMATE" };
     }
 
-    // 2. Check Impostor Victory: All Crewmates eliminated
+    // 2. Check Crewmate Victory: All impostors eliminated
+    const totalImpostors = players.filter((p) => p.role === "IMPOSTOR");
+    const aliveImpostors = totalImpostors.filter((p) => p.isAlive);
+    if (totalImpostors.length > 0 && aliveImpostors.length === 0) {
+        return { finished: true, winner: "CREWMATE" };
+    }
+
+    // 3. Check Impostor Victory: All Crewmates eliminated
     const aliveCrewmates = players.filter(p => p.role === "CREWMATE" && p.isAlive);
     const totalCrewmates = players.filter(p => p.role === "CREWMATE");
     
@@ -701,6 +741,98 @@ function checkWinConditions(state: GameState): { finished: boolean; winner?: Pla
     return { finished: false };
 }
 
+function getAutoImpostorCount(playerCount: number): number {
+    return Math.max(1, Math.ceil(playerCount / 5));
+}
+
+function getManualImpostorCount(count?: number): number {
+    if (!Number.isInteger(count) || !count) {
+        return 1;
+    }
+    return Math.max(1, Math.min(10, count));
+}
+
+function getMinimumPlayersToLaunch(
+    mode: ImpostorAssignmentMode | undefined,
+    manualImpostorCount?: number
+): number {
+    // Legacy compatibility: games created before impostor config used min 1 player.
+    if (mode === undefined) {
+        return 1;
+    }
+    if (mode === "manual") {
+        return getManualImpostorCount(manualImpostorCount) + 1;
+    }
+    return 2;
+}
+
+function assignRolesRandomly(
+    players: GameState["players"],
+    impostorCount: number
+): GameState["players"] {
+    const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+    const impostorIds = new Set(
+        shuffledPlayers.slice(0, impostorCount).map((player) => player.id)
+    );
+
+    return players.map((player) => ({
+        ...player,
+        role: impostorIds.has(player.id) ? "IMPOSTOR" : "CREWMATE",
+    }));
+}
+
+function assignMissingCrewmateBatchQuests(
+    state: GameState,
+    players: GameState["players"],
+    batch: { id: string; quests: Quest[] } | null
+): GameState["players"] | null {
+    if (!batch || !state.batchId || state.batchId !== batch.id || !state.questsPerPlayer) {
+        return players;
+    }
+
+    const hasCrewmateWithoutAssignments = players.some(
+        (player) => player.role === "CREWMATE" && (!player.assignedQuests || player.assignedQuests.length === 0)
+    );
+    if (!hasCrewmateWithoutAssignments) {
+        return players;
+    }
+
+    const playersWithAssignments = [...players];
+
+    for (let index = 0; index < playersWithAssignments.length; index += 1) {
+        const player = playersWithAssignments[index];
+        if (player.role !== "CREWMATE") {
+            continue;
+        }
+        if (player.assignedQuests && player.assignedQuests.length > 0) {
+            continue;
+        }
+
+        try {
+            const assignments = assignQuestsFromLoadedBatch(
+                {
+                    ...state,
+                    players: playersWithAssignments,
+                },
+                batch
+            );
+            if (assignments.length === 0) {
+                return null;
+            }
+
+            playersWithAssignments[index] = {
+                ...player,
+                assignedQuests: assignments.map((assignment) => assignment.questId),
+            };
+        } catch (error) {
+            console.error("Quest assignment failed during startGame mutation:", error);
+            return null;
+        }
+    }
+
+    return playersWithAssignments;
+}
+
 export interface CreateGameInput {
     batchId?: string;
     questsPerPlayer?: {
@@ -708,6 +840,9 @@ export interface CreateGameInput {
         medium: number;
         long: number;
     };
+    impostorMode?: ImpostorAssignmentMode;
+    manualImpostorCount?: number;
+    enforceDurationLimits?: boolean;
 }
 
 export async function createGame(input?: CreateGameInput): Promise<ActionResponse<string>> {
@@ -727,8 +862,12 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
 
         // Extract batchId and validate quests per player
         const batchId = input?.batchId;
-        const defaultQuestsPerPlayer = { short: 1, medium: 1, long: 1 }; // 3 quests minimum
+        const defaultQuestsPerPlayer = { short: 1, medium: 1, long: 1 }; // default distribution
         const questsPerPlayer = input?.questsPerPlayer || defaultQuestsPerPlayer;
+        const impostorMode: ImpostorAssignmentMode = input?.impostorMode === "manual" ? "manual" : "auto";
+        const manualImpostorCount = impostorMode === "manual"
+            ? getManualImpostorCount(input?.manualImpostorCount)
+            : undefined;
 
         // Validate minimum quests per player (must be at least 1 total)
         const totalRequested = questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long;
@@ -759,6 +898,26 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
                     error: `Requested ${totalRequested} quests per player, but only ${availableQuests} available in batch.`,
                     code: ERROR_CODES.ERR_INVALID_INPUT,
                 };
+            }
+
+            if (input?.enforceDurationLimits) {
+                const availableByDuration = {
+                    short: batchResponse.data.quests.filter((q) => q.duration === "short").length,
+                    medium: batchResponse.data.quests.filter((q) => q.duration === "medium").length,
+                    long: batchResponse.data.quests.filter((q) => q.duration === "long").length,
+                };
+
+                if (
+                    questsPerPlayer.short > availableByDuration.short ||
+                    questsPerPlayer.medium > availableByDuration.medium ||
+                    questsPerPlayer.long > availableByDuration.long
+                ) {
+                    return {
+                        success: false,
+                        error: `Requested quests exceed batch duration limits (short: ${availableByDuration.short}, medium: ${availableByDuration.medium}, long: ${availableByDuration.long}).`,
+                        code: ERROR_CODES.ERR_INVALID_INPUT,
+                    };
+                }
             }
 
             questsTotal = availableQuests;
@@ -795,12 +954,28 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
             batchId,
             questsTotal,
             questsPerPlayer,
+            impostorMode,
+            manualImpostorCount,
             sabotages: batchSabotages,
             sabotageState: getDefaultSabotageState(),
         };
 
         // Store game state in Redis with 24h TTL using short code key pattern
         await redis.set(getGameStateKey(shortCode), initialState, GAME_TTL_SECONDS);
+
+        // Ensure the creator immediately has a valid player-session for this game.
+        try {
+            const creatorSessionResult = await createPlayerSession(organizerData.userId, shortCode);
+            if (!creatorSessionResult.success) {
+                console.error(
+                    `Failed to establish creator player-session for game ${shortCode}:`,
+                    creatorSessionResult.error
+                );
+            }
+        } catch (error) {
+            // Best-effort only: the game must still be created even if cookie writing fails here.
+            console.error(`Failed to establish creator player-session for game ${shortCode}:`, error);
+        }
 
         return {
             success: true,
@@ -828,7 +1003,8 @@ export async function getGame(id: string, userId?: string): Promise<ActionRespon
             };
         }
 
-        const viewerScope = await resolveViewerScopeForGame(id, state, userId);
+        const hydratedState = await recoverMissingCrewmateAssignments(id, state);
+        const viewerScope = await resolveViewerScopeForGame(id, hydratedState, userId);
         if (!viewerScope.success || !viewerScope.data) {
             return {
                 success: false,
@@ -839,7 +1015,7 @@ export async function getGame(id: string, userId?: string): Promise<ActionRespon
 
         return {
             success: true,
-            data: sanitizeGameStateForViewer(state, viewerScope.data),
+            data: sanitizeGameStateForViewer(hydratedState, viewerScope.data),
         };
     } catch (error) {
         console.error("Failed to fetch game:", error);
@@ -849,6 +1025,60 @@ export async function getGame(id: string, userId?: string): Promise<ActionRespon
             code: ERROR_CODES.ERR_SIGNAL_LOST,
         };
     }
+}
+
+async function recoverMissingCrewmateAssignments(
+    gameId: string,
+    state: GameState
+): Promise<GameState> {
+    const needsRecovery =
+        state.status === "IN_PROGRESS" &&
+        Boolean(state.batchId) &&
+        Boolean(state.questsPerPlayer) &&
+        state.players.some(
+            (player) => player.role === "CREWMATE" && (!player.assignedQuests || player.assignedQuests.length === 0)
+        );
+
+    if (!needsRecovery || !state.batchId) {
+        return state;
+    }
+
+    const batchResponse = await getBatchData(state.batchId);
+    if (!batchResponse.success || !batchResponse.data) {
+        return state;
+    }
+
+    const batch = {
+        id: batchResponse.data.id,
+        quests: batchResponse.data.quests,
+    };
+
+    const recovered = await mutateGameState(gameId, (workingState) => {
+        if (
+            workingState.status !== "IN_PROGRESS" ||
+            !workingState.batchId ||
+            workingState.batchId !== batch.id ||
+            !workingState.questsPerPlayer
+        ) {
+            return workingState;
+        }
+
+        const playersWithAssignedQuests = assignMissingCrewmateBatchQuests(
+            workingState,
+            workingState.players,
+            batch
+        );
+        if (!playersWithAssignedQuests) {
+            return workingState;
+        }
+
+        return {
+            ...workingState,
+            players: playersWithAssignedQuests,
+        };
+    });
+
+    return recovered ?? state;
 }
 
 export async function startGame(
@@ -862,6 +1092,23 @@ export async function startGame(
                 success: false,
                 error: "Unauthorized: Only the game creator can start the game.",
                 code: ERROR_CODES.ERR_UNAUTHORIZED,
+            };
+        }
+
+        let assignmentBatch: { id: string; quests: Quest[] } | null = null;
+        const preloadedState = await readGameState(gameId);
+        if (preloadedState?.batchId && preloadedState.questsPerPlayer) {
+            const batchResponse = await getBatchData(preloadedState.batchId);
+            if (!batchResponse.success || !batchResponse.data) {
+                return {
+                    success: false,
+                    error: "Failed to assign quests from mission batch.",
+                    code: ERROR_CODES.ERR_SIGNAL_LOST,
+                };
+            }
+            assignmentBatch = {
+                id: batchResponse.data.id,
+                quests: batchResponse.data.quests,
             };
         }
 
@@ -890,8 +1137,51 @@ export async function startGame(
 
             // Idempotent: already IN_PROGRESS is fine
             if (state.status === "IN_PROGRESS") {
-                validationError = null; // Not an error, handled below
-                return state; // Return current state to maintain success response
+                if (state.impostorMode === undefined) {
+                    validationError = null;
+                    return state;
+                }
+
+                const hasUnassignedRole = state.players.some((player) => !player.role);
+                if (!hasUnassignedRole) {
+                    validationError = null; // Not an error, handled below
+                    return state;
+                }
+
+                const fallbackImpostorCount = state.impostorMode === "manual"
+                    ? getManualImpostorCount(state.manualImpostorCount)
+                    : getAutoImpostorCount(state.players.length);
+                const impostorCount = state.assignedImpostorCount || fallbackImpostorCount;
+                if (impostorCount >= state.players.length) {
+                    validationError = {
+                        success: false,
+                        error: "Cannot assign roles: invalid impostor count.",
+                        code: ERROR_CODES.ERR_INVALID_INPUT,
+                    };
+                    return null;
+                }
+
+                const playersWithAssignedRoles = assignRolesRandomly(state.players, impostorCount);
+                const playersWithAssignedQuests = assignMissingCrewmateBatchQuests(
+                    state,
+                    playersWithAssignedRoles,
+                    assignmentBatch
+                );
+                if (!playersWithAssignedQuests) {
+                    validationError = {
+                        success: false,
+                        error: "Failed to assign quests from mission batch.",
+                        code: ERROR_CODES.ERR_SIGNAL_LOST,
+                    };
+                    return null;
+                }
+
+                validationError = null;
+                return {
+                    ...state,
+                    players: playersWithAssignedQuests,
+                    assignedImpostorCount: impostorCount,
+                };
             }
 
             // Only LOBBY → IN_PROGRESS is allowed
@@ -905,16 +1195,61 @@ export async function startGame(
             }
 
             // Minimum players validation
-            if (state.players.length < 1) {
+            const minimumPlayersToLaunch = getMinimumPlayersToLaunch(
+                state.impostorMode,
+                state.manualImpostorCount
+            );
+
+            if (state.players.length < minimumPlayersToLaunch) {
                 validationError = {
                     success: false,
-                    error: "Cannot launch: at least one crew member must join.",
+                    error: `Cannot launch: requires at least ${minimumPlayersToLaunch} players.`,
                     code: ERROR_CODES.ERR_NO_PLAYERS,
                 };
                 return null;
             }
 
-            return { ...state, status: "IN_PROGRESS" };
+            const impostorCount =
+                state.impostorMode === undefined
+                    ? 1
+                    : state.impostorMode === "manual"
+                    ? getManualImpostorCount(state.manualImpostorCount)
+                    : getAutoImpostorCount(state.players.length);
+
+            if (state.impostorMode !== undefined && impostorCount >= state.players.length) {
+                validationError = {
+                    success: false,
+                    error: "Cannot launch: impostor count must be lower than total players.",
+                    code: ERROR_CODES.ERR_INVALID_INPUT,
+                };
+                return null;
+            }
+
+            const playersWithAssignedRoles =
+                state.impostorMode === undefined
+                    ? state.players
+                    : assignRolesRandomly(state.players, impostorCount);
+            const playersWithAssignedQuests = assignMissingCrewmateBatchQuests(
+                state,
+                playersWithAssignedRoles,
+                assignmentBatch
+            );
+            if (!playersWithAssignedQuests) {
+                validationError = {
+                    success: false,
+                    error: "Failed to assign quests from mission batch.",
+                    code: ERROR_CODES.ERR_SIGNAL_LOST,
+                };
+                return null;
+            }
+
+            return {
+                ...state,
+                status: "IN_PROGRESS",
+                players: playersWithAssignedQuests,
+                assignedImpostorCount:
+                    state.impostorMode === undefined ? state.assignedImpostorCount : impostorCount,
+            };
         });
 
         // If updater returned null, check why
@@ -1015,7 +1350,16 @@ export async function joinGame(
                 return normalizedState;
             }
 
-            if (normalizedState.players.length >= 10) {
+            if (normalizedState.status !== "LOBBY") {
+                validationError = {
+                    success: false,
+                    error: "Cannot join: game is already in progress.",
+                    code: ERROR_CODES.ERR_INVALID_STATE,
+                };
+                return null;
+            }
+
+            if (normalizedState.players.length >= MAX_PLAYERS_PER_GAME) {
                 validationError = {
                     success: false,
                     error: "Cockpit at maximum capacity.",
@@ -1274,8 +1618,8 @@ export async function refreshGame(
     userId?: string
 ): Promise<ActionResponse<GameState>> {
     try {
-        const state = await readGameState(gameId);
-        if (!state) {
+        const initialState = await readGameState(gameId);
+        if (!initialState) {
             return {
                 success: false,
                 error: "Game module not found or decommissioned.",
@@ -1283,6 +1627,7 @@ export async function refreshGame(
             };
         }
 
+        const state = await recoverMissingCrewmateAssignments(gameId, initialState);
         const resolved = resolveRuntimeTransitions(state, Date.now());
         const viewerScope = await resolveViewerScopeForGame(gameId, resolved, userId);
         if (!viewerScope.success || !viewerScope.data) {
@@ -1342,8 +1687,8 @@ export async function getGameSnapshot(
     userId?: string
 ): Promise<ActionResponse<GameState>> {
     try {
-        const state = await readGameState(gameId);
-        if (!state) {
+        const initialState = await readGameState(gameId);
+        if (!initialState) {
             return {
                 success: false,
                 error: "Game module not found or decommissioned.",
@@ -1351,8 +1696,10 @@ export async function getGameSnapshot(
             };
         }
 
-        // Snapshot reads are intentionally non-mutating to avoid write contention
-        // under multi-client SSE polling.
+        const state = await recoverMissingCrewmateAssignments(gameId, initialState);
+
+        // Snapshot reads stay mostly non-mutating; we only auto-heal missing
+        // crewmate quest assignments when required for consistency.
         const resolvedSnapshot = resolveRuntimeTransitions(state, Date.now());
         const syntheticUpdatedAt = state.updatedAt + 1;
         const snapshot = areGameStatesEquivalent(state, resolvedSnapshot)
@@ -2343,6 +2690,16 @@ export async function selectRole(
         const updatedState = await mutateGameState(gameId, (state) => {
             const now = Date.now();
             const workingState = resolveRuntimeTransitions(state, now);
+
+            // New behavior: configured games use automatic role assignment only.
+            if (workingState.impostorMode !== undefined) {
+                validationError = {
+                    success: false,
+                    error: "Roles are assigned automatically when the game starts.",
+                    code: ERROR_CODES.ERR_INVALID_STATE,
+                };
+                return null;
+            }
 
             if (workingState.status !== "IN_PROGRESS") {
                 validationError = {
