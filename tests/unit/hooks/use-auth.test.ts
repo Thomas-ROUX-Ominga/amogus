@@ -91,6 +91,24 @@ describe("useAuth", () => {
       expect(result.current.authState.isAnonymous).toBe(true);
     });
 
+    it("should gracefully fall back to anonymous session when fetch rejects", async () => {
+      const mockFetch = fetch as MockedFetch;
+      mockFetch.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+      const { result } = renderHook(() => useAuth(), {
+        wrapper: ({ children }) => createWrapper({ children }),
+      });
+
+      await waitFor(() => {
+        expect(result.current.authState.isLoading).toBe(false);
+      });
+
+      expect(result.current.authState.session).not.toBeNull();
+      expect(result.current.authState.session?.sessionType).toBe("anonymous");
+      expect(result.current.authState.isAuthenticated).toBe(false);
+      expect(result.current.authState.isAnonymous).toBe(true);
+    });
+
     it("should refresh admin session periodically", async () => {
       const mockFetch = fetch as MockedFetch;
       mockFetch.mockResolvedValue({

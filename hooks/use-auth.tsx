@@ -65,8 +65,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAnonymous: false,
   });
 
+  const isNetworkFetchError = (error: unknown): boolean => {
+    if (!(error instanceof TypeError)) {
+      return false;
+    }
+
+    const message = error.message.toLowerCase();
+    return (
+      message.includes("failed to fetch") ||
+      message.includes("networkerror") ||
+      message.includes("load failed")
+    );
+  };
+
   // Verify admin session via API call
   const verifyAdminSession = async (): Promise<AdminSession | null> => {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      return null;
+    }
+
     try {
       const response = await globalThis.fetch("/api/auth/verify", {
         method: "GET",
@@ -86,7 +103,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (error) {
-      console.error("Admin session verification failed:", error);
+      if (isNetworkFetchError(error)) {
+        return null;
+      }
+
+      if (process.env.NODE_ENV !== "production") {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(`[auth] Admin session verification failed: ${message}`);
+      }
     }
     return null;
   };

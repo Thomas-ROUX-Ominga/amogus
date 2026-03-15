@@ -658,6 +658,12 @@ const en = {
       ERR_FULL_CAPACITY: "Cockpit is at full capacity.",
       ERR_INVALID_ALIAS: "Invalid alias.",
       ERR_INVALID_SIGNATURE: "Invalid player signature.",
+      ERR_GAME_ALREADY_STARTED:
+        "Game already started. You cannot join with a new alias.",
+      ERR_PLAYER_ALREADY_CONNECTED:
+        "This alias is already used by a player who is still connected.",
+      ERR_LOGIN_REQUIRED_FOR_AUTH_PLAYER:
+        "This alias belongs to a protected account. Please sign in to continue.",
       ERR_INVALID_STATE: "Invalid game state for this action.",
       ERR_NO_PLAYERS: "No players available to start the game.",
       ERR_INVALID_ROLE: "Invalid role.",

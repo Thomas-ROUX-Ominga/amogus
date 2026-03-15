@@ -18,7 +18,9 @@ function LoginContent() {
   
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/batches";
+  const redirectParam = searchParams.get("redirect");
+  const redirect =
+    redirectParam && redirectParam.startsWith("/") ? redirectParam : "/batches";
   const registered = searchParams.get("registered") === "true";
 
   const { refreshAuth } = useAuth();

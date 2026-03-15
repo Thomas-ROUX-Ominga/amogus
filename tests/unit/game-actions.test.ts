@@ -315,7 +315,7 @@ describe("getGameSnapshot", () => {
         expect(result.data?.status).toBe("LOBBY");
     });
 
-    it("should block snapshot for unknown users once game is in progress", async () => {
+    it("should allow snapshot for unknown users to support rejoin prompt in progress games", async () => {
         const now = Date.now();
         vi.mocked(redis.get).mockResolvedValueOnce({
             id: "game-live",
@@ -328,8 +328,9 @@ describe("getGameSnapshot", () => {
 
         const result = await getGameSnapshot("game-live", "unknown-user");
 
-        expect(result.success).toBe(false);
-        expect(result.code).toBe("ERR_INVALID_SIGNATURE");
+        expect(result.success).toBe(true);
+        expect(result.data?.status).toBe("IN_PROGRESS");
+        expect(result.data?.players[0]?.role).toBeUndefined();
     });
 
     it("auto-recovers missing player-session for joined player in progress game", async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -17,6 +17,8 @@ export default function LobbyPage() {
     const t = useTranslations();
     const { id } = useParams();
     const [showRoleReveal, setShowRoleReveal] = useState(false);
+    const previousIsJoinedRef = useRef(false);
+    const pendingRoleRevealRef = useRef(false);
     const {
         gameState,
         isLoading,
@@ -105,26 +107,30 @@ export default function LobbyPage() {
     const shouldShowGameHome = isGameStarted && hasRole;
 
     useEffect(() => {
-        if (!userId || !currentGameState || !currentPlayer) {
+        const nowJoined = Boolean(isJoined);
+        const wasJoined = previousIsJoinedRef.current;
+
+        if (nowJoined && !wasJoined) {
+            pendingRoleRevealRef.current = true;
+        } else if (!nowJoined) {
+            pendingRoleRevealRef.current = false;
             setShowRoleReveal(false);
-            return;
         }
+
+        previousIsJoinedRef.current = nowJoined;
+    }, [isJoined]);
+
+    useEffect(() => {
+        if (!pendingRoleRevealRef.current) return;
+        if (!currentGameState || !currentPlayer) return;
 
         const shouldTriggerReveal =
             currentGameState.status === "IN_PROGRESS" && currentPlayer.role !== undefined;
-        if (!shouldTriggerReveal) {
-            return;
-        }
+        if (!shouldTriggerReveal) return;
 
-        const revealStorageKey = `role-reveal-seen-${currentGameState.id}-${userId}`;
-        const revealAlreadyShown = sessionStorage.getItem(revealStorageKey) === "1";
-        if (revealAlreadyShown) {
-            return;
-        }
-
-        sessionStorage.setItem(revealStorageKey, "1");
+        pendingRoleRevealRef.current = false;
         setShowRoleReveal(true);
-    }, [currentGameState, currentPlayer, userId]);
+    }, [currentGameState, currentPlayer]);
 
     if (isLoading || !userId) {
         return (

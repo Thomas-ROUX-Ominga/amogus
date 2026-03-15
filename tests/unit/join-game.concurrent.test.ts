@@ -7,6 +7,9 @@ vi.mock("@/lib/redis/client", () => ({
     GAME_TTL_SECONDS: 86400,
     redis: {
         get: vi.fn(async () => (sharedState ? structuredClone(sharedState) : null)),
+        set: vi.fn(() => Promise.resolve("OK")),
+        del: vi.fn(() => Promise.resolve(1)),
+        exists: vi.fn(() => Promise.resolve(0)),
         atomicUpdate: vi.fn(async (_key: string, updater: (current: GameState | null) => GameState | null) => {
             const next = updater(sharedState ? structuredClone(sharedState) : null);
             if (next) {

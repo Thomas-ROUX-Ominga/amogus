@@ -20,6 +20,10 @@ export function getFailedQuestsKey(gameId: string, userId: string): string {
     return `${GAME_STATE_NAMESPACE}:${gameId}:player:${userId}:failed-quests`;
 }
 
+export function getPlayerPresenceKey(gameId: string, userId: string): string {
+    return `${GAME_STATE_NAMESPACE}:${gameId}:presence:${userId}`;
+}
+
 export function parseGameIdFromStateKey(key: string): string | null {
     const prefix = `${GAME_STATE_NAMESPACE}:`;
     const suffix = ":state";

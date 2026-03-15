@@ -663,6 +663,12 @@ const fr = {
       ERR_FULL_CAPACITY: "Le cockpit est complet.",
       ERR_INVALID_ALIAS: "Alias invalide.",
       ERR_INVALID_SIGNATURE: "Signature joueur invalide.",
+      ERR_GAME_ALREADY_STARTED:
+        "La partie a déjà commencé. Impossible de rejoindre avec un nouveau pseudo.",
+      ERR_PLAYER_ALREADY_CONNECTED:
+        "Ce pseudo est déjà utilisé par un joueur encore connecté.",
+      ERR_LOGIN_REQUIRED_FOR_AUTH_PLAYER:
+        "Ce pseudo appartient à un compte protégé. Connectez-vous pour continuer.",
       ERR_INVALID_STATE: "État de partie invalide pour cette action.",
       ERR_NO_PLAYERS: "Aucun joueur disponible pour lancer la partie.",
       ERR_INVALID_ROLE: "Rôle invalide.",

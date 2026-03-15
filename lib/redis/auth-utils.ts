@@ -139,6 +139,22 @@ export async function createPlayerSession(userId: string, gameId: string): Promi
   }
 }
 
+export async function clearPlayerSession(): Promise<ActionResponse<void>> {
+  if (process.env.NODE_ENV === "test") return { success: true };
+  try {
+    const cookieStore = await cookies();
+    cookieStore.delete(PLAYER_COOKIE_NAME);
+    return { success: true };
+  } catch (error) {
+    console.error("Error clearing player session:", error);
+    return {
+      success: false,
+      error: "Failed to clear player session",
+      code: ERROR_CODES.ERR_SIGNAL_LOST,
+    };
+  }
+}
+
 export async function verifyPlayerSession(userId: string, gameId: string): Promise<ActionResponse<void>> {
   if (process.env.NODE_ENV === "test") return { success: true };
   try {

@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Shield, User, ChevronDown, LayoutGrid, LogOut, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { clearSession } from "@/lib/redis/auth-actions";
+import { clearSession, disconnectPlayer } from "@/lib/redis/auth-actions";
 import {
   AppLocale,
   LOCALE_COOKIE_MAX_AGE_SECONDS,
@@ -34,6 +34,11 @@ export function GlobalTopHeader() {
   };
 
   const isOrganizer = authState.isAuthenticated && authState.session?.sessionType === "admin";
+  const hasAnonymousPseudo =
+    authState.session?.sessionType === "anonymous" &&
+    Boolean(authState.session.username?.trim());
+  const canShowSignOut = isOrganizer || hasAnonymousPseudo;
+  const hasAccountMenuActions = isOrganizer || hasAnonymousPseudo;
   const displayName = authState.isLoading
     ? t("common.actions.loading")
     : authState.session?.username || t("common.user.guest");
@@ -64,16 +69,25 @@ export function GlobalTopHeader() {
 
   const handleLogout = async () => {
     setIsMenuOpen(false);
+    const anonymousSession =
+      authState.session?.sessionType === "anonymous" ? authState.session : null;
+
+    // Local-first logout: always clear client-side anonymous identity immediately.
+    // This prevents stale pseudo display if a server-side disconnect call fails.
+    clearAnonymousSession();
+
     try {
       if (isOrganizer) {
         await clearSession();
-        await refreshAuth();
       } else {
-        clearAnonymousSession();
+        if (anonymousSession?.gameId && anonymousSession.userId) {
+          await disconnectPlayer(anonymousSession.gameId, anonymousSession.userId);
+        }
       }
     } catch {
       // no-op: fallback navigation below
     } finally {
+      await refreshAuth();
       router.push("/");
       router.refresh();
     }
@@ -103,7 +117,10 @@ export function GlobalTopHeader() {
         <div className="relative" ref={menuRef}>
           <button
             type="button"
-            onClick={() => setIsMenuOpen((prev) => !prev)}
+            onClick={() => {
+              if (!hasAccountMenuActions) return;
+              setIsMenuOpen((prev) => !prev);
+            }}
             className="h-10 px-3 border border-primary/25 bg-black/75 inline-flex items-center gap-2 text-[10px] uppercase tracking-wider text-foreground/90 hover:bg-primary/10 hover:border-primary/45 transition-colors cursor-pointer"
           >
             {isOrganizer ? (
@@ -112,10 +129,12 @@ export function GlobalTopHeader() {
               <User className="h-3.5 w-3.5 text-muted-foreground" />
             )}
             <span className="max-w-[150px] truncate">{displayName}</span>
-            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isMenuOpen ? "rotate-180" : ""}`} />
+            {hasAccountMenuActions && (
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isMenuOpen ? "rotate-180" : ""}`} />
+            )}
           </button>
 
-          {isMenuOpen && (
+          {isMenuOpen && hasAccountMenuActions && (
             <div className="absolute right-0 mt-2 w-44 border border-primary/25 bg-black/95 backdrop-blur-sm">
               {isOrganizer && (
                 <button
@@ -137,16 +156,18 @@ export function GlobalTopHeader() {
                   {t("common.user.myBatches")}
                 </button>
               )}
-              <button
-                type="button"
-                onClick={handleLogout}
-                className={`w-full h-10 px-3 text-left inline-flex items-center gap-2 text-[10px] uppercase tracking-wider text-foreground/90 hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer ${
-                  isOrganizer ? "border-t border-primary/15" : ""
-                }`}
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                {t("common.user.signOut")}
-              </button>
+              {canShowSignOut && (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className={`w-full h-10 px-3 text-left inline-flex items-center gap-2 text-[10px] uppercase tracking-wider text-foreground/90 hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer ${
+                    isOrganizer ? "border-t border-primary/15" : ""
+                  }`}
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  {t("common.user.signOut")}
+                </button>
+              )}
             </div>
           )}
         </div>

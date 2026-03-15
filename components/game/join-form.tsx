@@ -6,6 +6,8 @@ import { UserPlus, Terminal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/use-auth";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
+import { ERROR_CODES } from "@/lib/constants/error-codes";
+import { useRouter } from "next/navigation";
 
 interface JoinFormProps {
     gameId: string;
@@ -14,6 +16,7 @@ interface JoinFormProps {
 
 export function JoinForm({ gameId, userId }: JoinFormProps) {
     const t = useTranslations();
+    const router = useRouter();
     const [pseudo, setPseudo] = useState("");
     const [hasEditedPseudo, setHasEditedPseudo] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
@@ -22,6 +25,8 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
     const { setAnonymousSession, authState } = useAuth();
     const sessionUsername = authState.session?.username?.trim() || "";
     const resolvedPseudo = (pseudo.trim() || sessionUsername).slice(0, 20).trim();
+    const shouldShowLoginAction = errorCode === ERROR_CODES.ERR_LOGIN_REQUIRED_FOR_AUTH_PLAYER;
+    const loginRedirect = `/game/${gameId}`;
 
     useEffect(() => {
         if (!hasEditedPseudo && !pseudo.trim() && sessionUsername) {
@@ -114,8 +119,20 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
                 </div>
 
                 {error && (
-                    <div className="bg-destructive/10 border border-destructive/20 p-3 text-[10px] text-destructive uppercase tracking-widest text-center animate-shake">
-                        [ERROR] {getLocalizedErrorMessage({ t, code: errorCode, fallback: error })}
+                    <div className="bg-destructive/10 border border-destructive/20 p-3 text-[10px] text-destructive uppercase tracking-widest text-center animate-shake space-y-3">
+                        <div>[ERROR] {getLocalizedErrorMessage({ t, code: errorCode, fallback: error })}</div>
+                        {shouldShowLoginAction && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const params = new URLSearchParams({ redirect: loginRedirect });
+                                    router.push(`/login?${params.toString()}`);
+                                }}
+                                className="px-4 py-2 border border-destructive/40 hover:bg-destructive/10 transition-colors text-[10px] tracking-[0.2em] uppercase"
+                            >
+                                {t("home.signIn")}
+                            </button>
+                        )}
                     </div>
                 )}
 

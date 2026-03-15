@@ -21,6 +21,7 @@ import { assignQuestsFromLoadedBatch } from "@/lib/quests/quest-assignment";
 import {
     getFailedQuestsKey,
     getGameNamespacePattern,
+    getPlayerPresenceKey,
     getGameStateKey,
     getMeetingVoteKey,
 } from "@/lib/redis/game-state-keys";
@@ -32,6 +33,7 @@ const MEETING_DURATION_MS = 5 * 60 * 1000;
 const REACTOR_SABOTAGE_DURATION_MS = 90 * 1000;
 const SABOTAGE_COOLDOWN_MS = 120 * 1000;
 const MAX_PLAYERS_PER_GAME = 50;
+const PLAYER_PRESENCE_TTL_SECONDS = 30;
 
 function isWatchConflictError(error: unknown): boolean {
     if (!error || typeof error !== "object") {
@@ -512,6 +514,197 @@ function sanitizeGameStateForViewer(state: GameState, scope: ViewerScope): GameS
     };
 }
 
+async function markPlayerPresenceConnected(gameId: string, userId: string): Promise<void> {
+    try {
+        await redis.set(
+            getPlayerPresenceKey(gameId, userId),
+            { userId, touchedAt: Date.now() },
+            PLAYER_PRESENCE_TTL_SECONDS
+        );
+    } catch (error) {
+        console.error(`Failed to mark player presence as connected for ${gameId}/${userId}:`, error);
+    }
+}
+
+async function clearPlayerPresence(gameId: string, userId: string): Promise<void> {
+    try {
+        await redis.del(getPlayerPresenceKey(gameId, userId));
+    } catch (error) {
+        console.error(`Failed to clear player presence for ${gameId}/${userId}:`, error);
+    }
+}
+
+async function isPlayerCurrentlyConnected(gameId: string, userId: string): Promise<boolean> {
+    try {
+        const exists = await redis.exists(getPlayerPresenceKey(gameId, userId));
+        return exists === 1;
+    } catch (error) {
+        // Security-first fallback: if presence cannot be verified, reject takeover.
+        console.error(`Failed to verify player presence for ${gameId}/${userId}:`, error);
+        return true;
+    }
+}
+
+async function isPasswordAuthenticatedPlayer(userId: string): Promise<boolean> {
+    try {
+        const exists = await redis.exists(`user:${userId}`);
+        return exists === 1;
+    } catch (error) {
+        // Security-first fallback: if lookup fails, prevent account takeover.
+        console.error(`Failed to verify protected account marker for player ${userId}:`, error);
+        return true;
+    }
+}
+
+function normalizePlayerAlias(alias: string): string {
+    return alias.trim().toLocaleLowerCase();
+}
+
+function mergeUniqueStringArrays(current: string[] = [], incoming: string[] = []): string[] {
+    return Array.from(new Set([...current, ...incoming]));
+}
+
+function reassignMeetingParticipantId(
+    meeting: MeetingState,
+    previousUserId: string,
+    nextUserId: string
+): MeetingState {
+    const remappedEligibleVoterIds = Array.from(
+        new Set(
+            meeting.eligibleVoterIds.map((playerId) =>
+                playerId === previousUserId ? nextUserId : playerId
+            )
+        )
+    );
+
+    const remappedVoteCounts = Object.entries(meeting.voteCounts).reduce<Record<string, number>>(
+        (accumulator, [playerId, votes]) => {
+            const remappedPlayerId = playerId === previousUserId ? nextUserId : playerId;
+            accumulator[remappedPlayerId] = (accumulator[remappedPlayerId] ?? 0) + Math.max(0, votes ?? 0);
+            return accumulator;
+        },
+        {}
+    );
+
+    remappedEligibleVoterIds.forEach((playerId) => {
+        if (!(playerId in remappedVoteCounts)) {
+            remappedVoteCounts[playerId] = 0;
+        }
+    });
+
+    return {
+        ...meeting,
+        startedBy: meeting.startedBy === previousUserId ? nextUserId : meeting.startedBy,
+        eligibleVoterIds: remappedEligibleVoterIds,
+        totalEligibleVoters: remappedEligibleVoterIds.length,
+        voteCounts: remappedVoteCounts,
+        eliminatedPlayerId:
+            meeting.eliminatedPlayerId === previousUserId
+                ? nextUserId
+                : meeting.eliminatedPlayerId,
+        snapshot: {
+            ...meeting.snapshot,
+            players: meeting.snapshot.players.map((player) =>
+                player.id === previousUserId ? { ...player, id: nextUserId } : player
+            ),
+        },
+    };
+}
+
+function reassignPlayerIdentity(
+    state: GameState,
+    previousUserId: string,
+    nextUserId: string
+): GameState {
+    if (previousUserId === nextUserId) {
+        return state;
+    }
+
+    const reassignedPlayers = state.players.map((player) =>
+        player.id === previousUserId ? { ...player, id: nextUserId } : player
+    );
+
+    const currentSabotageState = state.sabotageState;
+    const reassignedSabotageState = currentSabotageState
+        ? {
+              ...currentSabotageState,
+              reactor: currentSabotageState.reactor
+                  ? {
+                        ...currentSabotageState.reactor,
+                        scannedUserIds: Array.from(
+                            new Set(
+                                currentSabotageState.reactor.scannedUserIds.map((scannedUserId) =>
+                                    scannedUserId === previousUserId ? nextUserId : scannedUserId
+                                )
+                            )
+                        ),
+                    }
+                  : null,
+          }
+        : currentSabotageState;
+
+    return {
+        ...state,
+        players: reassignedPlayers,
+        creatorId: state.creatorId === previousUserId ? nextUserId : state.creatorId,
+        meeting: state.meeting
+            ? reassignMeetingParticipantId(state.meeting, previousUserId, nextUserId)
+            : state.meeting,
+        sabotageState: reassignedSabotageState,
+    };
+}
+
+async function migrateReassignedPlayerData(
+    gameId: string,
+    previousUserId: string,
+    nextUserId: string,
+    meeting?: MeetingState
+): Promise<void> {
+    if (previousUserId === nextUserId) {
+        return;
+    }
+
+    try {
+        const previousFailedQuestsKey = getFailedQuestsKey(gameId, previousUserId);
+        const nextFailedQuestsKey = getFailedQuestsKey(gameId, nextUserId);
+        const previousFailedQuests = await redis.get<Record<string, string[]>>(previousFailedQuestsKey);
+
+        if (previousFailedQuests) {
+            const nextFailedQuests =
+                (await redis.get<Record<string, string[]>>(nextFailedQuestsKey)) ?? {};
+            const mergedFailedQuests: Record<string, string[]> = { ...nextFailedQuests };
+
+            Object.entries(previousFailedQuests).forEach(([questId, contentIds]) => {
+                mergedFailedQuests[questId] = mergeUniqueStringArrays(
+                    nextFailedQuests[questId] ?? [],
+                    contentIds
+                );
+            });
+
+            await redis.set(nextFailedQuestsKey, mergedFailedQuests, GAME_TTL_SECONDS);
+            await redis.del(previousFailedQuestsKey);
+        }
+
+        if (meeting?.status === "ACTIVE") {
+            const previousVoteKey = getMeetingVoteKey(gameId, meeting.id, previousUserId);
+            const nextVoteKey = getMeetingVoteKey(gameId, meeting.id, nextUserId);
+            const previousVoteTarget = await redis.get<string>(previousVoteKey);
+
+            if (previousVoteTarget) {
+                await redis.set(nextVoteKey, previousVoteTarget, GAME_TTL_SECONDS);
+            }
+            await redis.del(previousVoteKey);
+        }
+
+        await clearPlayerPresence(gameId, previousUserId);
+    } catch (error) {
+        console.error(
+            `Failed to migrate reassigned player data for game ${gameId} (${previousUserId} -> ${nextUserId}):`,
+            error
+        );
+    }
+}
+
 async function verifyAndRecoverPlayerSession(
     gameId: string,
     userId: string,
@@ -630,6 +823,8 @@ async function resolveActionAccess(
         };
     }
 
+    await markPlayerPresenceConnected(gameId, normalizedUserId);
+
     return {
         success: true,
         data: {
@@ -651,10 +846,19 @@ async function resolveViewerScopeForGame(
     const organizerSession = await verifySession();
     if (normalizedUserId) {
         const playerExists = state.players.some((player) => player.id === normalizedUserId);
+        if (!playerExists) {
+            // Allow non-joined viewers to reach the join flow even when the game already started.
+            return {
+                success: true,
+                data: { isOrganizer: false },
+            };
+        }
+
         const playerSession = await verifyAndRecoverPlayerSession(gameId, normalizedUserId, playerExists);
         const hasValidPlayerSession = playerSession.isPlayerSessionValid;
 
-        if (playerExists && hasValidPlayerSession) {
+        if (hasValidPlayerSession) {
+            await markPlayerPresenceConnected(gameId, normalizedUserId);
             // Player context always gets player-level role visibility, even for organizer accounts.
             return {
                 success: true,
@@ -662,13 +866,6 @@ async function resolveViewerScopeForGame(
                     viewerUserId: normalizedUserId,
                     isOrganizer: false,
                 },
-            };
-        }
-
-        if (state.status === "LOBBY") {
-            return {
-                success: true,
-                data: { isOrganizer: false },
             };
         }
 
@@ -1306,6 +1503,11 @@ export async function joinGame(
 
     try {
         const preloadedState = await readGameState(gameId);
+        const organizerSession = await verifySession();
+        const isAuthenticatedCaller =
+            organizerSession.success &&
+            !!organizerSession.data &&
+            organizerSession.data.userId === userId;
 
         if (!preloadedState) {
             return {
@@ -1317,6 +1519,7 @@ export async function joinGame(
 
         // Story 11.3: Game Settings from Batch - preload batch once, then assign inside atomic update
         let assignmentBatch: { id: string; quests: Quest[] } | null = null;
+        let reconnectCandidateUserId: string | null = null;
         if (preloadedState.batchId) {
             const batchResponse = await getBatchData(preloadedState.batchId);
             if (!batchResponse.success || !batchResponse.data) {
@@ -1332,8 +1535,60 @@ export async function joinGame(
             };
         }
 
+        if (preloadedState.status !== "LOBBY") {
+            const alreadyJoined = preloadedState.players.some((player) => player.id === userId);
+            if (!alreadyJoined) {
+                const reconnectCandidates = preloadedState.players.filter(
+                    (player) =>
+                        player.id !== userId &&
+                        normalizePlayerAlias(player.name) === normalizePlayerAlias(sanitizedName)
+                );
+
+                if (reconnectCandidates.length === 0) {
+                    return {
+                        success: false,
+                        error: "Cannot join: game is already in progress.",
+                        code: ERROR_CODES.ERR_GAME_ALREADY_STARTED,
+                    };
+                }
+
+                for (const reconnectCandidate of reconnectCandidates) {
+                    const isProtectedAccount = await isPasswordAuthenticatedPlayer(
+                        reconnectCandidate.id
+                    );
+                    if (isProtectedAccount) {
+                        if (isAuthenticatedCaller && reconnectCandidate.id === userId) {
+                            reconnectCandidateUserId = reconnectCandidate.id;
+                            continue;
+                        }
+                        return {
+                            success: false,
+                            error: "Protected account alias requires login.",
+                            code: ERROR_CODES.ERR_LOGIN_REQUIRED_FOR_AUTH_PLAYER,
+                        };
+                    }
+
+                    const isReconnectCandidateConnected = await isPlayerCurrentlyConnected(
+                        gameId,
+                        reconnectCandidate.id
+                    );
+                    if (isReconnectCandidateConnected && !isAuthenticatedCaller) {
+                        return {
+                            success: false,
+                            error: "Alias already in use by an active player.",
+                            code: ERROR_CODES.ERR_PLAYER_ALREADY_CONNECTED,
+                        };
+                    }
+                }
+
+                reconnectCandidateUserId = reconnectCandidates[0].id;
+            }
+        }
+
         let validationError: ActionResponse<GameState> | null = null;
+        let reassignedFromUserId: string | null = null;
         const updatedState = await mutateGameState(gameId, (state) => {
+            reassignedFromUserId = null;
             if (!state) {
                 validationError = {
                     success: false,
@@ -1351,12 +1606,25 @@ export async function joinGame(
             }
 
             if (normalizedState.status !== "LOBBY") {
-                validationError = {
-                    success: false,
-                    error: "Cannot join: game is already in progress.",
-                    code: ERROR_CODES.ERR_INVALID_STATE,
-                };
-                return null;
+                const reconnectCandidate = reconnectCandidateUserId
+                    ? normalizedState.players.find((player) => player.id === reconnectCandidateUserId)
+                    : normalizedState.players.find(
+                          (player) =>
+                              player.id !== userId &&
+                              normalizePlayerAlias(player.name) === normalizePlayerAlias(sanitizedName)
+                      );
+
+                if (!reconnectCandidate) {
+                    validationError = {
+                        success: false,
+                        error: "Cannot join: game is already in progress.",
+                        code: ERROR_CODES.ERR_GAME_ALREADY_STARTED,
+                    };
+                    return null;
+                }
+
+                reassignedFromUserId = reconnectCandidate.id;
+                return reassignPlayerIdentity(normalizedState, reconnectCandidate.id, userId);
             }
 
             if (normalizedState.players.length >= MAX_PLAYERS_PER_GAME) {
@@ -1436,11 +1704,16 @@ export async function joinGame(
             };
         }
 
+        if (reassignedFromUserId && reassignedFromUserId !== userId) {
+            await migrateReassignedPlayerData(gameId, reassignedFromUserId, userId, updatedState.meeting);
+        }
+
         // Secure the player's identity moving forward
         const sessionResult = await createPlayerSession(userId, gameId);
         if (!sessionResult.success) {
             console.error("Failed to establish secure session:", sessionResult.error);
         }
+        await markPlayerPresenceConnected(gameId, userId);
 
         return {
             success: true,
