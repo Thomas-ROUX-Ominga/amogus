@@ -2,7 +2,7 @@
 
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { AlertTriangle, Home, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -70,7 +70,7 @@ export function ErrorView({
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center">
-            <motion.div
+            <m.div
                 initial="initial"
                 animate="animate"
                 variants={glitchVariants}
@@ -78,7 +78,7 @@ export function ErrorView({
             >
                 <div className="relative inline-block">
                     <AlertTriangle className="w-24 h-24 text-destructive animate-pulse" />
-                    <motion.div
+                    <m.div
                         className="absolute inset-0 text-destructive/30 w-24 h-24"
                         animate={{
                             x: [-2, 2, -2],
@@ -87,20 +87,20 @@ export function ErrorView({
                         transition={{ duration: 0.1, repeat: Infinity }}
                     >
                         <AlertTriangle className="w-full h-full" />
-                    </motion.div>
+                    </m.div>
                 </div>
-            </motion.div>
+            </m.div>
 
-            <motion.h1
+            <m.h1
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
                 className="text-4xl font-bold font-orbitron text-destructive mb-4 tracking-tighter"
             >
                 {localizedTitle}
-            </motion.h1>
+            </m.h1>
 
-            <motion.div
+            <m.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
@@ -112,9 +112,9 @@ export function ErrorView({
                 <div className="text-[10px] font-mono text-destructive/40 uppercase tracking-widest">
                     {t("errors.systemReport")}: {errorCode}
                 </div>
-            </motion.div>
+            </m.div>
 
-            <motion.div
+            <m.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 }}
@@ -143,7 +143,7 @@ export function ErrorView({
                         {t("errors.retrySync")}
                     </span>
                 </button>
-            </motion.div>
+            </m.div>
 
             <div className="mt-12 text-[10px] text-destructive/20 font-mono uppercase tracking-[0.2em]">
                 {t("errors.protocol")}

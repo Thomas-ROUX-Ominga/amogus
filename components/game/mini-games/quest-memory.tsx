@@ -86,11 +86,6 @@ export function QuestMemory({ duration, onSuccess, onError }: QuestMemoryProps) 
     const [matchedPairsCount, setMatchedPairsCount] = useState(0);
     const [isCompleted, setIsCompleted] = useState(false);
 
-    const iconByKey = useMemo(
-        () => Object.fromEntries(ICON_POOL.map((entry) => [entry.key, entry.icon])) as Record<string, LucideIcon>,
-        []
-    );
-
     useEffect(() => {
         setCards(createCards(duration));
         setFlippedIndexes([]);
@@ -98,6 +93,11 @@ export function QuestMemory({ duration, onSuccess, onError }: QuestMemoryProps) 
         setMatchedPairsCount(0);
         setIsCompleted(false);
     }, [duration]);
+
+    const iconByKey = useMemo(
+        () => Object.fromEntries(ICON_POOL.map((entry) => [entry.key, entry.icon])) as Record<string, LucideIcon>,
+        []
+    );
 
     useEffect(() => {
         if (!isCompleted && matchedPairsCount === pairCount) {

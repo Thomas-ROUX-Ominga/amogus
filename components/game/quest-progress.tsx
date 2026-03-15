@@ -66,7 +66,7 @@ export function QuestProgress({
             (sabotageState?.cooldowns.lightsAvailableAt ?? 0) > Date.now() ||
             (sabotageState?.cooldowns.reactorAvailableAt ?? 0) > Date.now());
 
-    const [now, setNow] = useState(Date.now());
+    const [now, setNow] = useState(() => Date.now());
 
     useEffect(() => {
         if (!shouldRunImpostorTimer) return;
@@ -75,7 +75,6 @@ export function QuestProgress({
     }, [shouldRunImpostorTimer]);
 
     const [crewQuests, setCrewQuests] = useState<Array<Quest & { completed: boolean; location?: string }>>([]);
-    const [isCrewQuestsLoading, setIsCrewQuestsLoading] = useState(false);
     const [isTriggeringSabotage, setIsTriggeringSabotage] = useState<SabotageType | null>(null);
     const lastQuestCatalogFetchRef = useRef<{ gameId: string; at: number } | null>(null);
 
@@ -95,9 +94,7 @@ export function QuestProgress({
         if (role !== "CREWMATE") return;
 
         const fetchQuests = async () => {
-            setIsCrewQuestsLoading(true);
-            try {
-                let assignedList: Array<Quest & { completed: boolean; location?: string }> = [];
+            let assignedList: Array<Quest & { completed: boolean; location?: string }> = [];
 
                 if (batchId) {
                     let allQuests = resolvedGameQuests;
@@ -151,9 +148,6 @@ export function QuestProgress({
 
                             assignedList = [...completedQ, ...remainingQ];
                         }
-                    } else {
-                        setCrewQuests([]);
-                        return;
                     }
                 }
 
@@ -182,10 +176,7 @@ export function QuestProgress({
                     });
                 }
 
-                setCrewQuests(assignedList);
-            } finally {
-                setIsCrewQuestsLoading(false);
-            }
+            setCrewQuests(assignedList);
         };
         fetchQuests();
     }, [
@@ -550,7 +541,7 @@ export function QuestProgress({
 
             {role === "CREWMATE" && (
                 <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
-                    <QuestList quests={crewQuests} isLoading={isLoading || isCrewQuestsLoading} />
+                    <QuestList quests={crewQuests} isLoading={isLoading} />
                 </div>
             )}
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import { Scan } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -123,7 +123,7 @@ export function ScanButton({
 
     return (
         <div className="w-full px-1 overflow-visible">
-            <motion.button
+            <m.button
                 animate={pulseAnimation}
                 transition={pulseTransition}
                 onClick={handlePress}
@@ -134,7 +134,6 @@ export function ScanButton({
                         ? t("game.scanButton.scannerComingSoonAria")
                         : t("game.scanButton.scannerAria")
                 }
-                style={{ willChange: prefersReducedMotion ? "auto" : "transform" }}
                 className={className}
             >
                 {communicationsSabotaged && (
@@ -144,7 +143,7 @@ export function ScanButton({
                     />
                 )}
                 {content}
-            </motion.button>
+            </m.button>
         </div>
     );
 }

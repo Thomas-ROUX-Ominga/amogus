@@ -5,6 +5,11 @@ import { SuccessOverlay } from '@/components/game/success-overlay';
 
 // Mock framer-motion to avoid animation issues in tests
 vi.mock('framer-motion', () => ({
+  m: {
+    div: ({ children, ...props }: React.ComponentProps<'div'>) => <div {...props}>{children}</div>,
+    h1: ({ children, ...props }: React.ComponentProps<'h1'>) => <h1 {...props}>{children}</h1>,
+    button: ({ children, ...props }: React.ComponentProps<'button'>) => <button {...props}>{children}</button>,
+  },
   motion: {
     div: ({ children, ...props }: React.ComponentProps<'div'>) => <div {...props}>{children}</div>,
     h1: ({ children, ...props }: React.ComponentProps<'h1'>) => <h1 {...props}>{children}</h1>,

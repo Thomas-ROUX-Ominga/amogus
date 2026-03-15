@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useState, useCallback } from "react";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { QuestDuration } from "@/types/quest";
 import { MINI_BAC_CATEGORY_COUNT } from "@/lib/mini-games";
@@ -63,17 +63,13 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
     const [gameState, setGameState] = useState<MiniBacState>(() =>
         generateState(duration)
     );
-    const [errors, setErrors] = useState<boolean[]>([]);
-    const [submitted, setSubmitted] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showFailed, setShowFailed] = useState(false);
-
-    // Reset submitted state when game state changes (new round)
-    useEffect(() => {
-        setSubmitted(false);
-        setErrors([]);
-        setIsSubmitting(false);
-    }, [gameState]);
+    const [uiState, setUiState] = useState({
+        errors: [] as boolean[],
+        submitted: false,
+        isSubmitting: false,
+        showFailed: false,
+    });
+    const { errors, submitted, isSubmitting, showFailed } = uiState;
 
     const handleInputChange = useCallback(
         (index: number, value: string) => {
@@ -97,7 +93,7 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
             e.preventDefault();
             if (submitted || isSubmitting) return;
 
-            setIsSubmitting(true);
+            setUiState((prev) => ({ ...prev, isSubmitting: true }));
 
             try {
                 const { answers, letter, categories } = gameState;
@@ -113,27 +109,31 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
                     })
                 );
 
-                setErrors(errorFlags);
+                setUiState((prev) => ({ ...prev, errors: errorFlags }));
 
                 if (errorFlags.every((e) => !e)) {
                     // All correct → success!
-                    setSubmitted(true);
+                    setUiState((prev) => ({ ...prev, submitted: true }));
                     onSuccess();
                 } else {
                     // Some invalid words → show failed overlay, then reload
-                    setSubmitted(true);
-                    setShowFailed(true);
+                    setUiState((prev) => ({ ...prev, submitted: true, showFailed: true }));
                     onError();
                 }
             } finally {
-                setIsSubmitting(false);
+                setUiState((prev) => ({ ...prev, isSubmitting: false }));
             }
         },
         [gameState, submitted, isSubmitting, onSuccess, onError]
     );
 
     const handleRetry = useCallback(() => {
-        setShowFailed(false);
+        setUiState({
+            errors: [],
+            submitted: false,
+            isSubmitting: false,
+            showFailed: false,
+        });
         setGameState(generateState(duration));
     }, [duration]);
 
@@ -150,7 +150,7 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
             >
                 {/* Letter display */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 p-4">
-                    <motion.div
+                    <m.div
                         key={gameState.letter}
                         initial={{ scale: 0.5, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
@@ -160,7 +160,7 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
                         <span className="text-5xl font-bold font-orbitron text-primary tracking-widest">
                             {gameState.letter}
                         </span>
-                    </motion.div>
+                    </m.div>
                     <div className="text-center sm:text-left max-w-md space-y-1">
                         <p className="font-rajdhani text-sm uppercase tracking-[0.2em] text-primary/70">
                             {t("game.miniBac.title")}
@@ -176,7 +176,7 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
                     {gameState.categories.map((category, index) => {
                         const hasError = errors[index] === true;
                         return (
-                            <motion.div
+                            <m.div
                                 key={`${gameState.letter}-${category.name}`}
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -189,7 +189,7 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
                                 >
                                     {category.name} ({category.type === "proper" ? t("game.miniBac.properNoun") : t("game.miniBac.commonNoun")})
                                 </label>
-                                <motion.input
+                                <m.input
                                     id={`minibac-input-${index}`}
                                     type="text"
                                     value={gameState.answers[index]}
@@ -219,7 +219,7 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
                                         {t("game.miniBac.invalidWord")}
                                     </p>
                                 )}
-                            </motion.div>
+                            </m.div>
                         );
                     })}
                 </div>

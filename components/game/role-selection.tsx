@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Shield, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useGameStore } from "@/lib/store/game-store";
@@ -35,7 +35,7 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
     };
 
     return (
-        <motion.div
+        <m.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
@@ -54,7 +54,7 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
             </div>
 
             <div className="space-y-4">
-                <motion.button
+                <m.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleRoleSelect("CREWMATE")}
@@ -71,9 +71,9 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                             {t("game.roleSelection.crewmateDescription")}
                         </div>
                     </div>
-                </motion.button>
+                </m.button>
 
-                <motion.button
+                <m.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleRoleSelect("IMPOSTOR")}
@@ -90,11 +90,11 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                             {t("game.roleSelection.impostorDescription")}
                         </div>
                     </div>
-                </motion.button>
+                </m.button>
             </div>
 
             {isSelectingRole && (
-                <motion.div
+                <m.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className="p-4 border border-[#58A6FF]/20 bg-[#58A6FF]/5 text-center"
@@ -102,11 +102,11 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                     <div className="text-xs text-[#58A6FF] uppercase tracking-widest animate-pulse font-rajdhani">
                         {t("game.roleSelection.assigning")}
                     </div>
-                </motion.div>
+                </m.div>
             )}
 
             {roleError && (
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="p-4 border border-[#DA3633]/50 bg-[#DA3633]/10"
@@ -125,12 +125,12 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                     >
                         {t("game.roleSelection.retry")}
                     </button>
-                </motion.div>
+                </m.div>
             )}
 
             <div className="text-[8px] text-[#8B949E]/40 uppercase tracking-widest text-center font-rajdhani">
                 {t("game.roleSelection.moduleStatus")}
             </div>
-        </motion.div>
+        </m.div>
     );
 }

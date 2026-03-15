@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { Shield, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PlayerRole } from "@/types/game";
@@ -26,16 +26,21 @@ export function RoleTransition({ role, gameId, onComplete }: RoleTransitionProps
             return () => clearTimeout(timer);
         }
 
-        const timer1 = setTimeout(() => setPhase("scanning"), 500);
-        const timer2 = setTimeout(() => setPhase("fade"), 1500);
-        const timer3 = setTimeout(() => {
-            onComplete();
-        }, 2000);
+        const startAt = Date.now();
+        const timer = setInterval(() => {
+            const elapsed = Date.now() - startAt;
+            const nextPhase = elapsed >= 1500 ? "fade" : elapsed >= 500 ? "scanning" : "badge";
+
+            setPhase((prev) => (prev === nextPhase ? prev : nextPhase));
+
+            if (elapsed >= 2000) {
+                clearInterval(timer);
+                onComplete();
+            }
+        }, 50);
 
         return () => {
-            clearTimeout(timer1);
-            clearTimeout(timer2);
-            clearTimeout(timer3);
+            clearInterval(timer);
         };
     }, [gameId, onComplete]);
 
@@ -43,7 +48,7 @@ export function RoleTransition({ role, gameId, onComplete }: RoleTransitionProps
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0D1117]">
             <AnimatePresence mode="wait">
                 {phase === "badge" && (
-                    <motion.div
+                    <m.div
                         key="badge"
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
@@ -51,7 +56,7 @@ export function RoleTransition({ role, gameId, onComplete }: RoleTransitionProps
                         transition={{ duration: 0.5 }}
                         className="flex flex-col items-center gap-6"
                     >
-                        <motion.div
+                        <m.div
                             initial={{ rotate: 0 }}
                             animate={{ rotate: 360 }}
                             transition={{ duration: 1, ease: "easeInOut" }}
@@ -63,8 +68,8 @@ export function RoleTransition({ role, gameId, onComplete }: RoleTransitionProps
                             }}
                         >
                             <RoleIcon className="w-16 h-16" style={{ color: roleColor }} />
-                        </motion.div>
-                        <motion.div
+                        </m.div>
+                        <m.div
                             initial={{ y: 20, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             transition={{ delay: 0.2 }}
@@ -72,12 +77,12 @@ export function RoleTransition({ role, gameId, onComplete }: RoleTransitionProps
                             style={{ color: roleColor }}
                         >
                             {roleLabel}
-                        </motion.div>
-                    </motion.div>
+                        </m.div>
+                    </m.div>
                 )}
 
                 {phase === "scanning" && (
-                    <motion.div
+                    <m.div
                         key="scanning"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -85,27 +90,27 @@ export function RoleTransition({ role, gameId, onComplete }: RoleTransitionProps
                         className="relative w-full h-full flex items-center justify-center"
                     >
                         <div className="absolute inset-0 overflow-hidden">
-                            {[...Array(5)].map((_, i) => (
-                                <motion.div
-                                    key={i}
+                            {[0, 20, 40, 60, 80].map((lineTop, lineIndex) => (
+                                <m.div
+                                    key={`scan-line-${lineTop}`}
                                     initial={{ y: "-100%" }}
                                     animate={{ y: "200%" }}
                                     transition={{
                                         duration: 1,
-                                        delay: i * 0.1,
+                                        delay: lineIndex * 0.1,
                                         repeat: 1,
                                         ease: "linear"
                                     }}
                                     className="absolute left-0 right-0 h-1"
                                     style={{
                                         background: `linear-gradient(to bottom, transparent, ${roleColor}80, transparent)`,
-                                        top: `${i * 20}%`
+                                        top: `${lineTop}%`
                                     }}
                                 />
                             ))}
                         </div>
 
-                        <motion.div
+                        <m.div
                             initial={{ scale: 1 }}
                             animate={{ scale: [1, 1.05, 1] }}
                             transition={{ duration: 1, repeat: 1 }}
@@ -127,7 +132,7 @@ export function RoleTransition({ role, gameId, onComplete }: RoleTransitionProps
                             >
                                 {roleLabel}
                             </div>
-                            <motion.div
+                            <m.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: [0, 1, 0] }}
                                 transition={{ duration: 1, repeat: 1 }}
@@ -135,13 +140,13 @@ export function RoleTransition({ role, gameId, onComplete }: RoleTransitionProps
                                 style={{ color: `${roleColor}80` }}
                             >
                                 Scanning... Vérification en cours
-                            </motion.div>
-                        </motion.div>
-                    </motion.div>
+                            </m.div>
+                        </m.div>
+                    </m.div>
                 )}
 
                 {phase === "fade" && (
-                    <motion.div
+                    <m.div
                         key="fade"
                         initial={{ opacity: 1 }}
                         animate={{ opacity: 0 }}
@@ -163,7 +168,7 @@ export function RoleTransition({ role, gameId, onComplete }: RoleTransitionProps
                         >
                             {roleLabel}
                         </div>
-                    </motion.div>
+                    </m.div>
                 )}
             </AnimatePresence>
         </div>

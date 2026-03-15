@@ -79,6 +79,14 @@ const baseStoreState = {
     clearQuestContent: vi.fn(),
 };
 
+function renderQuestPage(searchParams: { duration?: string | string[]; questId?: string | string[] } = { duration: "short" }) {
+    return render(
+        <AuthProvider>
+            <QuestPage searchParams={searchParams} />
+        </AuthProvider>
+    );
+}
+
 describe("QuestPage", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -95,11 +103,7 @@ describe("QuestPage", () => {
             ...baseStoreState,
             isLoading: true,
         });
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage();
         expect(screen.getByText(/Chargement de la quête/)).toBeTruthy();
     });
 
@@ -112,11 +116,7 @@ describe("QuestPage", () => {
             fatalErrorCode: "GAME_NOT_FOUND",
             currentQuest: { id: "test", type: "true-false", duration: "short", location: "test" }, // Match duration to prevent stale check
         });
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage();
         
         // Wait for async operations to complete
         await act(async () => {
@@ -133,11 +133,7 @@ describe("QuestPage", () => {
             isLoading: false,
             currentQuest: { id: "test", type: "true-false", duration: "invalid", location: "test" }, // Match duration to prevent stale check
         });
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage({ duration: "invalid" });
         
         // Wait for async operations to complete
         await act(async () => {
@@ -154,11 +150,7 @@ describe("QuestPage", () => {
             isLoading: false,
             currentQuest: null, // No duration means no stale check issue
         });
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage({});
         
         // Wait for async operations to complete
         await act(async () => {
@@ -183,11 +175,7 @@ describe("QuestPage", () => {
             updatedAt: Date.now(),
             },
         });
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage();
         
         // Wait for async operations to complete
         await act(async () => {
@@ -212,11 +200,7 @@ describe("QuestPage", () => {
             updatedAt: Date.now(),
             },
         });
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage();
         
         // Wait for async operations to complete
         await act(async () => {
@@ -241,11 +225,7 @@ describe("QuestPage", () => {
             updatedAt: Date.now(),
             },
         });
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage();
         
         // Wait for async operations to complete
         await act(async () => {
@@ -273,11 +253,7 @@ describe("QuestPage", () => {
                 location: "Module de survie",
             },
         });
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage();
         
         // Wait for the quest content to load (async operation)
         await act(async () => {
@@ -292,11 +268,7 @@ describe("QuestPage", () => {
 
     it("should call fetchGame on mount", () => {
         vi.mocked(useGameStore).mockReturnValue(baseStoreState);
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage();
         expect(mockFetchGame).toHaveBeenCalledWith("game-123", "user-1");
     });
 
@@ -319,11 +291,7 @@ describe("QuestPage", () => {
                 instruction: "Test instruction",
             },
         });
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage();
         expect(screen.getByText("QUÊTE DÉJÀ ACCOMPLIE")).toBeTruthy();
         expect(screen.getByText("RETOUR AU COCKPIT")).toBeTruthy();
     });
@@ -348,11 +316,7 @@ describe("QuestPage", () => {
                 instruction: "Test instruction",
             },
         });
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage();
 
         await act(async () => {
             await new Promise(resolve => setTimeout(resolve, 0));
@@ -374,11 +338,7 @@ describe("QuestPage", () => {
             updatedAt: Date.now(),
             },
         });
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage();
         
         // It should call setCurrentQuest with a simulated quest object
         expect(mockSetCurrentQuest).toHaveBeenCalledWith(expect.objectContaining({

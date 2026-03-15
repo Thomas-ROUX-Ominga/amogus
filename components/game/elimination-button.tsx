@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 
@@ -20,11 +20,16 @@ export function EliminationButton({
 }: EliminationButtonProps) {
     const t = useTranslations();
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-    const [mounted, setMounted] = useState(false);
 
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    const triggerHapticFeedback = (isError: boolean) => {
+        try {
+            if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+                navigator.vibrate(isError ? [200] : [50]);
+            }
+        } catch {
+            // Ignore haptic failures silently
+        }
+    };
 
     const handleEliminate = async () => {
         setShowConfirmDialog(false);
@@ -32,21 +37,18 @@ export function EliminationButton({
     };
 
     const handlePress = () => {
-        // Haptic feedback for touch devices
-        try {
-            if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-                if (disabled || isEliminating) {
-                    navigator.vibrate([200]);
-                } else {
-                    navigator.vibrate([50]);
-                }
-            }
-        } catch {
-            // Ignore haptic failures silently
+        if (disabled || isEliminating) {
+            triggerHapticFeedback(true);
+            return;
         }
 
-        if (!disabled && !isEliminating) {
-            setShowConfirmDialog(true);
+        triggerHapticFeedback(false);
+        setShowConfirmDialog(true);
+    };
+
+    const handleDisabledPressFeedback = () => {
+        if (disabled || isEliminating) {
+            triggerHapticFeedback(true);
         }
     };
 
@@ -59,7 +61,7 @@ export function EliminationButton({
 
     return (
         <>
-            <div onMouseDown={disabled || isEliminating ? handlePress : undefined}>
+            <div onMouseDown={handleDisabledPressFeedback} onTouchStart={handleDisabledPressFeedback}>
                 <button
                     onClick={handlePress}
                     onKeyDown={handleKeyDown}
@@ -72,15 +74,15 @@ export function EliminationButton({
                                 : t("game.actions.eliminationAriaSignal")
                     }
                     className={`
-                        flex items-center gap-1 px-3 py-1.5
-                        text-xs text-destructive/80 
-                        border border-destructive/20 
-                        bg-destructive/5
-                        hover:text-destructive hover:bg-destructive/10 hover:border-destructive/40
-                        disabled:opacity-50 disabled:cursor-not-allowed
-                        transition-colors duration-200
-                        touch-manipulation min-h-[32px]
-                        font-rajdhani uppercase tracking-widest
+                            flex items-center gap-1 px-3 py-1.5
+                            text-xs text-destructive/80 
+                            border border-destructive/20 
+                            bg-destructive/5
+                            hover:text-destructive hover:bg-destructive/10 hover:border-destructive/40
+                            disabled:opacity-50 disabled:cursor-not-allowed
+                            transition-colors duration-200
+                            touch-manipulation min-h-[32px]
+                            font-rajdhani uppercase tracking-widest
                         ${className}
                     `}
                 >
@@ -94,7 +96,7 @@ export function EliminationButton({
                 </button>
             </div>
 
-            {showConfirmDialog && mounted && createPortal(
+            {showConfirmDialog && typeof document !== "undefined" && createPortal(
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
                     <div className="max-w-md w-full border border-destructive/20 bg-black p-6 space-y-4 shadow-xl">
                         <div className="flex items-center gap-2 text-destructive">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -63,12 +63,7 @@ const RULES_SECTIONS: RulesSection[] = [
 
 export function GameRulesModal({ isOpen, onClose }: GameRulesModalProps) {
   const t = useTranslations();
-  const [mounted, setMounted] = useState(false);
   const translateDynamic = (key: string) => t(key as never);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -89,19 +84,19 @@ export function GameRulesModal({ isOpen, onClose }: GameRulesModalProps) {
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen || !mounted) {
+  if (!isOpen || typeof document === "undefined") {
     return null;
   }
 
   return createPortal(
     <div
       className="fixed inset-0 z-[1200] bg-black/80 backdrop-blur-md p-2 sm:p-4"
+      data-testid="rules-overlay"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
         }
       }}
-      data-testid="rules-overlay"
     >
       <div
         role="dialog"

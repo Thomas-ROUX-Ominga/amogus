@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import { QuestGame } from "@/types/quest";
 import { useQuestAnswer } from "@/hooks/use-quest-answer";
 import { useTranslations } from "next-intl";
@@ -53,7 +53,7 @@ export function QuestIntrus({ quest, onSuccess, onError }: QuestIntrusProps) {
     return (
         <div className="space-y-3" role="radiogroup" aria-label={t("game.questWidgets.intruderChoiceAria")}>
             {quest.data.choices.map((option, index) => (
-                <motion.button
+                <m.button
                     key={option.id}
                     {...getCardVariants(option.id)}
                     style={selectedValue === option.id ? { willChange: "transform" } : undefined}
@@ -72,7 +72,7 @@ export function QuestIntrus({ quest, onSuccess, onError }: QuestIntrusProps) {
                         {String.fromCharCode(65 + index)})
                     </span>
                     <span className="text-left flex-1">{option.label}</span>
-                </motion.button>
+                </m.button>
             ))}
 
             {failed && (

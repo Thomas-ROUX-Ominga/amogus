@@ -5,6 +5,7 @@ import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { AuthProvider } from "@/hooks/use-auth";
 import { GlobalTopHeader } from "@/components/common/global-top-header";
+import { LazyMotionProvider } from "@/components/effects/lazy-motion-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -66,10 +67,12 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${orbitron.variable} ${rajdhani.variable} ${jetbrainsMono.variable} antialiased font-mono`}
       >
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <AuthProvider>
-            <GlobalTopHeader />
-            {children}
-          </AuthProvider>
+          <LazyMotionProvider>
+            <AuthProvider>
+              <GlobalTopHeader />
+              {children}
+            </AuthProvider>
+          </LazyMotionProvider>
         </NextIntlClientProvider>
       </body>
     </html>

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
@@ -21,7 +21,7 @@ export function PulseButton({
     return (
         <div className="relative inline-block">
             {isLoading && (
-                <motion.div
+                <m.div
                     className="absolute inset-0 rounded bg-primary/20"
                     initial={{ scale: 1, opacity: 0.5 }}
                     animate={{ scale: 1.5, opacity: 0 }}

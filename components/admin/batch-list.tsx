@@ -238,7 +238,6 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
                         }
                       }}
                       className="h-8 w-full max-w-[240px] bg-black border border-primary/40 px-2 text-[11px] font-mono text-primary uppercase tracking-wider focus:outline-none focus:border-primary"
-                      autoFocus
                     />
                     <button
                       type="button"

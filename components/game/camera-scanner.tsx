@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { X, AlertCircle, Loader2 } from "lucide-react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { useTranslations } from "next-intl";
@@ -26,7 +26,6 @@ export function CameraScanner({
     statusMessage = null,
 }: CameraScannerProps) {
     const t = useTranslations();
-    const [mounted, setMounted] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
@@ -35,11 +34,7 @@ export function CameraScanner({
     const scannerRegionId = "qr-scanner-region";
 
     useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    useEffect(() => {
-        if (!mounted || !isOpen) {
+        if (typeof document === "undefined" || !isOpen) {
             cleanupScanner();
             hasScannedRef.current = false;
             scanCooldownUntilRef.current = 0;
@@ -56,10 +51,10 @@ export function CameraScanner({
                 cleanupScanner();
             }
         };
-    }, [mounted, isOpen, error, isLoading]);
+    }, [isOpen, error, isLoading]);
 
     useEffect(() => {
-        if (!isOpen || !mounted || typeof document === "undefined") {
+        if (!isOpen || typeof document === "undefined") {
             return;
         }
 
@@ -77,7 +72,7 @@ export function CameraScanner({
             document.body.style.touchAction = originalBodyTouchAction;
             document.documentElement.style.overflow = originalHtmlOverflow;
         };
-    }, [mounted, isOpen]);
+    }, [isOpen]);
 
     const initializeScanner = async () => {
         if (!document.getElementById(scannerRegionId)) return;
@@ -237,27 +232,28 @@ export function CameraScanner({
         // Reactive useEffect will trigger initializeScanner once error is null and container renders
     };
 
-    if (!mounted) {
-        return null;
-    }
-
-    if (!isOpen) {
+    if (!isOpen || typeof document === "undefined") {
         return null;
     }
 
     return createPortal(
-        <motion.div
+        <m.div
             key="camera-scanner-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="fixed inset-0 z-[9999] bg-black/55 backdrop-blur-md"
-            onClick={onClose}
         >
+                        <button
+                            type="button"
+                            onMouseDown={onClose}
+                            aria-hidden="true"
+                            tabIndex={-1}
+                            className="absolute inset-0 h-full w-full cursor-default"
+                        />
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(88,166,255,0.14),transparent_65%)]" />
                         <div className="relative z-10 flex h-full w-full items-center justify-center p-3 sm:p-6">
                             <div
                                 className="w-full max-w-3xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto border border-primary/35 bg-black/70 backdrop-blur-xl p-4 sm:p-5"
-                                onClick={(event) => event.stopPropagation()}
                             >
                                 <div className="mb-4 flex items-start justify-between gap-3">
                                     <div>
@@ -315,7 +311,7 @@ export function CameraScanner({
                                                 <div className="absolute right-5 bottom-5 h-8 w-8 border-r-2 border-b-2 border-white/80" />
 
                                                 <div className="absolute inset-5">
-                                                    <motion.div
+                                                    <m.div
                                                         className="absolute left-3 right-3 h-[2px] bg-primary shadow-[0_0_14px_rgba(88,166,255,0.9)]"
                                                         animate={{ top: ["calc(100% - 2px)", "0%"] }}
                                                         transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
@@ -360,7 +356,7 @@ export function CameraScanner({
                                 </div>
                             </div>
                         </div>
-        </motion.div>,
+        </m.div>,
         document.body,
     );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import { Check, X } from "lucide-react";
 import { QuestGame } from "@/types/quest";
 import { useQuestAnswer } from "@/hooks/use-quest-answer";
@@ -53,7 +53,7 @@ export function QuestTrueFalse({ quest, onSuccess, onError }: QuestTrueFalseProp
     return (
         <div className="space-y-4" role="group" aria-label={t("game.questWidgets.trueFalseAria")}>
             {quest.data.choices.map((option) => (
-                <motion.button
+                <m.button
                     key={option.id}
                     {...getButtonVariants(option.id)}
                     style={selectedValue === option.id ? { willChange: "transform" } : undefined}
@@ -69,7 +69,7 @@ export function QuestTrueFalse({ quest, onSuccess, onError }: QuestTrueFalseProp
                         <X className="w-5 h-5" aria-hidden="true" />
                     )}
                     {option.label}
-                </motion.button>
+                </m.button>
             ))}
 
             {failed && (

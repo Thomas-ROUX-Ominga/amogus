@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { useTranslations } from "next-intl";
 
 interface FailedOverlayProps {
@@ -88,11 +88,11 @@ export function FailedOverlay({
       };
 
   return (
-    <motion.div
+    <m.div
       {...containerVariants}
       className={`fixed inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm p-4 bg-red-900/40`}
     >
-      <motion.div
+      <m.div
         {...textVariants}
         animate={reducedMotion ? textVariants.animate : { ...textVariants.animate, ...glitchVariants.animate }}
         className="text-center mb-12"
@@ -102,14 +102,14 @@ export function FailedOverlay({
           <br />
           {t("game.overlays.failed")}
         </h1>
-      </motion.div>
+      </m.div>
 
-      <motion.div
+      <m.div
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 0.2, 0] }}
         transition={{ duration: 0.1, repeat: Infinity }}
         className="absolute inset-0 pointer-events-none bg-white/5 mix-blend-overlay"
       />
-    </motion.div>
+    </m.div>
   );
 }

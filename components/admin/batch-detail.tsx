@@ -25,10 +25,11 @@ export function BatchDetail({ batch, onUpdate, className }: BatchDetailProps) {
     `${t("admin.batchDetail.defaultLocation")} ${batch.quests.length + index + 1}`;
 
   const [locations, setLocations] = useState<Record<string, string>>(
-    batch.quests.reduce((acc, quest, index) => {
-      acc[quest.id] = quest.location?.trim() || getDefaultQuestLocation(index);
-      return acc;
-    }, {} as Record<string, string>)
+    () =>
+      batch.quests.reduce((acc, quest, index) => {
+        acc[quest.id] = quest.location?.trim() || getDefaultQuestLocation(index);
+        return acc;
+      }, {} as Record<string, string>),
   );
   const [sabotageLocations, setSabotageLocations] = useState({
     communications: batch.sabotages?.communications.location?.trim() || getDefaultSabotageLocation(0),
@@ -249,7 +250,6 @@ export function BatchDetail({ batch, onUpdate, className }: BatchDetailProps) {
                         }}
                         placeholder={t("admin.batchDetail.enterLocation")}
                         className="flex-1 h-8 bg-black border border-primary/40 text-primary text-xs px-2 focus:outline-none focus:border-primary/60 placeholder:text-muted-foreground/50"
-                        autoFocus
                       />
                       <button
                         type="button"
@@ -322,7 +322,6 @@ export function BatchDetail({ batch, onUpdate, className }: BatchDetailProps) {
                         }}
                         placeholder={t("admin.batchDetail.enterLocation")}
                         className="flex-1 h-8 bg-black border border-primary/40 text-primary text-xs px-2 focus:outline-none focus:border-primary/60 placeholder:text-muted-foreground/50"
-                        autoFocus
                       />
                       <button
                         type="button"

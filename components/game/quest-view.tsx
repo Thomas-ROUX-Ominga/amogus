@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { m, useReducedMotion, AnimatePresence } from "framer-motion";
 import { X, Brain, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -47,43 +47,30 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
     const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
     const [showFailedOverlay, setShowFailedOverlay] = useState(false);
     
-    // Fetch QuestGame based on Quest metadata
-    const [questGame, setQuestGame] = useState<QuestGame | null>(null);
-    const [isLoadingGame, setIsLoadingGame] = useState(true);
-    
-    useEffect(() => {
+    const questGame = useMemo<QuestGame | null>(() => {
         // Story 9.1: Skip all quest content loading for impostors
-        if (isImpostor) {
-            // Don't load any content for impostors - silent success
-            setIsLoadingGame(false);
-            return;
+        if (isImpostor) return null;
+
+        if (currentQuestContent && currentQuestContent.questId === quest.id) {
+            return currentQuestContent.content;
         }
 
-        const loadQuestGame = () => {
-            if (currentQuestContent && currentQuestContent.questId === quest.id) {
-                setQuestGame(currentQuestContent.content);
-                setIsLoadingGame(false);
-            } else if (quest.type === "mini-game") {
-                // Mini-games are self-contained — provide a synthetic entry so the renderer picks it up
-                setQuestGame({
-                    id: `mini-game-${quest.duration}`,
-                    type: "mini-game",
-                    duration: quest.duration,
-                    title: t("game.questView.miniGameTitle"),
-                    instruction: t("game.questView.miniGameInstruction"),
-                    data: {},
-                });
-                setIsLoadingGame(false);
-            } else {
-                const game = getRandomQuestGame(quest.type, quest.duration);
-                setQuestGame(game);
-                setIsLoadingGame(false);
-            }
-        };
+        if (quest.type === "mini-game") {
+            // Mini-games are self-contained — provide a synthetic entry so the renderer picks it up
+            return {
+                id: `mini-game-${quest.duration}`,
+                type: "mini-game",
+                duration: quest.duration,
+                title: t("game.questView.miniGameTitle"),
+                instruction: t("game.questView.miniGameInstruction"),
+                data: {},
+            };
+        }
 
+        return getRandomQuestGame(quest.type, quest.duration);
+    }, [currentQuestContent, isImpostor, quest.id, quest.type, quest.duration, t]);
 
-        loadQuestGame();
-    }, [quest, currentQuestContent, isImpostor, t]);
+    const isLoadingGame = false;
 
     const triggerSuccessFlow = useCallback(() => {
         setShowSuccessOverlay(true);
@@ -190,7 +177,7 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
         : { duration: 0.3 };
 
     return (
-        <motion.div
+        <m.div
             {...containerVariants}
             transition={containerTransition}
             className="flex h-[100dvh] flex-col overflow-hidden bg-background px-4 pt-20 text-foreground md:pt-24"
@@ -359,6 +346,6 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                     />
                 )}
             </AnimatePresence>
-        </motion.div>
+        </m.div>
     );
 }

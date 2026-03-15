@@ -8,6 +8,11 @@ import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.
 
 // Mock framer-motion to avoid animation issues in tests
 vi.mock("framer-motion", () => ({
+    m: {
+        div: "div",
+        h1: "h1",
+        button: "button",
+    },
     motion: {
         div: "div",
         h1: "h1",

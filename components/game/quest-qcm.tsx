@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import { QuestGame } from "@/types/quest";
 import { useQuestAnswer } from "@/hooks/use-quest-answer";
 import { Check } from "lucide-react";
@@ -93,7 +93,7 @@ export function QuestQCM({ quest, onSuccess, onError }: QuestQCMProps) {
                 <p className="text-sm font-rajdhani text-primary/70 mb-2">{t("game.questWidgets.multipleSelectionHint")}</p>
             )}
             {quest.data.choices.map((option, index) => (
-                <motion.button
+                <m.button
                     key={option.id}
                     {...getCardVariants(option.id)}
                     className={getCardStyle(option.id)}
@@ -114,7 +114,7 @@ export function QuestQCM({ quest, onSuccess, onError }: QuestQCMProps) {
                     {isMultiple && (Array.isArray(selectedValue) ? selectedValue.includes(option.id) : selectedMultipleIds.includes(option.id)) && (
                         <Check className="w-4 h-4 ml-2 flex-shrink-0" />
                     )}
-                </motion.button>
+                </m.button>
             ))}
 
             {isMultiple && !answered && !failed && (

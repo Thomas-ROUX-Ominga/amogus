@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { useTranslations } from "next-intl";
 import { QuestDuration } from "@/types/quest";
@@ -65,13 +65,9 @@ export function QuestGauges({ duration, onSuccess, onError }: QuestGaugesProps) 
         setIsCompleted(false);
     }, [duration]);
 
-    const alignedCount = useMemo(
-        () =>
-            gauges.filter(
-                (gauge) => Math.abs(gauge.value - gauge.target) <= GAUGE_ALIGNMENT_TOLERANCE_PERCENT
-            ).length,
-        [gauges]
-    );
+    const alignedCount = gauges.filter(
+        (gauge) => Math.abs(gauge.value - gauge.target) <= GAUGE_ALIGNMENT_TOLERANCE_PERCENT
+    ).length;
 
     const updateGaugeFromPointer = useCallback((index: number, clientY: number) => {
         const track = boardRef.current?.querySelector<HTMLElement>(`[data-track-index="${index}"]`);

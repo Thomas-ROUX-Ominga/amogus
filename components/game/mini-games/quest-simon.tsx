@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useState, useCallback, useEffect } from "react";
+import { AnimatePresence, m } from "framer-motion";
 import { QuestDuration } from "@/types/quest";
 import { SIMON_SEQUENCE_LENGTH } from "@/lib/mini-games";
 import { FailedOverlay } from "@/components/game/failed-overlay";
@@ -25,7 +25,15 @@ interface QuestSimonProps {
 export function QuestSimon({ duration, onSuccess, onError }: QuestSimonProps) {
     const targetLength = SIMON_SEQUENCE_LENGTH[duration];
     
-    const [fullSequence, setFullSequence] = useState<SimonColor[]>([]);
+    const generateSequence = useCallback((length: number) => {
+        const seq: SimonColor[] = [];
+        for (let i = 0; i < length; i++) {
+            seq.push(COLORS[Math.floor(Math.random() * COLORS.length)]);
+        }
+        return seq;
+    }, []);
+
+    const [fullSequence, setFullSequence] = useState<SimonColor[]>(() => generateSequence(targetLength));
     const [currentStep, setCurrentStep] = useState(1); 
     const [userInputs, setUserInputs] = useState<SimonColor[]>([]);
     const [activeColor, setActiveColor] = useState<SimonColor | null>(null);
@@ -33,21 +41,6 @@ export function QuestSimon({ duration, onSuccess, onError }: QuestSimonProps) {
     const [showFailed, setShowFailed] = useState(false);
     const [hasStarted, setHasStarted] = useState(false);
     
-    // Generate a fresh sequence of targetLength
-    const generateSequence = useCallback(() => {
-        const seq: SimonColor[] = [];
-        for (let i = 0; i < targetLength; i++) {
-            seq.push(COLORS[Math.floor(Math.random() * COLORS.length)]);
-        }
-        return seq;
-    }, [targetLength]);
-
-    // Initialize game
-    useEffect(() => {
-        setFullSequence(generateSequence());
-        setCurrentStep(1);
-    }, [generateSequence]);
-
     // Handle sequence playback
     const playSequence = useCallback(async () => {
         setIsPlaying(true);
@@ -108,10 +101,10 @@ export function QuestSimon({ duration, onSuccess, onError }: QuestSimonProps) {
     const handleRetry = useCallback(() => {
         setShowFailed(false);
         setHasStarted(false); // Reset start state on retry to let player re-read
-        setFullSequence(generateSequence());
+        setFullSequence(generateSequence(targetLength));
         setCurrentStep(1);
         setUserInputs([]);
-    }, [generateSequence]);
+    }, [generateSequence, targetLength]);
 
     return (
         <div className="flex flex-col items-center gap-8 py-4">
@@ -133,7 +126,7 @@ export function QuestSimon({ duration, onSuccess, onError }: QuestSimonProps) {
                         const config = COLOR_MAP[color];
                         
                         return (
-                            <motion.button
+                            <m.button
                                 key={color}
                                 whileTap={{ scale: 0.95, y: 2 }}
                                 onClick={() => handleColorClick(color)}
@@ -154,7 +147,7 @@ export function QuestSimon({ duration, onSuccess, onError }: QuestSimonProps) {
                                 {isActive && (
                                     <div className="absolute inset-0 rounded-2xl bg-white/30 animate-pulse blur-sm" />
                                 )}
-                            </motion.button>
+                            </m.button>
                         );
                     })}
                 </div>
@@ -162,15 +155,15 @@ export function QuestSimon({ duration, onSuccess, onError }: QuestSimonProps) {
                 {/* Start Overlay Button */}
                 <AnimatePresence>
                     {!hasStarted && (
-                        <motion.button
-                            initial={{ scale: 0, opacity: 0 }}
+                        <m.button
+                            initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0, opacity: 0 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
                             onClick={handleStart}
                             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full bg-black/80 border-2 border-primary text-primary font-orbitron font-bold text-xl flex items-center justify-center z-20 shadow-[0_0_20px_rgba(var(--primary-rgb),0.5)] active:scale-95 transition-transform"
                         >
                             GO
-                        </motion.button>
+                        </m.button>
                     )}
                 </AnimatePresence>
             </div>

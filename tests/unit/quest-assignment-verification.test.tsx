@@ -41,6 +41,14 @@ const baseStoreState = {
     loadFailedQuests: vi.fn(),
 };
 
+function renderQuestPage(searchParams: { duration?: string | string[]; questId?: string | string[] } = { duration: "short" }) {
+    return render(
+        <AuthProvider>
+            <QuestPage searchParams={searchParams} />
+        </AuthProvider>
+    );
+}
+
 describe("Quest Assignment Verification", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -71,11 +79,7 @@ describe("Quest Assignment Verification", () => {
             },
         } as ReturnType<typeof useGameStore>);
 
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage();
 
         expect(screen.getByText("QUÊTE NON ASSIGNÉE")).toBeTruthy();
         expect(screen.getByText(new RegExp(ERROR_CODES.ERR_QUEST_NOT_ASSIGNED))).toBeTruthy();
@@ -100,11 +104,7 @@ describe("Quest Assignment Verification", () => {
             },
         } as ReturnType<typeof useGameStore>);
 
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage();
 
         // Should NOT show the error view
         expect(screen.queryByText("QUÊTE NON ASSIGNÉE")).toBeNull();
@@ -129,11 +129,7 @@ describe("Quest Assignment Verification", () => {
             },
         } as ReturnType<typeof useGameStore>);
 
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage();
 
         expect(screen.queryByText("QUÊTE NON ASSIGNÉE")).toBeNull();
     });
@@ -157,11 +153,7 @@ describe("Quest Assignment Verification", () => {
             },
         } as ReturnType<typeof useGameStore>);
 
-        render(
-            <AuthProvider>
-                <QuestPage />
-            </AuthProvider>
-        );
+        renderQuestPage();
 
         expect(screen.getByText("QUÊTE NON ASSIGNÉE")).toBeTruthy();
     });

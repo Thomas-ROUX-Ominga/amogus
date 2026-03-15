@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { ShieldAlert, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { PlayerRole } from "@/types/game";
@@ -48,7 +48,7 @@ export function RoleRevealScreen({ role, onComplete }: RoleRevealScreenProps) {
 
   return (
     <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black">
-      <motion.div
+      <m.div
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 1, 0.9, 1] }}
         transition={{ duration: 0.85, times: [0, 0.35, 0.7, 1] }}
@@ -64,7 +64,7 @@ export function RoleRevealScreen({ role, onComplete }: RoleRevealScreenProps) {
       <div className="absolute inset-0 pointer-events-none opacity-[0.08] bg-[linear-gradient(rgba(255,255,255,0.2)_1px,transparent_1px)] bg-[length:100%_4px]" />
 
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
+        <m.div
           className="absolute left-0 right-0 h-[28vh]"
           style={{
             background: `linear-gradient(to top, transparent 0%, ${color}00 20%, ${color}22 45%, ${color}80 50%, ${color}22 55%, ${color}00 80%, transparent 100%)`,
@@ -74,7 +74,7 @@ export function RoleRevealScreen({ role, onComplete }: RoleRevealScreenProps) {
           animate={{ y: ["110%", "-130%"] }}
           transition={{ duration: 1.45, repeat: 1, ease: "linear" }}
         />
-        <motion.div
+        <m.div
           className="absolute left-0 right-0 h-px"
           style={{ background: color, boxShadow: `0 0 16px ${color}` }}
           initial={{ y: "100%" }}
@@ -83,13 +83,13 @@ export function RoleRevealScreen({ role, onComplete }: RoleRevealScreenProps) {
         />
       </div>
 
-      <motion.div
+      <m.div
         initial={{ opacity: 0, scale: 0.9, y: 10 }}
         animate={{ opacity: [0, 1, 0.92, 1], scale: [0.9, 1.02, 1] }}
         transition={{ duration: 0.55 }}
         className="relative z-10 w-full max-w-3xl px-5 text-center"
       >
-        <motion.div
+        <m.div
           animate={{ opacity: [1, 0.78, 1, 0.88, 1] }}
           transition={{ duration: 1.1, repeat: Infinity }}
           className="relative inline-flex items-center justify-center w-40 h-40 sm:w-48 sm:h-48 border-4 rounded-full mb-8"
@@ -97,20 +97,20 @@ export function RoleRevealScreen({ role, onComplete }: RoleRevealScreenProps) {
         >
           <div className="absolute inset-[12px] rounded-full border" style={{ borderColor: `${color}55` }} />
           <Icon className="w-20 h-20 sm:w-24 sm:h-24" style={{ color }} />
-        </motion.div>
+        </m.div>
 
         <div className="text-[10px] uppercase tracking-[0.35em] text-muted-foreground mb-3 font-rajdhani">
           {t("game.roleReveal.assigned")}
         </div>
 
-        <motion.h1
+        <m.h1
           animate={{ opacity: [1, 0.76, 1] }}
           transition={{ duration: 0.75, repeat: Infinity }}
           className="text-5xl sm:text-7xl font-black uppercase tracking-[0.18em] font-orbitron"
           style={{ color, textShadow: glow }}
         >
           {t(labelKey)}
-        </motion.h1>
+        </m.h1>
 
         <p className="mt-4 text-xs sm:text-sm uppercase tracking-[0.16em] text-foreground/80 font-rajdhani">
           {t(subtitleKey)}
@@ -119,7 +119,7 @@ export function RoleRevealScreen({ role, onComplete }: RoleRevealScreenProps) {
         <div className="mt-8 text-[10px] uppercase tracking-[0.25em] text-foreground/65 animate-pulse">
           {t("game.roleReveal.enteringCockpit")}
         </div>
-      </motion.div>
+      </m.div>
     </div>
   );
 }

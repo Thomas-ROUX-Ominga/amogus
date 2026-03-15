@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useGameStore } from "@/lib/store/game-store";
 import { UserPlus, Terminal } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -20,7 +20,7 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
     const [pseudo, setPseudo] = useState("");
     const [hasEditedPseudo, setHasEditedPseudo] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
-    const [hasAutoJoinAttempted, setHasAutoJoinAttempted] = useState(false);
+    const hasAutoJoinAttemptedRef = useRef(false);
     const { join, isJoining, isLoading, gameState, error, errorCode } = useGameStore();
     const { setAnonymousSession, authState } = useAuth();
     const sessionUsername = authState.session?.username?.trim() || "";
@@ -41,7 +41,7 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
     useEffect(() => {
         const canAutoJoin =
             !hasEditedPseudo &&
-            !hasAutoJoinAttempted &&
+            !hasAutoJoinAttemptedRef.current &&
             !isJoining &&
             !isSuccess &&
             hasLoadedGameSnapshot &&
@@ -54,7 +54,7 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
         if (!canAutoJoin) return;
 
         const autoJoin = async () => {
-            setHasAutoJoinAttempted(true);
+            hasAutoJoinAttemptedRef.current = true;
             await join(gameId, resolvedPseudo, userId);
 
             if (!useGameStore.getState().error) {
@@ -67,7 +67,6 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
     }, [
         gameId,
         gameState?.id,
-        hasAutoJoinAttempted,
         hasLoadedGameSnapshot,
         hasEditedPseudo,
         isAlreadyMember,
@@ -123,7 +122,6 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
                             setPseudo(e.target.value.slice(0, 20));
                         }}
                         placeholder={t("game.join.placeholder")}
-                        autoFocus
                         className="relative w-full bg-black/80 border border-primary/30 p-4 font-mono text-center text-xl tracking-widest text-foreground placeholder:text-primary/20 focus:outline-none focus:border-primary transition-all rounded-sm uppercase"
                     />
                 </div>

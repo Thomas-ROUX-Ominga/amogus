@@ -10,28 +10,37 @@ import { ERROR_CODES } from "@/lib/constants/error-codes";
 
 export default function RegisterPage() {
   const t = useTranslations();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [formState, setFormState] = useState({
+    username: "",
+    password: "",
+    confirmPassword: "",
+    showPassword: false,
+    isLoading: false,
+    error: "",
+  });
   const router = useRouter();
+
+  const { username, password, confirmPassword, showPassword, isLoading, error } = formState;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setIsLoading(true);
+    setFormState((prev) => ({ ...prev, error: "", isLoading: true }));
 
     if (password !== confirmPassword) {
-      setError(t("auth.register.errors.passwordMismatch"));
-      setIsLoading(false);
+      setFormState((prev) => ({
+        ...prev,
+        error: t("auth.register.errors.passwordMismatch"),
+        isLoading: false,
+      }));
       return;
     }
 
     if (password.length < 8) {
-      setError(t("auth.register.errors.passwordMinLength"));
-      setIsLoading(false);
+      setFormState((prev) => ({
+        ...prev,
+        error: t("auth.register.errors.passwordMinLength"),
+        isLoading: false,
+      }));
       return;
     }
 
@@ -41,23 +50,25 @@ export default function RegisterPage() {
       if (result.success) {
         router.push("/login?registered=true");
       } else {
-        setError(
-          getLocalizedErrorMessage({
+        setFormState((prev) => ({
+          ...prev,
+          error: getLocalizedErrorMessage({
             t,
             code: result.code,
             fallback: result.error,
           }),
-        );
+        }));
       }
     } catch {
-      setError(
-        getLocalizedErrorMessage({
+      setFormState((prev) => ({
+        ...prev,
+        error: getLocalizedErrorMessage({
           t,
           code: ERROR_CODES.ERR_SIGNAL_LOST,
         }),
-      );
+      }));
     } finally {
-      setIsLoading(false);
+      setFormState((prev) => ({ ...prev, isLoading: false }));
     }
   };
 
@@ -94,7 +105,9 @@ export default function RegisterPage() {
                   <input
                     type="text"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    onChange={(e) =>
+                      setFormState((prev) => ({ ...prev, username: e.target.value }))
+                    }
                     className="w-full bg-black border border-primary/30 p-3 pl-10 text-lg tracking-[0.1em] text-foreground focus:outline-none focus:border-primary transition-all rounded-none uppercase"
                     placeholder={t("auth.register.usernamePlaceholder")}
                     required
@@ -110,7 +123,9 @@ export default function RegisterPage() {
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) =>
+                      setFormState((prev) => ({ ...prev, password: e.target.value }))
+                    }
                     className="w-full bg-black border border-primary/30 p-3 pl-10 pr-10 text-lg tracking-[0.1em] text-foreground focus:outline-none focus:border-primary transition-all rounded-none uppercase"
                     placeholder={t("auth.register.passwordPlaceholder")}
                     required
@@ -119,7 +134,9 @@ export default function RegisterPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() =>
+                      setFormState((prev) => ({ ...prev, showPassword: !prev.showPassword }))
+                    }
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-primary/30 hover:text-primary transition-colors"
                     disabled={isLoading}
                   >
@@ -135,7 +152,9 @@ export default function RegisterPage() {
                   <input
                     type="password"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={(e) =>
+                      setFormState((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                    }
                     className="w-full bg-black border border-primary/30 p-3 pl-10 text-lg tracking-[0.1em] text-foreground focus:outline-none focus:border-primary transition-all rounded-none uppercase"
                     placeholder={t("auth.register.confirmPasswordPlaceholder")}
                     required

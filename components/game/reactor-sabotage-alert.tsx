@@ -19,7 +19,7 @@ function formatRemaining(ms: number): string {
 
 export function ReactorSabotageAlert({ gameState }: ReactorSabotageAlertProps) {
     const t = useTranslations();
-    const [now, setNow] = useState(Date.now());
+    const [now, setNow] = useState(() => Date.now());
     const reactorState = gameState.sabotageState?.active === "REACTOR"
         ? gameState.sabotageState?.reactor
         : null;

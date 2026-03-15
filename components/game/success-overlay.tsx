@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useTranslations } from "next-intl";
 
@@ -106,13 +106,13 @@ export function SuccessOverlay({
       };
 
   return (
-    <motion.div
+    <m.div
       {...containerVariants}
       className={`fixed inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm p-4 ${
         isImpostor ? 'bg-red-900/40' : 'bg-black/90'
       }`}
     >
-      <motion.div
+      <m.div
         {...textVariants}
         animate={isImpostor ? { ...textVariants.animate, ...glitchVariants.animate } : textVariants.animate}
         className="text-center mb-12"
@@ -124,9 +124,9 @@ export function SuccessOverlay({
           <br />
           {t("game.overlays.accomplished")}
         </h1>
-      </motion.div>
+      </m.div>
 
-      <motion.div
+      <m.div
         initial={reducedMotion ? { opacity: 0 } : { y: 50, opacity: 0 }}
         animate={reducedMotion ? { opacity: 1 } : { y: 0, opacity: 1 }}
         transition={{ delay: 0.5 }}
@@ -144,16 +144,16 @@ export function SuccessOverlay({
             {t("game.overlays.returnToCockpit")}
           </button>
         )}
-      </motion.div>
+      </m.div>
 
       {isImpostor && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: [0, 0.2, 0] }}
           transition={{ duration: 0.1, repeat: Infinity }}
           className="absolute inset-0 pointer-events-none bg-white/5 mix-blend-overlay"
         />
       )}
-    </motion.div>
+    </m.div>
   );
 }

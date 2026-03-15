@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { QuestGame } from "@/types/quest";
 import { useQuestAnswer } from "@/hooks/use-quest-answer";
@@ -59,7 +59,7 @@ export function QuestNumberInput({ quest, onSuccess, onError }: QuestNumberInput
 
     return (
         <form onSubmit={handleSubmit} className="space-y-3">
-            <motion.div {...getVariants()}>
+            <m.div {...getVariants()}>
                 <input
                     type="number"
                     value={inputValue}
@@ -68,9 +68,8 @@ export function QuestNumberInput({ quest, onSuccess, onError }: QuestNumberInput
                     className={getInputStyle()}
                     placeholder={t("game.questWidgets.numberAria")}
                     aria-label={t("game.questWidgets.numberAria")}
-                    autoFocus
                 />
-            </motion.div>
+            </m.div>
 
             {failed ? (
                 <button

@@ -185,6 +185,8 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
         const raf = requestAnimationFrame(measureAnchors);
         const onResize = () => measureAnchors();
         const onScroll = () => measureAnchors();
+        const scrollOptions = { capture: true, passive: true };
+        const viewportScrollOptions = { passive: true };
         const board = boardRef.current;
         const resizeObserverCtor = typeof window !== "undefined" ? window.ResizeObserver : undefined;
         const resizeObserver = resizeObserverCtor && board
@@ -196,9 +198,9 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
         }
 
         window.addEventListener("resize", onResize);
-        window.addEventListener("scroll", onScroll, true);
+        window.addEventListener("scroll", onScroll, scrollOptions);
         window.visualViewport?.addEventListener("resize", onResize);
-        window.visualViewport?.addEventListener("scroll", onScroll);
+        window.visualViewport?.addEventListener("scroll", onScroll, viewportScrollOptions);
 
         return () => {
             cancelAnimationFrame(raf);
@@ -430,7 +432,7 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
                         const isDragging = dragging?.leftIndex === index;
                         return (
                             <button
-                                key={`left-${index}-${color.id}`}
+                                key={`left-${color.id}`}
                                 type="button"
                                 onPointerDown={() => handleLeftPointerDown(index)}
                                 className={`group h-11 sm:h-12 rounded-r-md border border-white/20 bg-zinc-900/80 flex items-center px-2 gap-2 touch-none transition-all ${
@@ -464,7 +466,7 @@ export function QuestWires({ duration, onSuccess, onError }: QuestWiresProps) {
 
                         return (
                             <button
-                                key={`right-${index}-${color.id}`}
+                                key={`right-${color.id}`}
                                 type="button"
                                 onPointerUp={(event) => handleRightPointerUp(index, event)}
                                 className={`group h-11 sm:h-12 rounded-l-md border border-white/20 bg-zinc-900/80 flex items-center justify-end px-2 gap-2 touch-none transition-all ${
