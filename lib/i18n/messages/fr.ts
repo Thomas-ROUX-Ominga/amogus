@@ -696,7 +696,7 @@ const fr = {
       impostorModeAuto: "Automatique",
       impostorModeManual: "Manuel",
       manualImpostorCountLabel: "Nombre d'imposteurs",
-      autoImpostorRule: "Auto: 1 imposteur par tranche de 5 joueurs (2-5:1, 6-10:2, 11-15:3...)",
+      autoImpostorRule: "Auto: 1 imposteur par tranche de 5 joueurs (3-5:1, 6-10:2, 11-15:3...)",
       manualImpostorRule: "Mode manuel: {impostors} imposteur(s), minimum {minPlayers} joueur(s) pour lancer",
       totalPerPlayer: "Total par joueur: {count} quêtes",
       minimumRequired: "Minimum 1 quête requise",

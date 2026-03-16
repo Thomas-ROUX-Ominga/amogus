@@ -32,7 +32,9 @@ describe('Task 3: Restrict Game Launch to Host', () => {
         id: 'TEST123',
         status: 'LOBBY',
         players: [
-          { id: 'admin-user-id', name: 'Admin', isAlive: true }
+          { id: 'admin-user-id', name: 'Admin', isAlive: true },
+          { id: 'player-user-id', name: 'Player', isAlive: true },
+          { id: 'player-user-id-2', name: 'Player 2', isAlive: true },
         ],
         createdAt: Date.now(),
         revision: 1,

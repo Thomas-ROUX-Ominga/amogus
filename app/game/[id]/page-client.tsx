@@ -98,10 +98,10 @@ export default function LobbyPage() {
     // Only the game creator can launch the game
     const minimumPlayersToLaunch =
         currentGameState?.impostorMode === "manual"
-            ? Math.max(1, currentGameState.manualImpostorCount || 1) + 1
+            ? Math.max(1, currentGameState.manualImpostorCount || 1) * 2 + 1
             : currentGameState?.impostorMode === "auto"
-            ? 2
-            : 1;
+            ? 3
+            : 3;
     const canLaunch = Boolean(
         currentGameState &&
         currentPlayerCount >= minimumPlayersToLaunch &&

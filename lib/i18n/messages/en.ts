@@ -691,7 +691,7 @@ const en = {
       impostorModeAuto: "Automatic",
       impostorModeManual: "Manual",
       manualImpostorCountLabel: "Impostor count",
-      autoImpostorRule: "Auto: 1 impostor per 5 players (2-5:1, 6-10:2, 11-15:3...)",
+      autoImpostorRule: "Auto: 1 impostor per 5 players (3-5:1, 6-10:2, 11-15:3...)",
       manualImpostorRule: "Manual mode: {impostors} impostor(s), minimum {minPlayers} player(s) to launch",
       totalPerPlayer: "Total per player: {count} quests",
       minimumRequired: "Minimum 1 quest required",

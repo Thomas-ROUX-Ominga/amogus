@@ -931,12 +931,16 @@ function checkWinConditions(state: GameState): { finished: boolean; winner?: Pla
         return { finished: true, winner: "CREWMATE" };
     }
 
-    // 3. Check Impostor Victory: All Crewmates eliminated
-    const aliveCrewmates = players.filter(p => p.role === "CREWMATE" && p.isAlive);
-    const totalCrewmates = players.filter(p => p.role === "CREWMATE");
-    
-    // Only trigger if there were actually crewmates and they are all dead
-    if (totalCrewmates.length > 0 && aliveCrewmates.length === 0) {
+    // 3. Check Impostor Victory: As many alive impostors as alive crewmates
+    const totalCrewmates = players.filter((p) => p.role === "CREWMATE");
+    const aliveCrewmates = totalCrewmates.filter((p) => p.isAlive);
+
+    // Only trigger if there were actually crewmates and at least one living impostor.
+    if (
+        totalCrewmates.length > 0 &&
+        aliveImpostors.length > 0 &&
+        aliveImpostors.length >= aliveCrewmates.length
+    ) {
         return { finished: true, winner: "IMPOSTOR" };
     }
 
@@ -958,14 +962,20 @@ function getMinimumPlayersToLaunch(
     mode: ImpostorAssignmentMode | undefined,
     manualImpostorCount?: number
 ): number {
-    // Legacy compatibility: games created before impostor config used min 1 player.
+    // Legacy compatibility still enforces a safe minimum for launch.
     if (mode === undefined) {
-        return 1;
+        return 3;
     }
     if (mode === "manual") {
-        return getManualImpostorCount(manualImpostorCount) + 1;
+        // Ensure crewmates strictly outnumber impostors at launch.
+        return getManualImpostorCount(manualImpostorCount) * 2 + 1;
     }
-    return 2;
+    return 3;
+}
+
+function hasCrewmateMajority(playerCount: number, impostorCount: number): boolean {
+    const crewmateCount = playerCount - impostorCount;
+    return crewmateCount > impostorCount;
 }
 
 function assignRolesRandomly(
@@ -1354,10 +1364,10 @@ export async function startGame(
                     ? getManualImpostorCount(state.manualImpostorCount)
                     : getAutoImpostorCount(state.players.length);
                 const impostorCount = state.assignedImpostorCount || fallbackImpostorCount;
-                if (impostorCount >= state.players.length) {
+                if (!hasCrewmateMajority(state.players.length, impostorCount)) {
                     validationError = {
                         success: false,
-                        error: "Cannot assign roles: invalid impostor count.",
+                        error: "Cannot assign roles: crewmates must outnumber impostors.",
                         code: ERROR_CODES.ERR_INVALID_INPUT,
                     };
                     return null;
@@ -1418,10 +1428,10 @@ export async function startGame(
                     ? getManualImpostorCount(state.manualImpostorCount)
                     : getAutoImpostorCount(state.players.length);
 
-            if (state.impostorMode !== undefined && impostorCount >= state.players.length) {
+            if (state.impostorMode !== undefined && !hasCrewmateMajority(state.players.length, impostorCount)) {
                 validationError = {
                     success: false,
-                    error: "Cannot launch: impostor count must be lower than total players.",
+                    error: "Cannot launch: crewmates must outnumber impostors.",
                     code: ERROR_CODES.ERR_INVALID_INPUT,
                 };
                 return null;

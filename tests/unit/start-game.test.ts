@@ -51,7 +51,11 @@ describe("startGame", () => {
         const mockState = {
             id: "test-game-id",
             status: "LOBBY",
-            players: [{ id: "player-1", name: "Alice", isAlive: true }],
+            players: [
+                { id: "player-1", name: "Alice", isAlive: true },
+                { id: "player-2", name: "Bob", isAlive: true },
+                { id: "player-3", name: "Chloe", isAlive: true },
+            ],
             createdAt: Date.now(),
             revision: 1,
             updatedAt: Date.now(),
@@ -140,6 +144,28 @@ describe("startGame", () => {
 
         expect(result.success).toBe(false);
         expect(result.code).toBe(ERROR_CODES.ERR_NO_PLAYERS);
+    });
+
+    it("should return error if fewer than 3 players have joined", async () => {
+        const mockState = {
+            id: "test-game-id",
+            status: "LOBBY",
+            players: [
+                { id: "player-1", name: "Alice", isAlive: true },
+                { id: "player-2", name: "Bob", isAlive: true },
+            ],
+            createdAt: Date.now(),
+            revision: 1,
+            updatedAt: Date.now(),
+            creatorId: "player-1",
+        };
+        mockAtomicUpdate(mockState);
+
+        const result = await startGame("test-game-id");
+
+        expect(result.success).toBe(false);
+        expect(result.code).toBe(ERROR_CODES.ERR_NO_PLAYERS);
+        expect(result.error).toContain("requires at least 3 players");
     });
 
     it("should return error if Redis fails", async () => {

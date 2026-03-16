@@ -159,4 +159,38 @@ describe('eliminatePlayer', () => {
         expect(result.error).toBe('Failed to eliminate player.');
         expect(result.code).toBe(ERROR_CODES.ERR_SIGNAL_LOST);
     });
+
+    it("should finish the game with IMPOSTOR win when alive counts become equal", async () => {
+        const now = Date.now();
+        const mockGameState = {
+            id: "test-game",
+            status: "IN_PROGRESS" as const,
+            createdAt: now,
+            revision: 1,
+            updatedAt: now,
+            players: [
+                { id: "imp-1", name: "Impostor", role: "IMPOSTOR" as const, isAlive: true },
+                { id: "crew-1", name: "Crewmate 1", role: "CREWMATE" as const, isAlive: true },
+                { id: "crew-2", name: "Crewmate 2", role: "CREWMATE" as const, isAlive: true },
+            ],
+        };
+
+        vi.mocked(redis.get).mockResolvedValueOnce(mockGameState);
+        let updatedState: unknown;
+        vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
+            updatedState = updater(mockGameState);
+            return updatedState;
+        });
+
+        const result = await eliminatePlayer("test-game", "crew-2");
+
+        expect(result.success).toBe(true);
+        expect(result.data).toEqual({ isAlive: false });
+        expect(updatedState).toEqual(
+            expect.objectContaining({
+                status: "FINISHED",
+                winner: "IMPOSTOR",
+            })
+        );
+    });
 });

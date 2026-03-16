@@ -33,7 +33,10 @@ export default function CreateGamePage() {
   const totalQuests = questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long;
   const isValidTotal = totalQuests >= 1;
   const isBatchLimitsReady = !selectedBatch || selectedBatchLimits !== null;
-  const minimumPlayersForLaunch = impostorMode === "manual" ? manualImpostorCount + 1 : 2;
+  const minimumPlayersForLaunch =
+    impostorMode === "manual"
+      ? Math.max(1, manualImpostorCount) * 2 + 1
+      : 3;
   const [error, setError] = useState("");
   const batchAutocompleteRef = useRef<HTMLDivElement>(null);
 

@@ -190,6 +190,7 @@ describe("completeQuest", () => {
         players: [
             { id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true, completedQuests: [] },
             { id: "user-2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
+            { id: "user-3", name: "Chloe", role: "CREWMATE", isAlive: true, completedQuests: [] },
         ],
         createdAt: Date.now(),
         revision: 1,

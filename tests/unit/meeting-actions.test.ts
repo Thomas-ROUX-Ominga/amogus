@@ -65,6 +65,7 @@ const baseGameState = (): GameState => ({
         { id: "admin", name: "Admin", isAlive: true },
         { id: "u1", name: "Alice", role: "CREWMATE", isAlive: true, completedQuests: [] },
         { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
+        { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true, completedQuests: [] },
     ],
 });
 
@@ -116,7 +117,7 @@ describe("meeting actions", () => {
 
         expect(result.success).toBe(true);
         expect(result.data?.meeting?.status).toBe("ACTIVE");
-        expect(result.data?.meeting?.totalEligibleVoters).toBe(2);
+        expect(result.data?.meeting?.totalEligibleVoters).toBe(3);
 
         const state = await redis.get<GameState>(stateKey);
         const caller = state?.players.find((player) => player.id === "u1");
@@ -124,6 +125,7 @@ describe("meeting actions", () => {
         expect(state?.meeting?.voteCounts).toEqual({
             u1: 0,
             u2: 0,
+            u3: 0,
         });
     });
 
@@ -166,6 +168,7 @@ describe("meeting actions", () => {
                 },
                 { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
                 { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true, completedQuests: [] },
+                { id: "u4", name: "Dina", role: "CREWMATE", isAlive: true, completedQuests: [] },
             ],
         });
 
@@ -194,6 +197,7 @@ describe("meeting actions", () => {
                 },
                 { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
                 { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true, completedQuests: [] },
+                { id: "u4", name: "Dina", role: "CREWMATE", isAlive: true, completedQuests: [] },
             ],
             meeting: {
                 id: "meeting-prev",
@@ -208,11 +212,12 @@ describe("meeting actions", () => {
                         { id: "u1", name: "Alice", role: "CREWMATE", isAlive: true },
                         { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true },
                         { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true },
+                        { id: "u4", name: "Dina", role: "CREWMATE", isAlive: true },
                     ],
                 },
-                eligibleVoterIds: ["u2", "u3"],
-                voteCounts: { u2: 0, u3: 0 },
-                totalEligibleVoters: 2,
+                eligibleVoterIds: ["u2", "u3", "u4"],
+                voteCounts: { u2: 0, u3: 0, u4: 0 },
+                totalEligibleVoters: 3,
                 totalVotes: 0,
                 endReason: "TIMEOUT",
                 endedAt: meetingStartedAt + 90_000,
@@ -244,10 +249,14 @@ describe("meeting actions", () => {
 
         const secondVote = await castMeetingVote(gameId, "u2", "u1");
         expect(secondVote.success).toBe(true);
-        expect(secondVote.data?.meeting?.status).toBe("COMPLETED");
-        expect(secondVote.data?.meeting?.endReason).toBe("ALL_VOTED");
+        expect(secondVote.data?.meeting?.status).toBe("ACTIVE");
+
+        const finalVote = await castMeetingVote(gameId, "u3", "u1");
+        expect(finalVote.success).toBe(true);
+        expect(finalVote.data?.meeting?.status).toBe("COMPLETED");
+        expect(finalVote.data?.meeting?.endReason).toBe("ALL_VOTED");
         expect(
-            Object.prototype.hasOwnProperty.call(secondVote.data?.meeting ?? {}, "votesByPlayer")
+            Object.prototype.hasOwnProperty.call(finalVote.data?.meeting ?? {}, "votesByPlayer")
         ).toBe(false);
 
         const state = await redis.get<GameState>(stateKey);
@@ -261,7 +270,8 @@ describe("meeting actions", () => {
         await triggerMeeting(gameId, "u1");
 
         await castMeetingVote(gameId, "u1", "u2");
-        const finalVote = await castMeetingVote(gameId, "u2", "u1");
+        await castMeetingVote(gameId, "u2", "u3");
+        const finalVote = await castMeetingVote(gameId, "u3", "u1");
 
         expect(finalVote.success).toBe(true);
         expect(finalVote.data?.meeting?.status).toBe("COMPLETED");
@@ -269,9 +279,11 @@ describe("meeting actions", () => {
         const state = await redis.get<GameState>(stateKey);
         const u1 = state?.players.find((player) => player.id === "u1");
         const u2 = state?.players.find((player) => player.id === "u2");
+        const u3 = state?.players.find((player) => player.id === "u3");
 
         expect(u1?.isAlive).toBe(true);
-        expect(u2?.isAlive).toBe(false);
+        expect(u2?.isAlive).toBe(true);
+        expect(u3?.isAlive).toBe(false);
         randomSpy.mockRestore();
     });
 
