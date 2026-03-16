@@ -616,8 +616,13 @@ const en = {
       createButton: "Create zone",
       title: "Create new game zone",
       subtitle: "Define a house or estate and generate its quest pool automatically",
+      defaultZoneName: "New zone",
+      zoneNameLabel: "Zone name",
+      zoneNamePlaceholder: "Enter zone name",
       totalQuestsLabel: "Total number of quests",
       totalQuestsPlaceholder: "Enter number (minimum 1)",
+      increaseTotalQuestsAria: "Increase total quest count",
+      decreaseTotalQuestsAria: "Decrease total quest count",
       totalQuestsHint:
         "System automatically distributes: 1/3 short, 1/3 medium, 1/3 long",
       cancel: "CANCEL",
@@ -625,6 +630,7 @@ const en = {
       createBatch: "CREATE ZONE",
       errors: {
         questRange: "Total quests must be at least 1",
+        zoneNameRequired: "Zone name is required",
       },
     },
     batchDetail: {
@@ -719,6 +725,7 @@ const en = {
       subtitle: "Configure the session and generate player code",
       batchSelectionTitle: "Game zone selection",
       batchSelectPlaceholder: "Select a game zone",
+      createZoneButton: "Create zone",
       batchOption: "Zone {batchId}... - {questCount} quests",
       selectedBatchHint:
         "Selected game zone will provide quests for this session",

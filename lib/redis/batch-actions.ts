@@ -41,8 +41,20 @@ export async function createBatch(input: BatchCreateInput): Promise<ActionRespon
       };
     }
 
+    const normalizedName = input.name?.trim();
+    if (normalizedName && normalizedName.length > 60) {
+      return {
+        success: false,
+        error: "Batch name is too long",
+        code: ERROR_CODES.ERR_INVALID_INPUT,
+      };
+    }
+
     // Generate batch
-    const generatedBatch = generateBatch(input);
+    const generatedBatch = generateBatch({
+      ...input,
+      name: normalizedName || undefined,
+    });
     const batch: Batch = {
       ...generatedBatch,
       ownerId: session.data.userId,

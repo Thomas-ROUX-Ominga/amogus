@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, X, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { createGame, CreateGameInput } from "@/lib/redis/actions";
 import { getAllBatches, getBatch } from "@/lib/redis/batch-actions";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
+import { NumberStepperInput } from "@/components/common/number-stepper-input";
 import { BatchListItem } from "@/types/quest";
 
 export default function CreateGamePage() {
@@ -306,8 +308,18 @@ export default function CreateGamePage() {
                 {isBatchMenuOpen && (
                   <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 border border-primary/35 bg-black shadow-[0_10px_28px_rgba(0,0,0,0.55)] max-h-52 overflow-y-auto inventory-scroll">
                     {filteredBatches.length === 0 ? (
-                      <div className="px-3 py-3 text-[11px] uppercase tracking-widest text-muted-foreground">
-                        {t("admin.batches.noBatchesFound")}
+                      <div className="px-3 py-3 space-y-2">
+                        <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
+                          {t("admin.batches.noBatchesFound")}
+                        </p>
+                        {batches.length === 0 && (
+                          <Link
+                            href="/batches"
+                            className="inline-flex h-8 items-center px-3 border border-primary/40 text-[10px] uppercase tracking-widest text-primary hover:bg-primary/10 hover:border-primary/60 transition-all"
+                          >
+                            {t("organizer.gamesCreate.createZoneButton")}
+                          </Link>
+                        )}
                       </div>
                     ) : (
                       filteredBatches.map((batch, index) => {
@@ -359,34 +371,15 @@ export default function CreateGamePage() {
                 <label htmlFor="short-quests" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-widest block mb-1.5">
                   {t("organizer.gamesCreate.shortQuests")}
                 </label>
-                <div className="relative">
-                  <input
-                    id="short-quests"
-                    type="number"
-                    min="0"
-                    value={questsPerPlayer.short}
-                    onChange={(e) => updateQuestDuration("short", parseInt(e.target.value, 10))}
-                    className="number-input-clean w-full h-10 sm:h-12 bg-gradient-to-b from-black/80 to-black/50 border border-primary/35 hover:border-primary/60 pl-2 pr-10 sm:pr-11 text-center text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/35 transition-all"
-                  />
-                  <div className="absolute right-1 top-1 bottom-1 w-7 sm:w-8 border border-primary/20 bg-black/70 flex flex-col">
-                    <button
-                      type="button"
-                      onClick={() => updateQuestDuration("short", questsPerPlayer.short + 1)}
-                      className="flex-1 inline-flex items-center justify-center text-primary/80 hover:text-primary hover:bg-primary/10 transition-colors border-b border-primary/20 cursor-pointer"
-                      aria-label="Increase short quests"
-                    >
-                      <ChevronUp size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateQuestDuration("short", questsPerPlayer.short - 1)}
-                      className="flex-1 inline-flex items-center justify-center text-primary/80 hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
-                      aria-label="Decrease short quests"
-                    >
-                      <ChevronDown size={12} />
-                    </button>
-                  </div>
-                </div>
+                <NumberStepperInput
+                  id="short-quests"
+                  value={questsPerPlayer.short}
+                  min={0}
+                  max={selectedBatchLimits?.short}
+                  onChange={(value) => updateQuestDuration("short", value)}
+                  incrementAriaLabel="Increase short quests"
+                  decrementAriaLabel="Decrease short quests"
+                />
                 {selectedBatchLimits && (
                   <p className="mt-1.5 text-[8px] uppercase tracking-widest text-muted-foreground">
                     Max: {selectedBatchLimits.short}
@@ -398,34 +391,15 @@ export default function CreateGamePage() {
                 <label htmlFor="medium-quests" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-widest block mb-1.5">
                   {t("organizer.gamesCreate.mediumQuests")}
                 </label>
-                <div className="relative">
-                  <input
-                    id="medium-quests"
-                    type="number"
-                    min="0"
-                    value={questsPerPlayer.medium}
-                    onChange={(e) => updateQuestDuration("medium", parseInt(e.target.value, 10))}
-                    className="number-input-clean w-full h-10 sm:h-12 bg-gradient-to-b from-black/80 to-black/50 border border-primary/35 hover:border-primary/60 pl-2 pr-10 sm:pr-11 text-center text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/35 transition-all"
-                  />
-                  <div className="absolute right-1 top-1 bottom-1 w-7 sm:w-8 border border-primary/20 bg-black/70 flex flex-col">
-                    <button
-                      type="button"
-                      onClick={() => updateQuestDuration("medium", questsPerPlayer.medium + 1)}
-                      className="flex-1 inline-flex items-center justify-center text-primary/80 hover:text-primary hover:bg-primary/10 transition-colors border-b border-primary/20 cursor-pointer"
-                      aria-label="Increase medium quests"
-                    >
-                      <ChevronUp size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateQuestDuration("medium", questsPerPlayer.medium - 1)}
-                      className="flex-1 inline-flex items-center justify-center text-primary/80 hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
-                      aria-label="Decrease medium quests"
-                    >
-                      <ChevronDown size={12} />
-                    </button>
-                  </div>
-                </div>
+                <NumberStepperInput
+                  id="medium-quests"
+                  value={questsPerPlayer.medium}
+                  min={0}
+                  max={selectedBatchLimits?.medium}
+                  onChange={(value) => updateQuestDuration("medium", value)}
+                  incrementAriaLabel="Increase medium quests"
+                  decrementAriaLabel="Decrease medium quests"
+                />
                 {selectedBatchLimits && (
                   <p className="mt-1.5 text-[8px] uppercase tracking-widest text-muted-foreground">
                     Max: {selectedBatchLimits.medium}
@@ -437,34 +411,15 @@ export default function CreateGamePage() {
                 <label htmlFor="long-quests" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-widest block mb-1.5">
                   {t("organizer.gamesCreate.longQuests")}
                 </label>
-                <div className="relative">
-                  <input
-                    id="long-quests"
-                    type="number"
-                    min="0"
-                    value={questsPerPlayer.long}
-                    onChange={(e) => updateQuestDuration("long", parseInt(e.target.value, 10))}
-                    className="number-input-clean w-full h-10 sm:h-12 bg-gradient-to-b from-black/80 to-black/50 border border-primary/35 hover:border-primary/60 pl-2 pr-10 sm:pr-11 text-center text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/35 transition-all"
-                  />
-                  <div className="absolute right-1 top-1 bottom-1 w-7 sm:w-8 border border-primary/20 bg-black/70 flex flex-col">
-                    <button
-                      type="button"
-                      onClick={() => updateQuestDuration("long", questsPerPlayer.long + 1)}
-                      className="flex-1 inline-flex items-center justify-center text-primary/80 hover:text-primary hover:bg-primary/10 transition-colors border-b border-primary/20 cursor-pointer"
-                      aria-label="Increase long quests"
-                    >
-                      <ChevronUp size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateQuestDuration("long", questsPerPlayer.long - 1)}
-                      className="flex-1 inline-flex items-center justify-center text-primary/80 hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
-                      aria-label="Decrease long quests"
-                    >
-                      <ChevronDown size={12} />
-                    </button>
-                  </div>
-                </div>
+                <NumberStepperInput
+                  id="long-quests"
+                  value={questsPerPlayer.long}
+                  min={0}
+                  max={selectedBatchLimits?.long}
+                  onChange={(value) => updateQuestDuration("long", value)}
+                  incrementAriaLabel="Increase long quests"
+                  decrementAriaLabel="Decrease long quests"
+                />
                 {selectedBatchLimits && (
                   <p className="mt-1.5 text-[8px] uppercase tracking-widest text-muted-foreground">
                     Max: {selectedBatchLimits.long}
@@ -525,35 +480,16 @@ export default function CreateGamePage() {
                 <label htmlFor="manual-impostors" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-widest">
                   {t("organizer.gamesCreate.manualImpostorCountLabel")}
                 </label>
-                <div className="relative w-[120px] sm:w-[160px] shrink-0">
-                  <input
-                    id="manual-impostors"
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={manualImpostorCount}
-                    onChange={(e) => setManualImpostorCount(Math.max(1, Math.min(10, parseInt(e.target.value, 10) || 1)))}
-                    className="number-input-clean w-full h-10 sm:h-12 bg-gradient-to-b from-black/80 to-black/50 border border-primary/35 hover:border-primary/60 pl-2 pr-10 sm:pr-11 text-center text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/35 transition-all"
-                  />
-                  <div className="absolute right-1 top-1 bottom-1 w-7 sm:w-8 border border-primary/20 bg-black/70 flex flex-col">
-                    <button
-                      type="button"
-                      onClick={() => setManualImpostorCount((prev) => Math.min(10, prev + 1))}
-                      className="flex-1 inline-flex items-center justify-center text-primary/80 hover:text-primary hover:bg-primary/10 transition-colors border-b border-primary/20 cursor-pointer"
-                      aria-label="Increase impostor count"
-                    >
-                      <ChevronUp size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setManualImpostorCount((prev) => Math.max(1, prev - 1))}
-                      className="flex-1 inline-flex items-center justify-center text-primary/80 hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
-                      aria-label="Decrease impostor count"
-                    >
-                      <ChevronDown size={12} />
-                    </button>
-                  </div>
-                </div>
+                <NumberStepperInput
+                  id="manual-impostors"
+                  className="w-[120px] sm:w-[160px] shrink-0"
+                  value={manualImpostorCount}
+                  min={1}
+                  max={10}
+                  onChange={(value) => setManualImpostorCount(value)}
+                  incrementAriaLabel="Increase impostor count"
+                  decrementAriaLabel="Decrease impostor count"
+                />
               </div>
             )}
 

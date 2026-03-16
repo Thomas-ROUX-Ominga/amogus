@@ -24,7 +24,7 @@ function createQuest(duration: QuestDuration, type: QuestType): Quest {
 }
 
 export function generateBatch(input: BatchCreateInput): Batch {
-  const { totalQuests } = input;
+  const { totalQuests, name } = input;
 
   // Validate input
   if (!Number.isInteger(totalQuests) || totalQuests < 1) {
@@ -70,7 +70,7 @@ export function generateBatch(input: BatchCreateInput): Batch {
 
   return {
     id: globalThis.crypto.randomUUID(),
-    name: undefined,
+    name: name?.trim() || undefined,
     questCount: totalQuests,
     quests,
     sabotages,

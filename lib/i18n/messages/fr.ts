@@ -620,8 +620,13 @@ const fr = {
       createButton: "Créer une zone",
       title: "Créer une nouvelle zone de jeu",
       subtitle: "Définit une maison ou un appartement et génère automatiquement le stock de quêtes associé",
+      defaultZoneName: "Nouvelle zone",
+      zoneNameLabel: "Nom de la zone",
+      zoneNamePlaceholder: "Entrer un nom de zone",
       totalQuestsLabel: "Nombre total de quêtes",
       totalQuestsPlaceholder: "Entrer un nombre (minimum 1)",
+      increaseTotalQuestsAria: "Augmenter le nombre total de quêtes",
+      decreaseTotalQuestsAria: "Diminuer le nombre total de quêtes",
       totalQuestsHint:
         "Le système répartit automatiquement: 1/3 court, 1/3 moyen, 1/3 long",
       cancel: "ANNULER",
@@ -629,6 +634,7 @@ const fr = {
       createBatch: "CRÉER LA ZONE",
       errors: {
         questRange: "Le total de quêtes doit être au minimum de 1",
+        zoneNameRequired: "Le nom de la zone est requis",
       },
     },
     batchDetail: {
@@ -724,6 +730,7 @@ const fr = {
       subtitle: "Configurer la session et lancer le code joueur",
       batchSelectionTitle: "Zone de jeu",
       batchSelectPlaceholder: "Sélectionner une zone de jeu",
+      createZoneButton: "Créer une zone",
       batchOption: "Zone {batchId}... - {questCount} quêtes",
       selectedBatchHint:
         "La zone de jeu sélectionnée fournira les quêtes pour cette session",

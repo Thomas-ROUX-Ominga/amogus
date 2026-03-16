@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { createBatch } from "@/lib/redis/batch-actions";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
+import { NumberStepperInput } from "@/components/common/number-stepper-input";
 import { BatchCreateInput } from "@/types/quest";
 
 interface BatchFormProps {
@@ -13,9 +14,11 @@ interface BatchFormProps {
 
 export function BatchForm({ onBatchCreated }: BatchFormProps) {
   const t = useTranslations();
+  const defaultZoneName = t("admin.batchForm.defaultZoneName");
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [totalQuests, setTotalQuests] = useState("");
+  const [zoneName, setZoneName] = useState(defaultZoneName);
+  const [totalQuests, setTotalQuests] = useState(1);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,14 +27,23 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
     setError("");
 
     try {
-      const questCount = parseInt(totalQuests);
+      const questCount = totalQuests;
+      const normalizedName = zoneName.trim();
       
       if (isNaN(questCount) || questCount < 1) {
         setError(t("admin.batchForm.errors.questRange"));
         return;
       }
 
-      const input: BatchCreateInput = { totalQuests: questCount };
+      if (!normalizedName) {
+        setError(t("admin.batchForm.errors.zoneNameRequired"));
+        return;
+      }
+
+      const input: BatchCreateInput = {
+        totalQuests: questCount,
+        name: normalizedName,
+      };
       const result = await createBatch(input);
 
       if (!result.success) {
@@ -46,7 +58,8 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
       }
 
       // Reset form and close dialog
-      setTotalQuests("");
+      setZoneName(defaultZoneName);
+      setTotalQuests(1);
       setIsOpen(false);
       onBatchCreated?.();
     } catch {
@@ -65,7 +78,8 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
   const handleClose = () => {
     if (!isSubmitting) {
       setIsOpen(false);
-      setTotalQuests("");
+      setZoneName(defaultZoneName);
+      setTotalQuests(1);
       setError("");
     }
   };
@@ -100,21 +114,31 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           <div className="space-y-2">
             <label className="text-[10px] uppercase tracking-widest text-primary/70">
+              {t("admin.batchForm.zoneNameLabel")}
+            </label>
+            <input
+              type="text"
+              value={zoneName}
+              onChange={(e) => setZoneName(e.target.value.slice(0, 60))}
+              className="w-full h-12 bg-black/80 border border-primary/30 p-3 font-mono text-sm tracking-wider text-foreground placeholder:text-primary/20 focus:outline-none focus:border-primary transition-all rounded-sm uppercase"
+              placeholder={t("admin.batchForm.zoneNamePlaceholder")}
+              disabled={isSubmitting}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] uppercase tracking-widest text-primary/70">
               {t("admin.batchForm.totalQuestsLabel")}
             </label>
-            <div className="relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/50 to-primary/0 rounded-sm opacity-20 group-focus-within:opacity-100 transition duration-500 blur-sm"></div>
-              <input
-                type="number"
-                min="1"
-                value={totalQuests}
-                onChange={(e) => setTotalQuests(e.target.value)}
-                placeholder={t("admin.batchForm.totalQuestsPlaceholder")}
-                className="relative w-full bg-black/80 border border-primary/30 p-4 font-mono text-center text-xl tracking-widest text-foreground placeholder:text-primary/20 focus:outline-none focus:border-primary transition-all rounded-sm uppercase"
-                disabled={isSubmitting}
-                required
-              />
-            </div>
+            <NumberStepperInput
+              value={totalQuests}
+              min={1}
+              onChange={setTotalQuests}
+              disabled={isSubmitting}
+              incrementAriaLabel={t("admin.batchForm.increaseTotalQuestsAria")}
+              decrementAriaLabel={t("admin.batchForm.decreaseTotalQuestsAria")}
+            />
             <p className="text-[8px] text-muted-foreground uppercase tracking-widest">
               {t("admin.batchForm.totalQuestsHint")}
             </p>

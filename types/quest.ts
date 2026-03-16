@@ -63,6 +63,7 @@ export interface Batch {
 
 export interface BatchCreateInput {
     totalQuests: number;
+    name?: string;
 }
 
 export interface BatchListItem {
