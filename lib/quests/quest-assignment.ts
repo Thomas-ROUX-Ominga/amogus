@@ -10,18 +10,33 @@ export interface QuestAssignment {
 
 type QuestDuration = Quest["duration"];
 
+const DURATION_ORDER: QuestDuration[] = ["short", "medium", "long"];
+
+function getQuestUsage(usageByQuestId: Record<string, number>, questId: string): number {
+  return usageByQuestId[questId] ?? 0;
+}
+
+function pickRandomItem<T>(items: T[]): T {
+  const index = Math.floor(Math.random() * items.length);
+  return items[index];
+}
+
+function shuffleArray<T>(items: T[]): T[] {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 function pickLeastUsedQuest(candidates: Quest[], usageByQuestId: Record<string, number>): Quest {
   const minUsage = candidates.reduce(
-    (currentMin, quest) => Math.min(currentMin, usageByQuestId[quest.id] ?? 0),
+    (currentMin, quest) => Math.min(currentMin, getQuestUsage(usageByQuestId, quest.id)),
     Number.POSITIVE_INFINITY
   );
-
-  const leastUsed = candidates.filter((quest) => (usageByQuestId[quest.id] ?? 0) === minUsage);
-  // Deterministic tie-breaker:
-  // 1) Prefer non-mini quests to preserve mini-games for the "at least one mini per player" guarantee.
-  // 2) Keep original order from the batch for stable assignment.
-  const nonMiniCandidate = leastUsed.find((quest) => quest.type !== "mini-game");
-  return nonMiniCandidate ?? leastUsed[0];
+  const leastUsed = candidates.filter((quest) => getQuestUsage(usageByQuestId, quest.id) === minUsage);
+  return pickRandomItem(leastUsed);
 }
 
 function buildQuestUsageMap(players: GameState["players"] | undefined, batchQuests: Quest[]): Record<string, number> {
@@ -45,43 +60,51 @@ function buildQuestUsageMap(players: GameState["players"] | undefined, batchQues
   return usageByQuestId;
 }
 
-function selectBalancedQuests(
-  quests: Quest[],
-  count: number,
-  durationName: QuestDuration,
-  usageByQuestId: Record<string, number>,
-  forcedQuest?: Quest | null
-): Quest[] {
-  if (count <= 0) return [];
-
-  if (count > quests.length) {
-    throw new Error(`Insufficient ${durationName} quests available. Requested ${count}, but only ${quests.length} found in batch.`);
+function selectQuestByTypePriority(
+  candidates: Quest[],
+  seenTypes: Set<string>,
+  usageByQuestId: Record<string, number>
+): Quest {
+  if (candidates.length === 0) {
+    throw new Error("No quest candidates available for slot selection.");
   }
 
-  const selected: Quest[] = [];
-  const selectedIds = new Set<string>();
-
-  if (forcedQuest && forcedQuest.duration === durationName) {
-    selected.push(forcedQuest);
-    selectedIds.add(forcedQuest.id);
-  }
-
-  while (selected.length < count) {
-    const candidates = quests.filter((quest) => !selectedIds.has(quest.id));
-    if (candidates.length === 0) {
-      break;
+  const candidatesByType = candidates.reduce<Record<string, Quest[]>>((acc, quest) => {
+    if (!acc[quest.type]) {
+      acc[quest.type] = [];
     }
+    acc[quest.type].push(quest);
+    return acc;
+  }, {});
 
-    const chosenQuest = pickLeastUsedQuest(candidates, usageByQuestId);
-    selected.push(chosenQuest);
-    selectedIds.add(chosenQuest.id);
+  const typeEntries = Object.entries(candidatesByType);
+  let bestTypeUsage = Number.POSITIVE_INFINITY;
+  for (const [, typeCandidates] of typeEntries) {
+    const minUsageForType = typeCandidates.reduce(
+      (currentMin, quest) => Math.min(currentMin, getQuestUsage(usageByQuestId, quest.id)),
+      Number.POSITIVE_INFINITY
+    );
+    bestTypeUsage = Math.min(bestTypeUsage, minUsageForType);
   }
 
-  if (selected.length < count) {
-    throw new Error(`Insufficient ${durationName} quests available after balancing. Requested ${count}, but only ${selected.length} could be selected.`);
+  const bestUsageTypes = typeEntries.filter(([, typeCandidates]) => {
+    const minUsageForType = typeCandidates.reduce(
+      (currentMin, quest) => Math.min(currentMin, getQuestUsage(usageByQuestId, quest.id)),
+      Number.POSITIVE_INFINITY
+    );
+    return minUsageForType === bestTypeUsage;
+  });
+
+  const unseenBestUsageTypes = bestUsageTypes.filter(([type]) => !seenTypes.has(type));
+  const eligibleTypes = unseenBestUsageTypes.length > 0 ? unseenBestUsageTypes : bestUsageTypes;
+  const [selectedType, selectedTypeCandidates] = pickRandomItem(eligibleTypes);
+
+  const selectedQuest = pickLeastUsedQuest(selectedTypeCandidates, usageByQuestId);
+  if (selectedQuest.type !== selectedType) {
+    throw new Error("Quest type selection mismatch during assignment.");
   }
 
-  return selected;
+  return selectedQuest;
 }
 
 export function assignQuestsFromLoadedBatch(
@@ -93,44 +116,106 @@ export function assignQuestsFromLoadedBatch(
   }
 
   const distribution = gameState.questsPerPlayer;
+  const totalRequested = distribution.short + distribution.medium + distribution.long;
+  if (totalRequested <= 0) {
+    return [];
+  }
 
-  // Group batch quests by duration
-  const shortQuests = batch.quests.filter((q) => q.duration === "short");
-  const mediumQuests = batch.quests.filter((q) => q.duration === "medium");
-  const longQuests = batch.quests.filter((q) => q.duration === "long");
+  const questsByDuration: Record<QuestDuration, Quest[]> = {
+    short: batch.quests.filter((q) => q.duration === "short"),
+    medium: batch.quests.filter((q) => q.duration === "medium"),
+    long: batch.quests.filter((q) => q.duration === "long"),
+  };
+
+  for (const duration of DURATION_ORDER) {
+    if (distribution[duration] > questsByDuration[duration].length) {
+      throw new Error(
+        `Insufficient ${duration} quests available. Requested ${distribution[duration]}, but only ${questsByDuration[duration].length} found in batch.`
+      );
+    }
+  }
 
   // Build usage frequency from players already assigned in this game.
-  const usageByQuestId = buildQuestUsageMap(gameState.players, batch.quests);
+  const baseUsageByQuestId = buildQuestUsageMap(gameState.players, batch.quests);
+  const usageByQuestId: Record<string, number> = { ...baseUsageByQuestId };
 
   // Guarantee at least one mini-game per player whenever quests are assigned.
-  const miniGameCandidates = batch.quests.filter(
-    (q) => q.type === "mini-game" && distribution[q.duration] > 0
+  const miniGamesByDuration: Record<QuestDuration, Quest[]> = {
+    short: questsByDuration.short.filter((q) => q.type === "mini-game"),
+    medium: questsByDuration.medium.filter((q) => q.type === "mini-game"),
+    long: questsByDuration.long.filter((q) => q.type === "mini-game"),
+  };
+  const eligibleMiniDurations = DURATION_ORDER.filter(
+    (duration) => distribution[duration] > 0 && miniGamesByDuration[duration].length > 0
   );
-  const totalRequested = distribution.short + distribution.medium + distribution.long;
-  if (totalRequested > 0 && miniGameCandidates.length === 0) {
+  if (eligibleMiniDurations.length === 0) {
     throw new Error("No mini-game available for the configured quest distribution.");
   }
 
-  const forcedMiniGame = miniGameCandidates.length > 0
-    ? pickLeastUsedQuest(miniGameCandidates, usageByQuestId)
-    : null;
+  const selectedByDuration: Record<QuestDuration, Quest[]> = {
+    short: [],
+    medium: [],
+    long: [],
+  };
+  const selectedIds = new Set<string>();
+  const seenTypes = new Set<string>();
 
-  const selectedShort = selectBalancedQuests(shortQuests, distribution.short, "short", usageByQuestId, forcedMiniGame);
-  const selectedMedium = selectBalancedQuests(mediumQuests, distribution.medium, "medium", usageByQuestId, forcedMiniGame);
-  const selectedLong = selectBalancedQuests(longQuests, distribution.long, "long", usageByQuestId, forcedMiniGame);
+  const forcedMiniDuration = pickRandomItem(eligibleMiniDurations);
+  const forcedMiniGame = pickLeastUsedQuest(miniGamesByDuration[forcedMiniDuration], usageByQuestId);
+  selectedByDuration[forcedMiniDuration].push(forcedMiniGame);
+  selectedIds.add(forcedMiniGame.id);
+  seenTypes.add(forcedMiniGame.type);
+  usageByQuestId[forcedMiniGame.id] = getQuestUsage(usageByQuestId, forcedMiniGame.id) + 1;
+
+  const remainingByDuration: Record<QuestDuration, number> = {
+    short: distribution.short,
+    medium: distribution.medium,
+    long: distribution.long,
+  };
+  remainingByDuration[forcedMiniDuration] -= 1;
+
+  const remainingSlots: QuestDuration[] = [];
+  for (const duration of DURATION_ORDER) {
+    for (let i = 0; i < remainingByDuration[duration]; i += 1) {
+      remainingSlots.push(duration);
+    }
+  }
+
+  for (const duration of shuffleArray(remainingSlots)) {
+    const availableCandidates = questsByDuration[duration].filter((quest) => !selectedIds.has(quest.id));
+    if (availableCandidates.length === 0) {
+      throw new Error(
+        `Insufficient ${duration} quests available after balancing. Requested ${distribution[duration]}, but only ${selectedByDuration[duration].length} could be selected.`
+      );
+    }
+
+    const chosenQuest = selectQuestByTypePriority(availableCandidates, seenTypes, usageByQuestId);
+    selectedByDuration[duration].push(chosenQuest);
+    selectedIds.add(chosenQuest.id);
+    seenTypes.add(chosenQuest.type);
+    usageByQuestId[chosenQuest.id] = getQuestUsage(usageByQuestId, chosenQuest.id) + 1;
+  }
+
+  for (const duration of DURATION_ORDER) {
+    if (selectedByDuration[duration].length !== distribution[duration]) {
+      throw new Error(
+        `Insufficient ${duration} quests available after balancing. Requested ${distribution[duration]}, but only ${selectedByDuration[duration].length} could be selected.`
+      );
+    }
+  }
 
   return [
-    ...selectedShort.map((quest) => ({
+    ...selectedByDuration.short.map((quest) => ({
       questId: quest.id,
       questType: quest.type,
       duration: "short" as const
     })),
-    ...selectedMedium.map((quest) => ({
+    ...selectedByDuration.medium.map((quest) => ({
       questId: quest.id,
       questType: quest.type,
       duration: "medium" as const
     })),
-    ...selectedLong.map((quest) => ({
+    ...selectedByDuration.long.map((quest) => ({
       questId: quest.id,
       questType: quest.type,
       duration: "long" as const

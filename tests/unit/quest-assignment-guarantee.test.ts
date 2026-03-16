@@ -1,10 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
-import { assignQuestsFromBatch } from '@/lib/quests/quest-assignment';
+import { assignQuestsFromBatch, assignQuestsFromLoadedBatch } from '@/lib/quests/quest-assignment';
 import { GameState } from '@/types/game';
-import { Quest } from '@/types/quest';
 import * as batchActions from '@/lib/redis/batch-actions';
 
 vi.mock('@/lib/redis/batch-actions');
+
+type TestBatch = {
+  id: string;
+  quests: Array<{
+    id: string;
+    type: 'qcm' | 'true-false' | 'intrus' | 'mini-game';
+    duration: 'short' | 'medium' | 'long';
+  }>;
+};
 
 describe('Quest Assignment Verification', () => {
   it('should guarantee at least one mini-game is assigned to the player', async () => {
@@ -64,21 +72,21 @@ describe('Quest Assignment Verification', () => {
     expect(assignments).toEqual([]);
   });
 
-  it('should prioritize least-used quests to spread assignments across players while keeping a mini-game', async () => {
+  it('should prioritize globally least-used quests across players while keeping a mini-game', async () => {
     const mockBatch = {
       id: 'batch-diversified',
       questCount: 9,
       createdAt: new Date().toISOString(),
       quests: [
         { id: 's-mg', type: 'mini-game', duration: 'short' },
-        { id: 's-1', type: 'qcm', duration: 'short' },
-        { id: 's-2', type: 'true-false', duration: 'short' },
+        { id: 's-used', type: 'qcm', duration: 'short' },
+        { id: 's-fresh', type: 'true-false', duration: 'short' },
         { id: 'm-mg', type: 'mini-game', duration: 'medium' },
-        { id: 'm-1', type: 'qcm', duration: 'medium' },
-        { id: 'm-2', type: 'true-false', duration: 'medium' },
+        { id: 'm-used', type: 'qcm', duration: 'medium' },
+        { id: 'm-fresh', type: 'true-false', duration: 'medium' },
         { id: 'l-mg', type: 'mini-game', duration: 'long' },
-        { id: 'l-1', type: 'qcm', duration: 'long' },
-        { id: 'l-2', type: 'true-false', duration: 'long' },
+        { id: 'l-used', type: 'qcm', duration: 'long' },
+        { id: 'l-fresh', type: 'true-false', duration: 'long' },
       ],
     };
 
@@ -100,7 +108,7 @@ describe('Quest Assignment Verification', () => {
           id: 'p1',
           name: 'Player 1',
           isAlive: true,
-          assignedQuests: ['s-mg', 'm-1', 'l-1'],
+          assignedQuests: ['s-used', 'm-used', 'l-used'],
         },
       ],
     };
@@ -109,12 +117,108 @@ describe('Quest Assignment Verification', () => {
     const assignedIds = assignments.map((assignment) => assignment.questId);
     const hasMiniGame = assignments.some((assignment) => assignment.questType === 'mini-game');
 
-    expect(assignedIds).toContain('s-1');
-    expect(assignedIds).toContain('m-mg');
-    expect(assignedIds).toContain('l-2');
-    expect(assignedIds).not.toContain('s-mg');
-    expect(assignedIds).not.toContain('m-1');
-    expect(assignedIds).not.toContain('l-1');
+    expect(assignedIds).toHaveLength(3);
+    expect(assignedIds).not.toContain('s-used');
+    expect(assignedIds).not.toContain('m-used');
+    expect(assignedIds).not.toContain('l-used');
     expect(hasMiniGame).toBe(true);
+  });
+
+  it('should maximize global type diversity for one player before repeating a type when possible', () => {
+    const assignments = assignQuestsFromLoadedBatch(
+      {
+        id: 'game-diversity',
+        status: 'LOBBY',
+        players: [],
+        createdAt: Date.now(),
+        revision: 1,
+        updatedAt: Date.now(),
+        questsPerPlayer: { short: 4, medium: 0, long: 0 },
+      } as GameState,
+      {
+        id: 'batch-diversity',
+        quests: [
+          { id: 's-mg', type: 'mini-game', duration: 'short' },
+          { id: 's-qcm', type: 'qcm', duration: 'short' },
+          { id: 's-tf', type: 'true-false', duration: 'short' },
+          { id: 's-intrus', type: 'intrus', duration: 'short' },
+        ],
+      } as TestBatch
+    );
+
+    const assignedTypes = assignments.map((assignment) => assignment.questType);
+    expect(assignments).toHaveLength(4);
+    expect(new Set(assignedTypes).size).toBe(4);
+    expect(assignedTypes).toContain('mini-game');
+  });
+
+  it('should fallback to type repetition when unique types are exhausted', () => {
+    const assignments = assignQuestsFromLoadedBatch(
+      {
+        id: 'game-fallback',
+        status: 'LOBBY',
+        players: [],
+        createdAt: Date.now(),
+        revision: 1,
+        updatedAt: Date.now(),
+        questsPerPlayer: { short: 4, medium: 0, long: 0 },
+      } as GameState,
+      {
+        id: 'batch-fallback',
+        quests: [
+          { id: 's-mg', type: 'mini-game', duration: 'short' },
+          { id: 's-qcm-a', type: 'qcm', duration: 'short' },
+          { id: 's-qcm-b', type: 'qcm', duration: 'short' },
+          { id: 's-tf', type: 'true-false', duration: 'short' },
+        ],
+      } as TestBatch
+    );
+
+    const assignedTypes = assignments.map((assignment) => assignment.questType);
+    const assignedIds = assignments.map((assignment) => assignment.questId);
+    const repeatedTypes = assignedTypes.filter(
+      (type, index) => assignedTypes.indexOf(type) !== index
+    );
+
+    expect(assignments).toHaveLength(4);
+    expect(new Set(assignedIds).size).toBe(4);
+    expect(repeatedTypes.length).toBeGreaterThan(0);
+  });
+
+  it('should produce different valid assignments with different random values', () => {
+    const gameState = {
+      id: 'game-random',
+      status: 'LOBBY',
+      players: [],
+      createdAt: Date.now(),
+      revision: 1,
+      updatedAt: Date.now(),
+      questsPerPlayer: { short: 3, medium: 0, long: 0 },
+    } as GameState;
+
+    const batch: TestBatch = {
+      id: 'batch-random',
+      quests: [
+        { id: 's-mg-a', type: 'mini-game', duration: 'short' },
+        { id: 's-mg-b', type: 'mini-game', duration: 'short' },
+        { id: 's-qcm-a', type: 'qcm', duration: 'short' },
+        { id: 's-qcm-b', type: 'qcm', duration: 'short' },
+        { id: 's-tf-a', type: 'true-false', duration: 'short' },
+      ],
+    };
+
+    const randomSpy = vi.spyOn(Math, 'random');
+    randomSpy.mockReturnValue(0);
+    const lowRandom = assignQuestsFromLoadedBatch(gameState, batch);
+
+    randomSpy.mockReturnValue(0.99);
+    const highRandom = assignQuestsFromLoadedBatch(gameState, batch);
+    randomSpy.mockRestore();
+
+    const lowIds = lowRandom.map((assignment) => assignment.questId);
+    const highIds = highRandom.map((assignment) => assignment.questId);
+    expect(lowIds).not.toEqual(highIds);
+    expect(lowRandom.some((assignment) => assignment.questType === 'mini-game')).toBe(true);
+    expect(highRandom.some((assignment) => assignment.questType === 'mini-game')).toBe(true);
   });
 });
