@@ -93,6 +93,7 @@ interface GameStore {
     error: string | null;
     errorCode: string | null;
     launchError: string | null;
+    launchErrorCode: string | null;
     roleError: string | null;
     completionError: string | null;
     completionErrorCode: string | null;
@@ -576,6 +577,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     error: null,
     errorCode: null,
     launchError: null,
+    launchErrorCode: null,
     roleError: null,
     completionError: null,
     completionErrorCode: null,
@@ -827,16 +829,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     },
 
     launch: async (gameId: string) => {
-        set({ isLaunching: true, launchError: null });
+        set({ isLaunching: true, launchError: null, launchErrorCode: null });
         const response = await startGame(gameId);
 
         if (response.success && response.data) {
             get().applyRealtimeState(response.data);
-            set({ isLaunching: false, launchError: null });
+            set({ isLaunching: false, launchError: null, launchErrorCode: null });
             return true;
         } else {
             set({
                 launchError: response.error || "Unknown error",
+                launchErrorCode: response.code || null,
                 isLaunching: false
             });
             return false;
@@ -939,6 +942,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         error: null, 
         errorCode: null, 
         launchError: null,
+        launchErrorCode: null,
         roleError: null,
         completionError: null,
         completionErrorCode: null,

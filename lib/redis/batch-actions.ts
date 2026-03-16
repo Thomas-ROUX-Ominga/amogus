@@ -5,14 +5,18 @@ import { ActionResponse } from "@/types/game";
 import { Batch, BatchCreateInput, BatchListItem, BatchSabotages } from "@/types/quest";
 import { generateBatch } from "@/lib/quests/batch-generator";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
-import { verifyAdminSession } from "@/lib/redis/auth-utils";
+import { verifySession } from "@/lib/redis/auth-utils";
 import { getGameStatePattern, parseGameIdFromStateKey } from "@/lib/redis/game-state-keys";
+import { deleteGame } from "./actions";
+
+interface GetBatchDataOptions {
+  ownerId?: string;
+}
 
 export async function createBatch(input: BatchCreateInput): Promise<ActionResponse<Batch>> {
   try {
-    // Verify admin session
-    const session = await verifyAdminSession();
-    if (!session.success) {
+    const session = await verifySession();
+    if (!session.success || !session.data) {
       return {
         success: false,
         error: "Unauthorized",
@@ -38,7 +42,11 @@ export async function createBatch(input: BatchCreateInput): Promise<ActionRespon
     }
 
     // Generate batch
-    const batch = generateBatch(input);
+    const generatedBatch = generateBatch(input);
+    const batch: Batch = {
+      ...generatedBatch,
+      ownerId: session.data.userId,
+    };
     
     // Store in Redis
     const batchKey = `batch:${batch.id}`;
@@ -60,9 +68,8 @@ export async function createBatch(input: BatchCreateInput): Promise<ActionRespon
 
 export async function getAllBatches(): Promise<ActionResponse<BatchListItem[]>> {
   try {
-    // Verify admin session
-    const session = await verifyAdminSession();
-    if (!session.success) {
+    const session = await verifySession();
+    if (!session.success || !session.data) {
       return {
         success: false,
         error: "Unauthorized",
@@ -80,6 +87,8 @@ export async function getAllBatches(): Promise<ActionResponse<BatchListItem[]>> 
       };
     }
 
+    const ownerId = session.data.userId;
+
     // Retrieve all batches
     const batchPromises = batchKeys.map(async (key: string) => {
       const batch = await redis.get<Batch>(key);
@@ -90,7 +99,7 @@ export async function getAllBatches(): Promise<ActionResponse<BatchListItem[]>> 
     
     // Filter out null results and convert to list items
     const batchListItems: BatchListItem[] = batches
-      .filter((batch): batch is Batch => batch !== null)
+      .filter((batch): batch is Batch => batch !== null && batch.ownerId === ownerId)
       .map((batch: Batch) => ({
         id: batch.id,
         name: batch.name,
@@ -113,13 +122,10 @@ export async function getAllBatches(): Promise<ActionResponse<BatchListItem[]>> 
   }
 }
 
-import { deleteGame } from "./actions";
-
 export async function deleteBatch(batchId: string): Promise<ActionResponse<void>> {
   try {
-    // Verify admin session
-    const session = await verifyAdminSession();
-    if (!session.success) {
+    const session = await verifySession();
+    if (!session.success || !session.data) {
       return {
         success: false,
         error: "Unauthorized",
@@ -136,17 +142,22 @@ export async function deleteBatch(batchId: string): Promise<ActionResponse<void>
       };
     }
 
-    const batchKey = `batch:${batchId}`;
-    
-    // Check if batch exists
-    const batch = await redis.get<Batch>(batchKey);
-    if (!batch) {
+    const batchResponse = await getBatchData(batchId, { ownerId: session.data.userId });
+    if (!batchResponse.success || !batchResponse.data) {
+      if (batchResponse.code === ERROR_CODES.ERR_NOT_FOUND) {
+        return {
+          success: false,
+          error: "Batch not found",
+          code: ERROR_CODES.ERR_NOT_FOUND,
+        };
+      }
       return {
         success: false,
-        error: "Batch not found",
-        code: ERROR_CODES.ERR_NOT_FOUND,
+        error: "Failed to delete batch",
+        code: batchResponse.code || ERROR_CODES.ERR_SIGNAL_LOST,
       };
     }
+    const batchKey = `batch:${batchId}`;
 
     // Stop and delete any active games using this batch
     const gameKeys = await redis.keys(getGameStatePattern());
@@ -186,7 +197,10 @@ export async function deleteBatch(batchId: string): Promise<ActionResponse<void>
   }
 }
 
-export async function getBatchData(batchId: string): Promise<ActionResponse<Batch>> {
+export async function getBatchData(
+  batchId: string,
+  options?: GetBatchDataOptions
+): Promise<ActionResponse<Batch>> {
   try {
     if (!batchId?.trim()) {
       return {
@@ -200,6 +214,14 @@ export async function getBatchData(batchId: string): Promise<ActionResponse<Batc
     const batch = await redis.get<Batch>(batchKey);
     
     if (!batch) {
+      return {
+        success: false,
+        error: "Batch not found",
+        code: ERROR_CODES.ERR_NOT_FOUND,
+      };
+    }
+
+    if (options?.ownerId && batch.ownerId !== options.ownerId) {
       return {
         success: false,
         error: "Batch not found",
@@ -223,9 +245,8 @@ export async function getBatchData(batchId: string): Promise<ActionResponse<Batc
 
 export async function getBatch(batchId: string): Promise<ActionResponse<Batch>> {
   try {
-    // Verify admin session for public action
-    const session = await verifyAdminSession();
-    if (!session.success) {
+    const session = await verifySession();
+    if (!session.success || !session.data) {
       return {
         success: false,
         error: "Unauthorized",
@@ -233,7 +254,19 @@ export async function getBatch(batchId: string): Promise<ActionResponse<Batch>> 
       };
     }
 
-    return getBatchData(batchId);
+    const batchResponse = await getBatchData(batchId, { ownerId: session.data.userId });
+    if (!batchResponse.success) {
+      if (batchResponse.code === ERROR_CODES.ERR_NOT_FOUND) {
+        return batchResponse;
+      }
+      return {
+        success: false,
+        error: "Failed to get batch",
+        code: batchResponse.code || ERROR_CODES.ERR_SIGNAL_LOST,
+      };
+    }
+
+    return batchResponse;
   } catch (error) {
     console.error("Error in getBatch action:", error);
     return {
@@ -246,8 +279,8 @@ export async function getBatch(batchId: string): Promise<ActionResponse<Batch>> 
 
 export async function updateBatchName(batchId: string, name: string): Promise<ActionResponse<Batch>> {
   try {
-    const session = await verifyAdminSession();
-    if (!session.success) {
+    const session = await verifySession();
+    if (!session.success || !session.data) {
       return {
         success: false,
         error: "Unauthorized",
@@ -280,16 +313,23 @@ export async function updateBatchName(batchId: string, name: string): Promise<Ac
       };
     }
 
-    const batchKey = `batch:${batchId}`;
-    const batch = await redis.get<Batch>(batchKey);
-
-    if (!batch) {
+    const batchResponse = await getBatchData(batchId, { ownerId: session.data.userId });
+    if (!batchResponse.success || !batchResponse.data) {
+      if (batchResponse.code === ERROR_CODES.ERR_NOT_FOUND) {
+        return {
+          success: false,
+          error: "Batch not found",
+          code: ERROR_CODES.ERR_NOT_FOUND,
+        };
+      }
       return {
         success: false,
-        error: "Batch not found",
-        code: ERROR_CODES.ERR_NOT_FOUND,
+        error: "Failed to update batch name",
+        code: batchResponse.code || ERROR_CODES.ERR_SIGNAL_LOST,
       };
     }
+    const batch = batchResponse.data;
+    const batchKey = `batch:${batchId}`;
 
     const updatedBatch: Batch = {
       ...batch,
@@ -323,9 +363,8 @@ export async function updateQuestsLocations(
   }
 ): Promise<ActionResponse<Batch>> {
   try {
-    // Verify admin session
-    const session = await verifyAdminSession();
-    if (!session.success) {
+    const session = await verifySession();
+    if (!session.success || !session.data) {
       return {
         success: false,
         error: "Unauthorized",
@@ -350,18 +389,23 @@ export async function updateQuestsLocations(
       };
     }
 
-    const batchKey = `batch:${batchId}`;
-    
-    // Get existing batch
-    const batch = await redis.get<Batch>(batchKey);
-    
-    if (!batch) {
+    const batchResponse = await getBatchData(batchId, { ownerId: session.data.userId });
+    if (!batchResponse.success || !batchResponse.data) {
+      if (batchResponse.code === ERROR_CODES.ERR_NOT_FOUND) {
+        return {
+          success: false,
+          error: "Batch not found",
+          code: ERROR_CODES.ERR_NOT_FOUND,
+        };
+      }
       return {
         success: false,
-        error: "Batch not found",
-        code: ERROR_CODES.ERR_NOT_FOUND,
+        error: "Failed to update quest locations",
+        code: batchResponse.code || ERROR_CODES.ERR_SIGNAL_LOST,
       };
     }
+    const batch = batchResponse.data;
+    const batchKey = `batch:${batchId}`;
 
     // Update quest locations atomically
     const updatedQuests = batch.quests.map(quest => ({

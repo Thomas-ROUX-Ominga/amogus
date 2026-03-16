@@ -13,14 +13,13 @@ vi.mock('@/lib/redis/client', () => ({
 
 // Mock auth utils
 vi.mock('@/lib/redis/auth-utils', () => ({
-  verifyAdminSession: vi.fn(),
   verifySession: vi.fn(),
 }));
 
 import { createBatch, getAllBatches, deleteBatch, updateQuestsLocations, getBatch, getBatchData } from '@/lib/redis/batch-actions';
 import { BatchCreateInput } from '@/types/quest';
 import { redis } from '@/lib/redis/client';
-import { verifyAdminSession, verifySession } from '@/lib/redis/auth-utils';
+import { verifySession } from '@/lib/redis/auth-utils';
 
 describe('Batch Actions', () => {
   beforeEach(() => {
@@ -28,7 +27,6 @@ describe('Batch Actions', () => {
     // Reset implementations to prevent state leaks
     vi.resetAllMocks();
     // Default to authorized
-    (verifyAdminSession as any).mockResolvedValue({ success: true, data: { role: 'admin' } });
     (verifySession as any).mockResolvedValue({ 
       success: true, 
       data: { userId: 'admin-id', username: 'admin' } 
@@ -72,22 +70,32 @@ describe('Batch Actions', () => {
       const mockBatches = [
         {
           id: 'batch-1',
+          ownerId: 'admin-id',
           questCount: 30,
           quests: [],
           createdAt: '2026-02-15T10:00:00.000Z',
         },
         {
           id: 'batch-2',
+          ownerId: 'admin-id',
           questCount: 25,
           quests: [],
           createdAt: '2026-02-15T11:00:00.000Z',
         },
+        {
+          id: 'batch-3',
+          ownerId: 'other-user',
+          questCount: 20,
+          quests: [],
+          createdAt: '2026-02-15T12:00:00.000Z',
+        },
       ];
 
-      (redis.keys as any).mockResolvedValue(['batch:batch-1', 'batch:batch-2']);
+      (redis.keys as any).mockResolvedValue(['batch:batch-1', 'batch:batch-2', 'batch:batch-3']);
       (redis.get as any)
         .mockResolvedValueOnce(mockBatches[0])
-        .mockResolvedValueOnce(mockBatches[1]);
+        .mockResolvedValueOnce(mockBatches[1])
+        .mockResolvedValueOnce(mockBatches[2]);
 
       const result = await getAllBatches();
 
@@ -122,6 +130,7 @@ describe('Batch Actions', () => {
     it('should delete a batch and its associated games successfully', async () => {
       const mockBatch = {
         id: 'batch-123',
+        ownerId: 'admin-id',
         questCount: 30,
         quests: [],
         createdAt: '2026-02-15T10:00:00.000Z',
@@ -184,6 +193,7 @@ describe('Batch Actions', () => {
     it('should update quest locations successfully', async () => {
       const mockBatch = {
         id: 'batch-123',
+        ownerId: 'admin-id',
         questCount: 2,
         quests: [
           { id: 'quest-1', type: 'qcm', duration: 'short', location: 'Zone A' },
@@ -219,6 +229,7 @@ describe('Batch Actions', () => {
     it('should preserve existing locations when not updated', async () => {
       const mockBatch = {
         id: 'batch-123',
+        ownerId: 'admin-id',
         questCount: 2,
         quests: [
           { id: 'quest-1', type: 'qcm', duration: 'short', location: 'Old Location' },
@@ -244,6 +255,7 @@ describe('Batch Actions', () => {
     it('should update sabotage locations when batch has sabotage config', async () => {
       const mockBatch = {
         id: 'batch-123',
+        ownerId: 'admin-id',
         questCount: 2,
         quests: [
           { id: 'quest-1', type: 'qcm', duration: 'short', location: 'Zone A' },
@@ -327,8 +339,19 @@ describe('Batch Actions', () => {
       expect(result.success).toBe(true);
       expect(result.data).toEqual(mockBatch);
       expect(redis.get).toHaveBeenCalledWith('batch:batch-123');
-      // Should NOT have called verifyAdminSession
-      expect(verifyAdminSession).not.toHaveBeenCalled();
+      // Should NOT have called verifySession
+      expect(verifySession).not.toHaveBeenCalled();
+    });
+
+    it('should return not found when owner does not match', async () => {
+      const mockBatch = { id: 'batch-123', ownerId: 'someone-else', questCount: 30 };
+      (redis.get as any).mockResolvedValue(mockBatch);
+
+      const result = await getBatchData('batch-123', { ownerId: 'admin-id' });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Batch not found');
+      expect(result.code).toBe('ERR_NOT_FOUND');
     });
 
     it('should fail with invalid batch ID', async () => {
@@ -350,19 +373,19 @@ describe('Batch Actions', () => {
 
   describe('getBatch', () => {
     it('should retrieve batch successfully after session verification', async () => {
-      const mockBatch = { id: 'batch-123', questCount: 30 };
+      const mockBatch = { id: 'batch-123', ownerId: 'admin-id', questCount: 30 };
       (redis.get as any).mockResolvedValue(mockBatch);
-      (verifyAdminSession as any).mockResolvedValue({ success: true, data: { role: 'admin' } });
+      (verifySession as any).mockResolvedValue({ success: true, data: { userId: 'admin-id', username: 'admin' } });
 
       const result = await getBatch('batch-123');
 
       expect(result.success).toBe(true);
       expect(result.data).toEqual(mockBatch);
-      expect(verifyAdminSession).toHaveBeenCalled();
+      expect(verifySession).toHaveBeenCalled();
     });
 
     it('should fail if session verification fails', async () => {
-      (verifyAdminSession as any).mockResolvedValue({ success: false, error: 'Unauthorized' });
+      (verifySession as any).mockResolvedValue({ success: false, error: 'Unauthorized' });
 
       const result = await getBatch('batch-123');
 

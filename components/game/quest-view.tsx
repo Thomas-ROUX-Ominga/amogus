@@ -13,6 +13,7 @@ import { SuccessOverlay } from "@/components/game/success-overlay";
 import { FailedOverlay } from "@/components/game/failed-overlay";
 import { ReactorSabotageAlert } from "@/components/game/reactor-sabotage-alert";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
+import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 interface QuestViewProps {
     quest: Quest;
@@ -24,12 +25,6 @@ const DURATION_COLORS: Record<QuestDuration, string> = {
     short: "border-[#2DA44E] text-[#2DA44E] bg-[#2DA44E]/10",
     medium: "border-[#D29922] text-[#D29922] bg-[#D29922]/10",
     long: "border-[#DA3633] text-[#DA3633] bg-[#DA3633]/10",
-};
-
-const DIFFICULTY_LABELS: Record<QuestDuration, string> = {
-    short: "FACILE",
-    medium: "INTERMÉDIAIRE",
-    long: "DIFFICILE",
 };
 
 const SUCCESS_OVERLAY_DURATION_MS = 2000;
@@ -71,6 +66,14 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
     }, [currentQuestContent, isImpostor, quest.id, quest.type, quest.duration, t]);
 
     const isLoadingGame = false;
+    const difficultyLabels: Record<QuestDuration, string> = useMemo(
+        () => ({
+            short: t("game.questView.difficulty.short"),
+            medium: t("game.questView.difficulty.medium"),
+            long: t("game.questView.difficulty.long"),
+        }),
+        [t]
+    );
 
     const triggerSuccessFlow = useCallback(() => {
         setShowSuccessOverlay(true);
@@ -197,9 +200,9 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                             role="status"
                         >
                             <Brain className="h-3 w-3" aria-hidden="true" />
-                            <span aria-hidden="true">{DIFFICULTY_LABELS[quest.duration]}</span>
+                            <span aria-hidden="true">{difficultyLabels[quest.duration]}</span>
                             <span className="sr-only">
-                                {t("game.questView.durationSr", { duration: DIFFICULTY_LABELS[quest.duration] })}
+                                {t("game.questView.durationSr", { duration: difficultyLabels[quest.duration] })}
                             </span>
                         </div>
                     )}
@@ -281,7 +284,11 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
                                         </span>
                                     </div>
                                     <p className="text-center text-xs text-destructive/80 font-rajdhani">
-                                        {completionError}
+                                        {getLocalizedErrorMessage({
+                                            t,
+                                            code: completionErrorCode,
+                                            fallback: completionError,
+                                        })}
                                     </p>
                                     
                                     {completionErrorCode === ERROR_CODES.GAME_NOT_FOUND ? (

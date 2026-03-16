@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import CreateGamePageClient from "./page-client";
 
-export const metadata: Metadata = {
-  title: "Create Game",
-  description: "Configure and launch a new game session.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("common.metadata.pages.createGame");
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 export default function CreateGamePage() {
   return <CreateGamePageClient />;

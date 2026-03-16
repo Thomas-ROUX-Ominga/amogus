@@ -3,6 +3,40 @@ const en = {
     metadata: {
       title: "AMOGUS Cockpit",
       description: "AMOGUS multiplayer mission terminal.",
+      pages: {
+        home: {
+          title: "AMOGUS Cockpit",
+          description: "Join a game session or launch an organizer session.",
+        },
+        login: {
+          title: "Login",
+          description: "Authenticate as organizer to manage sessions.",
+        },
+        gameLobby: {
+          title: "Game Lobby",
+          description: "Session lobby and player status.",
+        },
+        meeting: {
+          title: "Meeting",
+          description: "Voting room and meeting outcomes.",
+        },
+        quest: {
+          title: "Quest",
+          description: "Current mission and quest progress.",
+        },
+        batches: {
+          title: "Batches",
+          description: "Create and manage quest batches.",
+        },
+        batchDetail: {
+          title: "Batch Detail",
+          description: "Inspect and edit a quest batch.",
+        },
+        createGame: {
+          title: "Create Game",
+          description: "Configure and launch a new game session.",
+        },
+      },
     },
     actions: {
       back: "Back",
@@ -303,6 +337,11 @@ const en = {
     questView: {
       activeTitle: "Quest active",
       durationSr: "Duration {duration}",
+      difficulty: {
+        short: "EASY",
+        medium: "INTERMEDIATE",
+        long: "HARD",
+      },
       miniGameTitle: "Mini-game",
       miniGameInstruction:
         "Complete the displayed mini-game to validate the quest.",

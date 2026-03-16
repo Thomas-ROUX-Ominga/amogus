@@ -30,6 +30,7 @@ export default function LobbyPage() {
         fatalError,
         fatalErrorCode,
         launchError,
+        launchErrorCode,
         fetchGame,
         launch,
         reset,
@@ -350,7 +351,13 @@ export default function LobbyPage() {
                             {launchError && (
                                 <div className="p-4 border-l-4 border-destructive/50 bg-destructive/5 text-xs text-destructive/80 tracking-wide space-y-2">
                                     <div className="font-bold uppercase">{t("game.lobby.launchFailedTitle")}</div>
-                                    <div>{launchError}</div>
+                                    <div>
+                                        {getLocalizedErrorMessage({
+                                            t,
+                                            code: launchErrorCode,
+                                            fallback: launchError,
+                                        })}
+                                    </div>
                                     <button
                                         onClick={handleLaunch}
                                         className="mt-2 px-4 py-2 border border-destructive/30 text-destructive/70 text-xs uppercase tracking-widest hover:bg-destructive/10 transition-colors touch-manipulation"

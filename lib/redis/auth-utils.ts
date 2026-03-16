@@ -3,9 +3,32 @@ import { cookies } from "next/headers";
 import { ActionResponse } from "@/types/game";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "fallback-secret-change-in-production"
-);
+function getJwtSecret(): Uint8Array {
+  const rawSecret = process.env.AUTH_SECRET;
+
+  if (process.env.NODE_ENV === "test") {
+    const testSecret = rawSecret || "test-only-auth-secret-32-bytes-min";
+    return new TextEncoder().encode(testSecret);
+  }
+
+  if (!rawSecret || !rawSecret.trim()) {
+    throw new Error("AUTH_SECRET is missing.");
+  }
+
+  if (rawSecret.length < 32) {
+    throw new Error("AUTH_SECRET must be at least 32 characters.");
+  }
+
+  return new TextEncoder().encode(rawSecret);
+}
+
+function serverAuthConfigError(message: string): ActionResponse<never> {
+  return {
+    success: false,
+    error: message,
+    code: ERROR_CODES.ERR_SERVER_CONFIG,
+  };
+}
 
 const COOKIE_NAME = "organizer-session"; // Renamed from admin-session for clarity
 
@@ -16,12 +39,19 @@ export interface SessionPayload {
 }
 
 export async function createSession(userId: string, username: string): Promise<ActionResponse<void>> {
+  let jwtSecret: Uint8Array;
+  try {
+    jwtSecret = getJwtSecret();
+  } catch {
+    return serverAuthConfigError("Server authentication is not configured.");
+  }
+
   try {
     const token = await new SignJWT({ userId, username, role: "organizer" })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
       .setExpirationTime("24h")
-      .sign(JWT_SECRET);
+      .sign(jwtSecret);
 
     const cookieStore = await cookies();
     cookieStore.set(COOKIE_NAME, token, {
@@ -46,6 +76,13 @@ export async function createSession(userId: string, username: string): Promise<A
 }
 
 export async function verifySession(): Promise<ActionResponse<SessionPayload>> {
+  let jwtSecret: Uint8Array;
+  try {
+    jwtSecret = getJwtSecret();
+  } catch {
+    return serverAuthConfigError("Server authentication is not configured.");
+  }
+
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value || cookieStore.get("admin-session")?.value;
@@ -60,7 +97,7 @@ export async function verifySession(): Promise<ActionResponse<SessionPayload>> {
       };
     }
 
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, jwtSecret);
 
     return {
       success: true,
@@ -111,13 +148,20 @@ export async function clearAdminSession() { return clearSession(); }
 const PLAYER_COOKIE_NAME = "player-session";
 
 export async function createPlayerSession(userId: string, gameId: string): Promise<ActionResponse<void>> {
+  let jwtSecret: Uint8Array;
+  try {
+    jwtSecret = getJwtSecret();
+  } catch {
+    return serverAuthConfigError("Server authentication is not configured.");
+  }
+
   if (process.env.NODE_ENV === "test") return { success: true };
   try {
     const token = await new SignJWT({ userId, gameId, role: "player" })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
       .setExpirationTime("24h")
-      .sign(JWT_SECRET);
+      .sign(jwtSecret);
 
     const cookieStore = await cookies();
     cookieStore.set(PLAYER_COOKIE_NAME, token, {
@@ -156,6 +200,13 @@ export async function clearPlayerSession(): Promise<ActionResponse<void>> {
 }
 
 export async function verifyPlayerSession(userId: string, gameId: string): Promise<ActionResponse<void>> {
+  let jwtSecret: Uint8Array;
+  try {
+    jwtSecret = getJwtSecret();
+  } catch {
+    return serverAuthConfigError("Server authentication is not configured.");
+  }
+
   if (process.env.NODE_ENV === "test") return { success: true };
   try {
     const cookieStore = await cookies();
@@ -169,7 +220,7 @@ export async function verifyPlayerSession(userId: string, gameId: string): Promi
       };
     }
 
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, jwtSecret);
     
     if (payload.userId !== userId || payload.gameId !== gameId) {
        return {

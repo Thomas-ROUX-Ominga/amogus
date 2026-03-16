@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import LoginPageClient from "./page-client";
 
-export const metadata: Metadata = {
-  title: "Login",
-  description: "Authenticate as organizer to manage sessions.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("common.metadata.pages.login");
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 interface LoginPageProps {
   searchParams?: {

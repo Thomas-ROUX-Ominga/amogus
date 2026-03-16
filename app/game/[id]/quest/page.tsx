@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import QuestPageClient from "./page-client";
 
-export const metadata: Metadata = {
-  title: "Quest",
-  description: "Current mission and quest progress.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("common.metadata.pages.quest");
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 interface QuestPageProps {
   searchParams?: {

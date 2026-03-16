@@ -19,7 +19,7 @@ ATTRIBUTE_VIOLATIONS="$(
 )"
 
 TEXT_NODE_VIOLATIONS="$(
-  rg -n --no-heading --multiline --pcre2 \
+  rg -n --no-heading --pcre2 \
     '<[A-Za-z][^>\n]*>\s*[A-Za-zÀ-ÿ][^<{]*\s*</[A-Za-z]' \
     "${FILES[@]}" || true
 )"

@@ -1094,7 +1094,7 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
         let questsTotal = getTotalQuestGamesCount(); // Default total from pool
         let batchSabotages: BatchSabotages | undefined;
         if (batchId) {
-            const batchResponse = await getBatchData(batchId);
+            const batchResponse = await getBatchData(batchId, { ownerId: session.data.userId });
             if (!batchResponse.success || !batchResponse.data) {
                 return {
                     success: false,
@@ -2072,10 +2072,10 @@ export async function triggerSabotage(
                 return null;
             }
 
-            if (!player.isAlive || player.role !== "IMPOSTOR") {
+            if (player.role !== "IMPOSTOR") {
                 validationError = {
                     success: false,
-                    error: "Only alive impostors can trigger sabotage.",
+                    error: "Only impostors can trigger sabotage.",
                     code: ERROR_CODES.ERR_SABOTAGE_FORBIDDEN,
                 };
                 return null;

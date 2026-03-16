@@ -71,6 +71,7 @@ describe('Game Creation Integration', () => {
       expect(result.success).toBe(true);
       expect(result.data).toBe('AH72X9');
       expect(generateShortCode).toHaveBeenCalled();
+      expect(getBatchData).toHaveBeenCalledWith('batch-123', { ownerId: 'test-admin-user' });
       
       // Verify Redis was called with short code key pattern
       const { redis } = await import('@/lib/redis/client');

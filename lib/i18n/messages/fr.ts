@@ -3,6 +3,40 @@ const fr = {
     metadata: {
       title: "AMOGUS Cockpit",
       description: "Terminal de mission multijoueur AMOGUS.",
+      pages: {
+        home: {
+          title: "AMOGUS Cockpit",
+          description: "Rejoignez une partie ou lancez une session organisateur.",
+        },
+        login: {
+          title: "Connexion",
+          description: "Authentifiez-vous en tant qu'organisateur pour gérer les sessions.",
+        },
+        gameLobby: {
+          title: "Lobby de partie",
+          description: "Lobby de session et statut des joueurs.",
+        },
+        meeting: {
+          title: "Meeting",
+          description: "Salle de vote et résultats de réunion.",
+        },
+        quest: {
+          title: "Quête",
+          description: "Mission en cours et progression des quêtes.",
+        },
+        batches: {
+          title: "Zones",
+          description: "Créer et gérer les zones de quêtes.",
+        },
+        batchDetail: {
+          title: "Détail zone",
+          description: "Consulter et modifier une zone de quêtes.",
+        },
+        createGame: {
+          title: "Créer une partie",
+          description: "Configurer et lancer une nouvelle session de jeu.",
+        },
+      },
     },
     actions: {
       back: "Retour",
@@ -306,6 +340,11 @@ const fr = {
     questView: {
       activeTitle: "Quête active",
       durationSr: "Durée {duration}",
+      difficulty: {
+        short: "FACILE",
+        medium: "INTERMÉDIAIRE",
+        long: "DIFFICILE",
+      },
       miniGameTitle: "Mini-jeu",
       miniGameInstruction:
         "Réussissez le mini-jeu affiché pour valider la quête.",
