@@ -74,24 +74,35 @@ interface QuestMemoryProps {
     onError: () => void;
 }
 
+interface MemoryState {
+    cards: MemoryCard[];
+    flippedIndexes: number[];
+    isLocked: boolean;
+    matchedPairsCount: number;
+    isCompleted: boolean;
+}
+
+function createMemoryState(duration: QuestDuration): MemoryState {
+    return {
+        cards: createCards(duration),
+        flippedIndexes: [],
+        isLocked: false,
+        matchedPairsCount: 0,
+        isCompleted: false,
+    };
+}
+
 export function QuestMemory({ duration, onSuccess, onError }: QuestMemoryProps) {
     const t = useTranslations();
     // Memory has no failure state.
     void onError;
 
     const pairCount = MEMORY_PAIR_COUNT_BY_DURATION[duration];
-    const [cards, setCards] = useState<MemoryCard[]>(() => createCards(duration));
-    const [flippedIndexes, setFlippedIndexes] = useState<number[]>([]);
-    const [isLocked, setIsLocked] = useState(false);
-    const [matchedPairsCount, setMatchedPairsCount] = useState(0);
-    const [isCompleted, setIsCompleted] = useState(false);
+    const [memoryState, setMemoryState] = useState<MemoryState>(() => createMemoryState(duration));
+    const { cards, flippedIndexes, isLocked, matchedPairsCount, isCompleted } = memoryState;
 
     useEffect(() => {
-        setCards(createCards(duration));
-        setFlippedIndexes([]);
-        setIsLocked(false);
-        setMatchedPairsCount(0);
-        setIsCompleted(false);
+        setMemoryState(createMemoryState(duration));
     }, [duration]);
 
     const iconByKey = useMemo(
@@ -101,7 +112,7 @@ export function QuestMemory({ duration, onSuccess, onError }: QuestMemoryProps) 
 
     useEffect(() => {
         if (!isCompleted && matchedPairsCount === pairCount) {
-            setIsCompleted(true);
+            setMemoryState((prev) => ({ ...prev, isCompleted: true }));
             onSuccess();
         }
     }, [matchedPairsCount, pairCount, isCompleted, onSuccess]);
@@ -114,12 +125,13 @@ export function QuestMemory({ duration, onSuccess, onError }: QuestMemoryProps) 
             if (!clickedCard || clickedCard.isFlipped || clickedCard.isMatched) return;
 
             const nextFlipped = [...flippedIndexes, clickedIndex];
-            setCards((prev) =>
-                prev.map((card, index) =>
+            setMemoryState((prev) => ({
+                ...prev,
+                cards: prev.cards.map((card, index) =>
                     index === clickedIndex ? { ...card, isFlipped: true } : card
-                )
-            );
-            setFlippedIndexes(nextFlipped);
+                ),
+                flippedIndexes: nextFlipped,
+            }));
 
             if (nextFlipped.length < 2) return;
 
@@ -129,32 +141,34 @@ export function QuestMemory({ duration, onSuccess, onError }: QuestMemoryProps) 
             const secondCard = cards[secondIndex];
             const isMatch = firstCard.iconKey === secondCard.iconKey;
 
-            setIsLocked(true);
+            setMemoryState((prev) => ({ ...prev, isLocked: true }));
 
             if (isMatch) {
-                setCards((prev) =>
-                    prev.map((card, index) =>
+                setMemoryState((prev) => ({
+                    ...prev,
+                    cards: prev.cards.map((card, index) =>
                         index === firstIndex || index === secondIndex
                             ? { ...card, isMatched: true, isFlipped: true }
                             : card
-                    )
-                );
-                setMatchedPairsCount((prev) => prev + 1);
-                setFlippedIndexes([]);
-                setIsLocked(false);
+                    ),
+                    matchedPairsCount: prev.matchedPairsCount + 1,
+                    flippedIndexes: [],
+                    isLocked: false,
+                }));
                 return;
             }
 
             setTimeout(() => {
-                setCards((prev) =>
-                    prev.map((card, index) =>
+                setMemoryState((prev) => ({
+                    ...prev,
+                    cards: prev.cards.map((card, index) =>
                         index === firstIndex || index === secondIndex
                             ? { ...card, isFlipped: false }
                             : card
-                    )
-                );
-                setFlippedIndexes([]);
-                setIsLocked(false);
+                    ),
+                    flippedIndexes: [],
+                    isLocked: false,
+                }));
             }, MEMORY_MISMATCH_FLIPBACK_DELAY_MS);
         },
         [cards, flippedIndexes, isLocked, isCompleted]

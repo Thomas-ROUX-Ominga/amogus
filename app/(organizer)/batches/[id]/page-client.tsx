@@ -31,14 +31,13 @@ export default function BatchDetailPage() {
     let cancelled = false;
 
     const loadBatch = async () => {
-      setViewState((prev) => ({ ...prev, isLoading: true, error: "" }));
+      let nextViewState: typeof viewState;
 
       try {
         const result = await getBatch(batchId);
-        if (cancelled) return;
 
         if (!result.success) {
-          setViewState({
+          nextViewState = {
             batch: null,
             isLoading: false,
             error: getLocalizedErrorMessage({
@@ -46,22 +45,24 @@ export default function BatchDetailPage() {
               code: result.code,
               fallback: result.error,
             }),
-          });
-          return;
+          };
+        } else {
+          nextViewState = {
+            batch: result.data || null,
+            isLoading: false,
+            error: "",
+          };
         }
-
-        setViewState({
-          batch: result.data || null,
-          isLoading: false,
-          error: "",
-        });
       } catch {
-        if (cancelled) return;
-        setViewState({
+        nextViewState = {
           batch: null,
           isLoading: false,
           error: getLocalizedErrorMessage({ t, code: "ERR_SIGNAL_LOST" }),
-        });
+        };
+      }
+
+      if (!cancelled) {
+        setViewState(nextViewState);
       }
     };
 

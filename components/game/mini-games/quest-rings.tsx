@@ -75,6 +75,22 @@ function createRings(duration: QuestDuration): RingState[] {
     }));
 }
 
+interface QuestRingsState {
+    rings: RingState[];
+    currentRingIndex: number;
+    showFailed: boolean;
+    completed: boolean;
+}
+
+function createRingsState(duration: QuestDuration): QuestRingsState {
+    return {
+        rings: createRings(duration),
+        currentRingIndex: 0,
+        showFailed: false,
+        completed: false,
+    };
+}
+
 interface QuestRingsProps {
     duration: QuestDuration;
     onSuccess: () => void;
@@ -84,17 +100,12 @@ interface QuestRingsProps {
 export function QuestRings({ duration, onSuccess, onError }: QuestRingsProps) {
     const t = useTranslations();
     const totalRings = RINGS_COUNT_BY_DURATION[duration];
-    const [rings, setRings] = useState<RingState[]>(() => createRings(duration));
-    const [currentRingIndex, setCurrentRingIndex] = useState(0);
-    const [showFailed, setShowFailed] = useState(false);
-    const [completed, setCompleted] = useState(false);
+    const [ringsState, setRingsState] = useState<QuestRingsState>(() => createRingsState(duration));
+    const { rings, currentRingIndex, showFailed, completed } = ringsState;
     const lastTsRef = useRef<number | null>(null);
 
     useEffect(() => {
-        setRings(createRings(duration));
-        setCurrentRingIndex(0);
-        setShowFailed(false);
-        setCompleted(false);
+        setRingsState(createRingsState(duration));
         lastTsRef.current = null;
     }, [duration]);
 
@@ -107,13 +118,14 @@ export function QuestRings({ duration, onSuccess, onError }: QuestRingsProps) {
             const deltaSec = (ts - prevTs) / 1000;
             lastTsRef.current = ts;
 
-            setRings((prev) =>
-                prev.map((ring, index) =>
+            setRingsState((prev) => ({
+                ...prev,
+                rings: prev.rings.map((ring, index) =>
                     index === currentRingIndex
                         ? { ...ring, angle: (ring.angle + ring.speed * deltaSec) % 360 }
                         : ring
-                )
-            );
+                ),
+            }));
             rafId = requestAnimationFrame(tick);
         };
 
@@ -123,10 +135,7 @@ export function QuestRings({ duration, onSuccess, onError }: QuestRingsProps) {
     }, [currentRingIndex, showFailed, completed, totalRings]);
 
     const handleFailReset = useCallback(() => {
-        setShowFailed(false);
-        setRings(createRings(duration));
-        setCurrentRingIndex(0);
-        setCompleted(false);
+        setRingsState(createRingsState(duration));
         lastTsRef.current = null;
     }, [duration]);
 
@@ -140,20 +149,22 @@ export function QuestRings({ duration, onSuccess, onError }: QuestRingsProps) {
 
             if (!aligned) {
                 onError();
-                setShowFailed(true);
+                setRingsState((prev) => ({ ...prev, showFailed: true }));
                 return;
             }
 
-            setRings((prev) =>
-                prev.map((entry, i) => (i === index ? { ...entry, completed: true } : entry))
-            );
-
             const nextIndex = index + 1;
+            setRingsState((prev) => ({
+                ...prev,
+                rings: prev.rings.map((entry, i) =>
+                    i === index ? { ...entry, completed: true } : entry
+                ),
+                currentRingIndex: nextIndex >= totalRings ? prev.currentRingIndex : nextIndex,
+                completed: nextIndex >= totalRings,
+            }));
+
             if (nextIndex >= totalRings) {
-                setCompleted(true);
                 onSuccess();
-            } else {
-                setCurrentRingIndex(nextIndex);
             }
         },
         [currentRingIndex, showFailed, completed, rings, totalRings, onError, onSuccess]

@@ -43,6 +43,20 @@ function createGauges(duration: QuestDuration): GaugeState[] {
     }));
 }
 
+interface QuestGaugesState {
+    gauges: GaugeState[];
+    activeGaugeIndex: number | null;
+    isCompleted: boolean;
+}
+
+function createGaugesState(duration: QuestDuration): QuestGaugesState {
+    return {
+        gauges: createGauges(duration),
+        activeGaugeIndex: null,
+        isCompleted: false,
+    };
+}
+
 interface QuestGaugesProps {
     duration: QuestDuration;
     onSuccess: () => void;
@@ -54,15 +68,12 @@ export function QuestGauges({ duration, onSuccess, onError }: QuestGaugesProps) 
     // No failure state for this mini-game.
     void onError;
 
-    const [gauges, setGauges] = useState<GaugeState[]>(() => createGauges(duration));
-    const [activeGaugeIndex, setActiveGaugeIndex] = useState<number | null>(null);
-    const [isCompleted, setIsCompleted] = useState(false);
+    const [gaugesState, setGaugesState] = useState<QuestGaugesState>(() => createGaugesState(duration));
+    const { gauges, activeGaugeIndex, isCompleted } = gaugesState;
     const boardRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
-        setGauges(createGauges(duration));
-        setActiveGaugeIndex(null);
-        setIsCompleted(false);
+        setGaugesState(createGaugesState(duration));
     }, [duration]);
 
     const alignedCount = gauges.filter(
@@ -79,17 +90,18 @@ export function QuestGauges({ duration, onSuccess, onError }: QuestGaugesProps) 
         const ratioFromBottom = (rect.bottom - clientY) / rect.height;
         const nextValue = clamp(Math.round(ratioFromBottom * 100), 0, 100);
 
-        setGauges((prev) =>
-            prev.map((gauge, gaugeIndex) =>
+        setGaugesState((prev) => ({
+            ...prev,
+            gauges: prev.gauges.map((gauge, gaugeIndex) =>
                 gaugeIndex === index ? { ...gauge, value: nextValue } : gauge
-            )
-        );
+            ),
+        }));
     }, []);
 
     const handlePointerDown = useCallback(
         (index: number, event: PointerEvent<HTMLDivElement>) => {
             event.preventDefault();
-            setActiveGaugeIndex(index);
+            setGaugesState((prev) => ({ ...prev, activeGaugeIndex: index }));
             updateGaugeFromPointer(index, event.clientY);
         },
         [updateGaugeFromPointer]
@@ -104,12 +116,12 @@ export function QuestGauges({ duration, onSuccess, onError }: QuestGaugesProps) 
     );
 
     const handleBoardPointerUp = useCallback(() => {
-        setActiveGaugeIndex(null);
+        setGaugesState((prev) => ({ ...prev, activeGaugeIndex: null }));
     }, []);
 
     useEffect(() => {
         if (!isCompleted && gauges.length > 0 && alignedCount === gauges.length) {
-            setIsCompleted(true);
+            setGaugesState((prev) => ({ ...prev, isCompleted: true }));
             onSuccess();
         }
     }, [isCompleted, gauges.length, alignedCount, onSuccess]);

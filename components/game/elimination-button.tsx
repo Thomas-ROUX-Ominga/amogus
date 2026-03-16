@@ -20,6 +20,7 @@ export function EliminationButton({
 }: EliminationButtonProps) {
     const t = useTranslations();
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const isDisabled = disabled || isEliminating;
 
     const triggerHapticFeedback = (isError: boolean) => {
         try {
@@ -37,7 +38,7 @@ export function EliminationButton({
     };
 
     const handlePress = () => {
-        if (disabled || isEliminating) {
+        if (isDisabled) {
             triggerHapticFeedback(true);
             return;
         }
@@ -47,7 +48,7 @@ export function EliminationButton({
     };
 
     const handleDisabledPressFeedback = () => {
-        if (disabled || isEliminating) {
+        if (isDisabled) {
             triggerHapticFeedback(true);
         }
     };
@@ -63,13 +64,14 @@ export function EliminationButton({
         <>
             <div onMouseDown={handleDisabledPressFeedback} onTouchStart={handleDisabledPressFeedback}>
                 <button
+                    type="button"
                     onClick={handlePress}
                     onKeyDown={handleKeyDown}
-                    disabled={disabled || isEliminating}
+                    disabled={isDisabled}
                     aria-label={
                         isEliminating 
                             ? t("game.actions.eliminationAriaSignaling")
-                            : disabled && !isEliminating 
+                            : isDisabled
                                 ? t("game.actions.eliminationAriaAlready")
                                 : t("game.actions.eliminationAriaSignal")
                     }
@@ -89,7 +91,7 @@ export function EliminationButton({
                     <AlertTriangle className="w-3 h-3" />
                     {isEliminating 
                         ? t("game.actions.signaling")
-                        : disabled && !isEliminating 
+                        : isDisabled
                             ? t("game.actions.eliminationSignaled")
                             : t("game.actions.signalElimination")
                     }
