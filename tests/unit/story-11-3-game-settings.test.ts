@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { joinGame, completeQuest } from "@/lib/redis/actions";
+import { joinGame, completeQuest, startGame } from "@/lib/redis/actions";
 import { redis } from "@/lib/redis/client";
 import { getBatchData } from "@/lib/redis/batch-actions";
 import { QuestType, QuestDuration } from "@/types/quest";
@@ -237,6 +237,62 @@ describe("Story 11.3: Game Settings from Batch", () => {
     });
 
     describe("Quest Assignment Validation", () => {
+        it("should clear impostor assigned quests after role assignment at game start", async () => {
+            const now = Date.now();
+            const mockGameState: GameState = {
+                id: "test-game",
+                status: "LOBBY",
+                creatorId: "admin",
+                players: [
+                    { id: "p1", name: "P1", isAlive: true },
+                    { id: "p2", name: "P2", isAlive: true },
+                    { id: "p3", name: "P3", isAlive: true },
+                ],
+                createdAt: now,
+                revision: 1,
+                updatedAt: now,
+                batchId: "test-batch",
+                questsPerPlayer: { short: 1, medium: 1, long: 1 },
+                impostorMode: "auto",
+            };
+
+            const mockBatch = {
+                id: "test-batch",
+                questCount: 6,
+                createdAt: new Date().toISOString(),
+                quests: [
+                    { id: "s-mg", type: "mini-game" as QuestType, duration: "short" as QuestDuration },
+                    { id: "s-qcm", type: "qcm" as QuestType, duration: "short" as QuestDuration },
+                    { id: "m-mg", type: "mini-game" as QuestType, duration: "medium" as QuestDuration },
+                    { id: "m-tf", type: "true-false" as QuestType, duration: "medium" as QuestDuration },
+                    { id: "l-mg", type: "mini-game" as QuestType, duration: "long" as QuestDuration },
+                    { id: "l-qcm", type: "qcm" as QuestType, duration: "long" as QuestDuration },
+                ],
+            };
+
+            vi.mocked(redis.get).mockResolvedValueOnce(mockGameState);
+            vi.mocked(getBatchData).mockResolvedValueOnce({
+                success: true,
+                data: mockBatch,
+            });
+            vi.mocked(redis.atomicUpdate).mockImplementationOnce(async (_key, updater) => {
+                const updated = updater(mockGameState);
+                return updated;
+            });
+
+            const result = await startGame("test-game");
+
+            expect(result.success).toBe(true);
+            const players = result.data?.players ?? [];
+            const impostors = players.filter((player) => player.role === "IMPOSTOR");
+            const crewmates = players.filter((player) => player.role === "CREWMATE");
+
+            expect(impostors.length).toBe(1);
+            expect(crewmates.length).toBe(2);
+            expect(impostors.every((player) => player.assignedQuests === undefined)).toBe(true);
+            expect(crewmates.every((player) => (player.assignedQuests?.length ?? 0) === 3)).toBe(true);
+        });
+
         it("should block quest completion if not assigned to player when game has batch", async () => {
             const now = Date.now();
             const mockGameState = {

@@ -17,7 +17,7 @@ import { getBatchData } from "@/lib/redis/batch-actions";
 import { getTotalQuestGamesCount } from "@/lib/constants/quest-pool";
 import { generateShortCode } from "@/lib/utils/short-code.server";
 import { Quest, BatchSabotages, SabotageType } from "@/types/quest";
-import { assignQuestsFromLoadedBatch } from "@/lib/quests/quest-assignment";
+import { optimizeCrewmateAssignmentsFromLoadedBatch } from "@/lib/quests/quest-assignment";
 import {
     getFailedQuestsKey,
     getGameNamespacePattern,
@@ -993,6 +993,113 @@ function assignRolesRandomly(
     }));
 }
 
+function optimizeLobbyBatchQuests(
+    state: GameState,
+    players: GameState["players"],
+    batch: { id: string; quests: Quest[] } | null
+): GameState["players"] | null {
+    if (!batch || !state.batchId || state.batchId !== batch.id || !state.questsPerPlayer) {
+        return players;
+    }
+
+    const playerIds = players.map((player) => player.id);
+    if (playerIds.length === 0) {
+        return players;
+    }
+
+    try {
+        const optimization = optimizeCrewmateAssignmentsFromLoadedBatch(
+            {
+                ...state,
+                players,
+            },
+            batch,
+            {
+                playerIds,
+                targetPlayerId: playerIds[0],
+                restarts: 64,
+            }
+        );
+
+        const assignmentsByPlayerId = optimization.assignmentsByPlayerId;
+        return players.map((player) => {
+            const assignments = assignmentsByPlayerId[player.id];
+            if (!assignments || assignments.length === 0) {
+                throw new Error(`No optimized assignment generated for player ${player.id}.`);
+            }
+            return {
+                ...player,
+                assignedQuests: assignments.map((assignment) => assignment.questId),
+            };
+        });
+    } catch (error) {
+        console.error("Quest optimization failed during lobby assignment:", error);
+        return null;
+    }
+}
+
+function optimizeCrewmateBatchQuests(
+    state: GameState,
+    players: GameState["players"],
+    batch: { id: string; quests: Quest[] } | null
+): GameState["players"] | null {
+    if (!batch || !state.batchId || state.batchId !== batch.id || !state.questsPerPlayer) {
+        return players;
+    }
+
+    const crewmateIds = players
+        .filter((player) => player.role === "CREWMATE")
+        .map((player) => player.id);
+
+    if (crewmateIds.length === 0) {
+        return players.map((player) =>
+            player.role === "IMPOSTOR"
+                ? {
+                      ...player,
+                      assignedQuests: undefined,
+                  }
+                : player
+        );
+    }
+
+    try {
+        const optimization = optimizeCrewmateAssignmentsFromLoadedBatch(
+            {
+                ...state,
+                players,
+            },
+            batch,
+            {
+                playerIds: crewmateIds,
+                targetPlayerId: crewmateIds[0],
+                restarts: 64,
+            }
+        );
+
+        const assignmentsByPlayerId = optimization.assignmentsByPlayerId;
+        return players.map((player) => {
+            if (player.role === "CREWMATE") {
+                const assignments = assignmentsByPlayerId[player.id];
+                if (!assignments || assignments.length === 0) {
+                    throw new Error(`No optimized assignment generated for crewmate ${player.id}.`);
+                }
+                return {
+                    ...player,
+                    assignedQuests: assignments.map((assignment) => assignment.questId),
+                };
+            }
+
+            return {
+                ...player,
+                assignedQuests: undefined,
+            };
+        });
+    } catch (error) {
+        console.error("Quest optimization failed during crewmate assignment:", error);
+        return null;
+    }
+}
+
 function assignMissingCrewmateBatchQuests(
     state: GameState,
     players: GameState["players"],
@@ -1009,40 +1116,7 @@ function assignMissingCrewmateBatchQuests(
         return players;
     }
 
-    const playersWithAssignments = [...players];
-
-    for (let index = 0; index < playersWithAssignments.length; index += 1) {
-        const player = playersWithAssignments[index];
-        if (player.role !== "CREWMATE") {
-            continue;
-        }
-        if (player.assignedQuests && player.assignedQuests.length > 0) {
-            continue;
-        }
-
-        try {
-            const assignments = assignQuestsFromLoadedBatch(
-                {
-                    ...state,
-                    players: playersWithAssignments,
-                },
-                batch
-            );
-            if (assignments.length === 0) {
-                return null;
-            }
-
-            playersWithAssignments[index] = {
-                ...player,
-                assignedQuests: assignments.map((assignment) => assignment.questId),
-            };
-        } catch (error) {
-            console.error("Quest assignment failed during startGame mutation:", error);
-            return null;
-        }
-    }
-
-    return playersWithAssignments;
+    return optimizeCrewmateBatchQuests(state, players, batch);
 }
 
 export interface CreateGameInput {
@@ -1374,7 +1448,7 @@ export async function startGame(
                 }
 
                 const playersWithAssignedRoles = assignRolesRandomly(state.players, impostorCount);
-                const playersWithAssignedQuests = assignMissingCrewmateBatchQuests(
+                const playersWithAssignedQuests = optimizeCrewmateBatchQuests(
                     state,
                     playersWithAssignedRoles,
                     assignmentBatch
@@ -1441,7 +1515,7 @@ export async function startGame(
                 state.impostorMode === undefined
                     ? state.players
                     : assignRolesRandomly(state.players, impostorCount);
-            const playersWithAssignedQuests = assignMissingCrewmateBatchQuests(
+            const playersWithAssignedQuests = optimizeCrewmateBatchQuests(
                 state,
                 playersWithAssignedRoles,
                 assignmentBatch
@@ -1651,7 +1725,6 @@ export async function joinGame(
                 return null;
             }
 
-            let assignedQuestIds: string[] | undefined = undefined;
             if (normalizedState.batchId && !assignmentBatch) {
                 validationError = {
                     success: false,
@@ -1670,19 +1743,26 @@ export async function joinGame(
                     };
                     return null;
                 }
-                try {
-                    const assignedQuests = assignQuestsFromLoadedBatch(normalizedState, assignmentBatch);
-                    if (assignedQuests.length === 0) {
-                        validationError = {
-                            success: false,
-                            error: "Failed to assign quests from mission batch.",
-                            code: ERROR_CODES.ERR_SIGNAL_LOST,
-                        };
-                        return null;
-                    }
-                    assignedQuestIds = assignedQuests.map((assignment) => assignment.questId);
-                } catch (error) {
-                    console.error("Quest assignment failed during joinGame mutation:", error);
+            }
+
+            const newPlayer = {
+                id: userId,
+                name: sanitizedName,
+                isAlive: true,
+            };
+
+            const candidateState: GameState = {
+                ...normalizedState,
+                players: [...normalizedState.players, newPlayer],
+            };
+
+            if (assignmentBatch && candidateState.batchId) {
+                const playersWithAssignments = optimizeLobbyBatchQuests(
+                    candidateState,
+                    candidateState.players,
+                    assignmentBatch
+                );
+                if (!playersWithAssignments) {
                     validationError = {
                         success: false,
                         error: "Failed to assign quests from mission batch.",
@@ -1690,19 +1770,12 @@ export async function joinGame(
                     };
                     return null;
                 }
+
+                return {
+                    ...candidateState,
+                    players: playersWithAssignments,
+                };
             }
-
-            const newPlayer = {
-                id: userId,
-                name: sanitizedName,
-                isAlive: true,
-                assignedQuests: assignedQuestIds,
-            };
-
-            const candidateState: GameState = {
-                ...normalizedState,
-                players: [...normalizedState.players, newPlayer],
-            };
 
             return candidateState;
         });
@@ -3017,6 +3090,7 @@ export async function selectRole(
             updatedPlayers[playerIndex] = {
                 ...updatedPlayers[playerIndex],
                 role,
+                assignedQuests: role === "IMPOSTOR" ? undefined : updatedPlayers[playerIndex].assignedQuests,
             };
 
             return {
