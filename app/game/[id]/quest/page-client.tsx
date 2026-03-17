@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useGameStore, useRealTimeGamePolling } from "@/lib/store/game-store";
@@ -30,8 +30,9 @@ function QuestPageContent({ durationParam = null, questIdParam = null }: QuestPa
     const t = useTranslations();
     const { id } = useParams();
     const router = useRouter();
-    const duration: string | null = durationParam;
-    const questId: string | null = questIdParam;
+    const queryParams = useSearchParams();
+    const duration: string | null = durationParam ?? queryParams.get("duration");
+    const questId: string | null = questIdParam ?? queryParams.get("questId");
     const { authState } = useAuth();
     const userId = authState.session?.userId;
     const {

@@ -10,20 +10,6 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-interface QuestPageProps {
-  searchParams?: {
-    duration?: string | string[];
-    questId?: string | string[];
-  };
-}
-
-export default function QuestPage({ searchParams }: QuestPageProps) {
-  const durationParam =
-    typeof searchParams?.duration === "string" ? searchParams.duration : null;
-  const questIdParam =
-    typeof searchParams?.questId === "string" ? searchParams.questId : null;
-
-  return (
-    <QuestPageClient durationParam={durationParam} questIdParam={questIdParam} />
-  );
+export default function QuestPage() {
+  return <QuestPageClient />;
 }
