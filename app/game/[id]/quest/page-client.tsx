@@ -213,6 +213,8 @@ function QuestPageContent({ durationParam = null, questIdParam = null }: QuestPa
                     })}
                     code={fatalErrorCode || ERROR_CODES.ERR_QUEST_LOAD_FAILED}
                     onRetry={() => { if (id && userId) fetchGame(gameId, userId); }}
+                    showRecoverSignalAction={false}
+                    retryActionPrimary
                 />
             </main>
         );
@@ -227,6 +229,8 @@ function QuestPageContent({ durationParam = null, questIdParam = null }: QuestPa
                     message={questError.message}
                     code={questError.code}
                     onRetry={() => { router.push(`/game/${gameId}`); }}
+                    showRecoverSignalAction={false}
+                    retryActionPrimary
                 />
             </main>
         );
@@ -245,6 +249,8 @@ function QuestPageContent({ durationParam = null, questIdParam = null }: QuestPa
                         message={t("game.questPage.missionInactiveMessage")}
                         code={ERROR_CODES.ERR_INVALID_STATE}
                         onRetry={() => { router.push(`/game/${gameId}`); }}
+                        showRecoverSignalAction={false}
+                        retryActionPrimary
                     />
                 </main>
             );
@@ -260,6 +266,8 @@ function QuestPageContent({ durationParam = null, questIdParam = null }: QuestPa
                         message={t("game.questPage.accessDeniedMessage")}
                         code={ERROR_CODES.ERR_INVALID_SIGNATURE}
                         onRetry={() => { router.push(`/game/${gameId}`); }}
+                        showRecoverSignalAction={false}
+                        retryActionPrimary
                     />
                 </main>
             );
@@ -274,6 +282,8 @@ function QuestPageContent({ durationParam = null, questIdParam = null }: QuestPa
                         message={t("game.questPage.roleNotAssignedMessage")}
                         code={ERROR_CODES.ERR_INVALID_ROLE}
                         onRetry={() => { router.push(`/game/${gameId}`); }}
+                        showRecoverSignalAction={false}
+                        retryActionPrimary
                     />
                 </main>
             );
@@ -287,6 +297,8 @@ function QuestPageContent({ durationParam = null, questIdParam = null }: QuestPa
                         message={t("errors.codes.ERR_SABOTAGE_COMMUNICATIONS_QUESTS_BLOCKED")}
                         code={ERROR_CODES.ERR_SABOTAGE_COMMUNICATIONS_QUESTS_BLOCKED}
                         onRetry={() => { router.push(`/game/${gameId}`); }}
+                        showRecoverSignalAction={false}
+                        retryActionPrimary
                     />
                 </main>
             );
@@ -381,6 +393,8 @@ function QuestPageContent({ durationParam = null, questIdParam = null }: QuestPa
                             message={t("game.questPage.noQuestMessage")}
                             code={ERROR_CODES.ERR_NO_QUESTS}
                             onRetry={() => { router.push(`/game/${gameId}`); }}
+                            showRecoverSignalAction={false}
+                            retryActionPrimary
                         />
                     </main>
                 );
