@@ -35,16 +35,16 @@ const ICON_POOL: Array<{ key: string; icon: LucideIcon }> = [
     { key: "star", icon: Star },
 ];
 
-const GRID_COLUMNS_BY_DURATION: Record<QuestDuration, number> = {
-    short: 4,
-    medium: 5,
-    long: 4,
+const GRID_COLUMNS_CLASS_BY_DURATION: Record<QuestDuration, string> = {
+    short: "grid-cols-3 sm:grid-cols-4",
+    medium: "grid-cols-3 sm:grid-cols-5",
+    long: "grid-cols-3 sm:grid-cols-4",
 };
 
 const GRID_MAX_WIDTH_BY_DURATION: Record<QuestDuration, string> = {
-    short: "max-w-[420px]",
-    medium: "max-w-[520px]",
-    long: "max-w-[520px]",
+    short: "max-w-[320px] sm:max-w-[420px]",
+    medium: "max-w-[320px] sm:max-w-[520px]",
+    long: "max-w-[320px] sm:max-w-[520px]",
 };
 
 function shuffle<T>(items: T[]): T[] {
@@ -190,8 +190,7 @@ export function QuestMemory({ duration, onSuccess, onError }: QuestMemoryProps) 
 
             <div className="border border-primary/20 bg-black/40 backdrop-blur-sm p-2 sm:p-3">
                 <div
-                    className={`grid gap-1.5 sm:gap-2 mx-auto ${GRID_MAX_WIDTH_BY_DURATION[duration]}`}
-                    style={{ gridTemplateColumns: `repeat(${GRID_COLUMNS_BY_DURATION[duration]}, minmax(0, 1fr))` }}
+                    className={`grid gap-1.5 sm:gap-2 mx-auto ${GRID_COLUMNS_CLASS_BY_DURATION[duration]} ${GRID_MAX_WIDTH_BY_DURATION[duration]}`}
                 >
                     {cards.map((card, index) => {
                         const Icon = iconByKey[card.iconKey];
