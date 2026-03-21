@@ -93,6 +93,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
 
     const communicationsSabotaged = gameState.sabotageState?.active === "COMMUNICATIONS";
     const lightsSabotaged = gameState.sabotageState?.active === "LIGHTS";
+    const hasActiveSabotage = Boolean(gameState.sabotageState?.active);
 
     const sabotageCodes = new Set([
         "ERR_SABOTAGE_FORBIDDEN",
@@ -237,7 +238,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         (currentPlayer.postEliminationBuzzerGrantedAt ?? 0) > (gameState.meeting?.startedAt ?? 0);
     const canUseBuzzer =
         (currentPlayer.isAlive || hasPostEliminationBuzzerWindow) &&
-        !(currentPlayer.role === "CREWMATE" && communicationsSabotaged) &&
+        !hasActiveSabotage &&
         !hasUsedBuzzer &&
         !isMeetingActive &&
         gameState.status === "IN_PROGRESS";

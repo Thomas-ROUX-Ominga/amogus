@@ -212,6 +212,26 @@ describe("GameHome", () => {
         expect(screen.getByText("COMMUNICATIONS SABOTÉES")).toBeTruthy();
     });
 
+    it("should disable impostor buzzer during reactor sabotage", () => {
+        const sabotagedState: GameState = {
+            ...mockGameState,
+            sabotageState: {
+                active: "REACTOR",
+                reactor: {
+                    startedAt: Date.now(),
+                    endsAt: Date.now() + 30_000,
+                    scannedByQrId: [],
+                    scannedUserIds: [],
+                },
+                cooldowns: { communicationsAvailableAt: 0, lightsAvailableAt: 0, reactorAvailableAt: 0 },
+            },
+        };
+
+        render(<GameHome gameState={sabotagedState} currentPlayer={impostorPlayer} userId="user-2" />);
+        const buzzerButton = screen.getByRole("button", { name: /buzzer/i });
+        expect(buzzerButton).toBeDisabled();
+    });
+
     it("keeps scanner open and shows communications-blocked feedback when lights is scanned during communications sabotage", async () => {
         vi.mocked(useCameraScanner).mockReturnValue({
             isOpen: true,

@@ -129,7 +129,7 @@ describe("meeting actions", () => {
         });
     });
 
-    it("blocks crewmate buzzer when communications sabotage is active", async () => {
+    it("blocks crewmate buzzer when a sabotage is active", async () => {
         const state = await redis.get<GameState>(stateKey);
         await redis.set(stateKey, {
             ...state!,
@@ -146,7 +146,27 @@ describe("meeting actions", () => {
 
         const result = await triggerMeeting(gameId, "u1");
         expect(result.success).toBe(false);
-        expect(result.code).toBe(ERROR_CODES.ERR_SABOTAGE_COMMUNICATIONS_ACTIVE);
+        expect(result.code).toBe(ERROR_CODES.ERR_MEETING_BLOCKED_BY_SABOTAGE);
+    });
+
+    it("blocks impostor buzzer when a sabotage is active", async () => {
+        const state = await redis.get<GameState>(stateKey);
+        await redis.set(stateKey, {
+            ...state!,
+            sabotageState: {
+                active: "LIGHTS",
+                reactor: null,
+                cooldowns: {
+                    communicationsAvailableAt: 0,
+                    lightsAvailableAt: 0,
+                    reactorAvailableAt: 0,
+                },
+            },
+        });
+
+        const result = await triggerMeeting(gameId, "u2");
+        expect(result.success).toBe(false);
+        expect(result.code).toBe(ERROR_CODES.ERR_MEETING_BLOCKED_BY_SABOTAGE);
     });
 
     it("allows a just-eliminated player to trigger buzzer until the next meeting", async () => {

@@ -2661,11 +2661,11 @@ export async function triggerMeeting(
                 return null;
             }
 
-            if (player.role === "CREWMATE" && workingState.sabotageState?.active === "COMMUNICATIONS") {
+            if (workingState.sabotageState?.active) {
                 validationError = {
                     success: false,
-                    error: "Communications sabotage is active. Crewmates cannot trigger meetings.",
-                    code: ERROR_CODES.ERR_SABOTAGE_COMMUNICATIONS_ACTIVE,
+                    error: "A sabotage is active. Meetings cannot be triggered.",
+                    code: ERROR_CODES.ERR_MEETING_BLOCKED_BY_SABOTAGE,
                 };
                 return null;
             }
