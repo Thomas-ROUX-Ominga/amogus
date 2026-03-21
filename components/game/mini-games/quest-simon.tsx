@@ -10,10 +10,10 @@ type SimonColor = "red" | "green" | "yellow" | "blue";
 const COLORS: SimonColor[] = ["red", "green", "yellow", "blue"];
 
 const COLOR_MAP: Record<SimonColor, { bg: string; active: string; shadow: string }> = {
-    red: { bg: "bg-red-800", active: "bg-red-500", shadow: "shadow-[0_4px_0_0_#450a0a]" },
-    green: { bg: "bg-green-800", active: "bg-green-500", shadow: "shadow-[0_4px_0_0_#052e16]" },
-    yellow: { bg: "bg-yellow-700", active: "bg-yellow-400", shadow: "shadow-[0_4px_0_0_#422006]" },
-    blue: { bg: "bg-blue-800", active: "bg-blue-500", shadow: "shadow-[0_4px_0_0_#172554]" },
+    red: { bg: "bg-red-700", active: "bg-red-500", shadow: "shadow-[0_4px_0_0_#450a0a]" },
+    green: { bg: "bg-green-700", active: "bg-green-500", shadow: "shadow-[0_4px_0_0_#052e16]" },
+    yellow: { bg: "bg-yellow-600", active: "bg-yellow-400", shadow: "shadow-[0_4px_0_0_#422006]" },
+    blue: { bg: "bg-blue-700", active: "bg-blue-500", shadow: "shadow-[0_4px_0_0_#172554]" },
 };
 
 interface QuestSimonProps {
@@ -40,6 +40,7 @@ export function QuestSimon({ duration, onSuccess, onError }: QuestSimonProps) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [showFailed, setShowFailed] = useState(false);
     const [hasStarted, setHasStarted] = useState(false);
+    const isInputLocked = !hasStarted || isPlaying || showFailed;
     
     // Handle sequence playback
     const playSequence = useCallback(async () => {
@@ -107,7 +108,7 @@ export function QuestSimon({ duration, onSuccess, onError }: QuestSimonProps) {
     }, [generateSequence, targetLength]);
 
     return (
-        <div className="flex flex-col items-center gap-8 py-4">
+        <div className="flex flex-col items-center gap-6 py-4">
             {/* Status display */}
             <div className="text-center space-y-2">
                 <p className="font-rajdhani text-sm uppercase tracking-[0.2em] text-primary/60">
@@ -117,6 +118,15 @@ export function QuestSimon({ duration, onSuccess, onError }: QuestSimonProps) {
                     {!hasStarted ? " " : (isPlaying ? "OBSERVEZ" : "À VOUS")}
                 </h2>
             </div>
+
+            <p className="font-rajdhani text-xs text-foreground/50 text-center max-w-[240px] min-h-[32px]">
+                {!hasStarted 
+                    ? "Mémorisez la suite de couleurs et reproduisez-la sans faire d'erreur."
+                    : (isPlaying 
+                        ? "Mémorisez l'enchaînement des couleurs qui s'allument."
+                        : "Reproduisez la séquence en cliquant sur les carrés.")
+                }
+            </p>
 
             {/* Simon Pads Container */}
             <div className="relative max-w-[300px] w-full aspect-square">
@@ -130,17 +140,20 @@ export function QuestSimon({ duration, onSuccess, onError }: QuestSimonProps) {
                                 key={color}
                                 whileTap={{ scale: 0.95, y: 2 }}
                                 onClick={() => handleColorClick(color)}
-                                disabled={!hasStarted || isPlaying || showFailed}
+                                tabIndex={isInputLocked ? -1 : 0}
                                 className={`
                                     relative aspect-square rounded-2xl transition-all duration-150
                                     ${config.bg}
                                     ${config.shadow}
                                     ${isActive 
-                                        ? `${config.active} brightness-150 scale-[1.02] shadow-none translate-y-1 z-10 opaciy-100` 
-                                        : "opacity-40"
+                                        ? `${config.active} brightness-150 scale-[1.02] shadow-none translate-y-1 z-10 opacity-100` 
+                                        : !hasStarted
+                                            ? "opacity-35 brightness-75 saturate-75"
+                                            : "opacity-55 brightness-95 saturate-95"
                                     }
                                     border-4 border-black/30
                                     flex items-center justify-center
+                                    ${isInputLocked ? "pointer-events-none" : ""}
                                 `}
                                 aria-label={`Bouton ${color}`}
                             >
@@ -167,16 +180,6 @@ export function QuestSimon({ duration, onSuccess, onError }: QuestSimonProps) {
                     )}
                 </AnimatePresence>
             </div>
-
-            <p className="font-rajdhani text-xs text-foreground/50 text-center max-w-[240px] min-h-[32px]">
-                {!hasStarted 
-                    ? "Mémorisez la suite de couleurs et reproduisez-la sans faire d'erreur."
-                    : (isPlaying 
-                        ? "Mémorisez l'enchaînement des couleurs qui s'allument."
-                        : "Reproduisez la séquence en cliquant sur les carrés.")
-                }
-            </p>
-
 
             <AnimatePresence>
                 {showFailed && (
