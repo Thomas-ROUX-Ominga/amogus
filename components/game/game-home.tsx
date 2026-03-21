@@ -105,7 +105,6 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
 
     // Wrapper for handleScan to intercept sabotage QR first
     const handleScan = async (questId: string): Promise<boolean> => {
-        setScanFeedback(null);
         try {
             const sabotageResponse = await scanSabotage(gameState.id, userId, questId);
             const wasHandled = Boolean(sabotageResponse.data?.handled);
