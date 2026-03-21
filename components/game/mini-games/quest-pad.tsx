@@ -115,23 +115,34 @@ export function QuestPad({ duration, onSuccess, onError }: QuestPadProps) {
     }, [generateSequence, targetLength]);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
             <div className="text-center space-y-1">
                 <p className="font-rajdhani text-sm uppercase tracking-[0.2em] text-primary/60">
                     Série : {currentStep} / {targetLength}
                 </p>
-                <h2 className="text-xl sm:text-2xl font-bold font-orbitron text-primary tracking-wider min-h-[30px]">
+                <h2 className="text-lg sm:text-2xl font-bold font-orbitron text-primary tracking-wider min-h-[30px]">
                     {!hasStarted ? " " : isPlaying ? "OBSERVEZ" : "À VOUS"}
                 </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="border border-slate-500/45 bg-[linear-gradient(145deg,#82878f,#6f757f_45%,#5e646f)] p-3 sm:p-4">
-                    <div className="mb-3 flex items-center gap-2">
+            <p className="font-rajdhani text-xs text-foreground/55 text-center max-w-[340px] mx-auto min-h-[28px] sm:min-h-[32px]">
+                {!hasStarted
+                    ? "Mémorisez la séquence affichée sur l'écran de gauche."
+                    : isPlaying
+                        ? "Regardez les cases s'allumer une à une."
+                        : "Reproduisez la séquence sur le pad 3x3."}
+            </p>
+
+            <div
+                className="items-start gap-2 sm:gap-4"
+                style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}
+            >
+                <div className="min-w-0 border border-slate-500/45 bg-[linear-gradient(145deg,#82878f,#6f757f_45%,#5e646f)] p-2 sm:p-4">
+                    <div className="mb-2 sm:mb-3 flex items-center gap-1 sm:gap-2">
                         {progressIndexes.map((progressId) => (
                             <span
                                 key={`left-led-${progressId}`}
-                                className={`w-4 h-4 rounded-full border border-black/40 ${
+                                className={`h-3 w-3 sm:h-4 sm:w-4 rounded-full border border-black/40 ${
                                     progressId < completedSeriesCount
                                         ? "bg-lime-400 shadow-[0_0_8px_rgba(163,230,53,0.9)]"
                                         : "bg-zinc-900"
@@ -140,8 +151,8 @@ export function QuestPad({ duration, onSuccess, onError }: QuestPadProps) {
                         ))}
                     </div>
 
-                    <div className="border-2 border-slate-200/60 bg-black aspect-square max-w-[300px] mx-auto p-3">
-                        <div className="grid grid-cols-3 gap-2 h-full">
+                    <div className="border-2 border-slate-200/60 bg-black aspect-square w-full max-w-[180px] sm:max-w-[220px] mx-auto p-2 sm:p-3">
+                        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 h-full">
                             {cellIndexes.map((cellId) => (
                                 <div
                                     key={`screen-cell-${cellId}`}
@@ -155,12 +166,12 @@ export function QuestPad({ duration, onSuccess, onError }: QuestPadProps) {
                     </div>
                 </div>
 
-                <div className="border border-slate-500/45 bg-[linear-gradient(145deg,#8b8f96,#757b84_45%,#646b76)] p-3 sm:p-4">
-                    <div className="mb-3 flex items-center gap-2">
+                <div className="min-w-0 border border-slate-500/45 bg-[linear-gradient(145deg,#8b8f96,#757b84_45%,#646b76)] p-2 sm:p-4">
+                    <div className="mb-2 sm:mb-3 flex items-center gap-1 sm:gap-2">
                         {progressIndexes.map((progressId) => (
                             <span
                                 key={`right-led-${progressId}`}
-                                className={`w-4 h-4 rounded-full border border-black/40 ${
+                                className={`h-3 w-3 sm:h-4 sm:w-4 rounded-full border border-black/40 ${
                                     progressId < completedSeriesCount
                                         ? "bg-lime-400 shadow-[0_0_8px_rgba(163,230,53,0.9)]"
                                         : "bg-zinc-900"
@@ -169,49 +180,41 @@ export function QuestPad({ duration, onSuccess, onError }: QuestPadProps) {
                         ))}
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3 max-w-[300px] mx-auto">
-                        {cellIndexes.map((cellId) => {
-                            const pressed = !isPlaying && activeCell === cellId;
-                            return (
+                    <div className="relative w-full max-w-[180px] sm:max-w-[220px] mx-auto">
+                        <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
+                            {cellIndexes.map((cellId) => {
+                                const pressed = !isPlaying && activeCell === cellId;
+                                return (
+                                    <button
+                                        key={`pad-key-${cellId}`}
+                                        type="button"
+                                        onClick={() => handlePadPress(cellId)}
+                                        disabled={!hasStarted || isPlaying || showFailed}
+                                        data-testid={`pad-key-${cellId}`}
+                                        aria-label={`Touche pad ${cellId + 1}`}
+                                        className={`aspect-square rounded-md border-2 transition-all ${
+                                            pressed
+                                                ? "bg-sky-400 border-sky-200/80 shadow-[inset_0_0_10px_rgba(0,0,0,0.45)] translate-y-[1px]"
+                                                : "bg-zinc-500 border-zinc-700 hover:bg-zinc-400"
+                                        } disabled:opacity-70 disabled:cursor-not-allowed`}
+                                    />
+                                );
+                            })}
+                        </div>
+
+                        <AnimatePresence>
+                            {!hasStarted && (
                                 <button
-                                    key={`pad-key-${cellId}`}
-                                    type="button"
-                                    onClick={() => handlePadPress(cellId)}
-                                    disabled={!hasStarted || isPlaying || showFailed}
-                                    data-testid={`pad-key-${cellId}`}
-                                    aria-label={`Touche pad ${cellId + 1}`}
-                                    className={`aspect-square rounded-md border-2 transition-all ${
-                                        pressed
-                                            ? "bg-sky-400 border-sky-200/80 shadow-[inset_0_0_10px_rgba(0,0,0,0.45)] translate-y-[1px]"
-                                            : "bg-zinc-500 border-zinc-700 hover:bg-zinc-400"
-                                    } disabled:opacity-70 disabled:cursor-not-allowed`}
-                                />
-                            );
-                        })}
+                                    onClick={handleStart}
+                                    className="absolute inset-0 m-auto h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-black/85 border-2 border-primary text-primary font-orbitron font-bold text-base tracking-wider shadow-[0_0_20px_rgba(var(--primary-rgb),0.45)] active:scale-95 transition-transform z-10"
+                                >
+                                    GO
+                                </button>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
             </div>
-
-            <div className="relative max-w-[280px] mx-auto h-16">
-                <AnimatePresence>
-                    {!hasStarted && (
-                        <button
-                            onClick={handleStart}
-                            className="absolute inset-0 rounded-full bg-black/85 border-2 border-primary text-primary font-orbitron font-bold text-lg tracking-wider shadow-[0_0_20px_rgba(var(--primary-rgb),0.45)] active:scale-95 transition-transform"
-                        >
-                            GO
-                        </button>
-                    )}
-                </AnimatePresence>
-            </div>
-
-            <p className="font-rajdhani text-xs text-foreground/55 text-center max-w-[340px] mx-auto min-h-[32px]">
-                {!hasStarted
-                    ? "Mémorisez la séquence affichée sur l'écran de gauche."
-                    : isPlaying
-                        ? "Regardez les cases s'allumer une à une."
-                        : "Reproduisez la séquence sur le pad 3x3."}
-            </p>
 
             <AnimatePresence>
                 {showFailed && (
