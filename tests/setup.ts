@@ -32,6 +32,81 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
 
+// Minimal browser APIs used by React Flow and pointer-heavy mini-games
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+if (!(globalThis as { ResizeObserver?: unknown }).ResizeObserver) {
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    value: ResizeObserverMock,
+    configurable: true,
+  });
+}
+
+if (!(window as { visualViewport?: unknown }).visualViewport) {
+  Object.defineProperty(window, 'visualViewport', {
+    value: {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      width: 0,
+      height: 0,
+      offsetLeft: 0,
+      offsetTop: 0,
+      pageLeft: 0,
+      pageTop: 0,
+      scale: 1,
+    },
+    configurable: true,
+  });
+}
+
+class DOMMatrixReadOnlyMock {
+  m11: number;
+  m22: number;
+  m41: number;
+  m42: number;
+
+  constructor(transform?: string) {
+    this.m11 = 1;
+    this.m22 = 1;
+    this.m41 = 0;
+    this.m42 = 0;
+
+    if (!transform || transform === "none") return;
+
+    const values = transform
+      .replace(/matrix3d|matrix|\(|\)/g, "")
+      .split(",")
+      .map((value) => Number(value.trim()))
+      .filter((value) => Number.isFinite(value));
+
+    if (transform.startsWith("matrix3d") && values.length >= 16) {
+      this.m11 = values[0];
+      this.m22 = values[5];
+      this.m41 = values[12];
+      this.m42 = values[13];
+      return;
+    }
+
+    if (transform.startsWith("matrix") && values.length >= 6) {
+      this.m11 = values[0];
+      this.m22 = values[3];
+      this.m41 = values[4];
+      this.m42 = values[5];
+    }
+  }
+}
+
+if (!(window as { DOMMatrixReadOnly?: unknown }).DOMMatrixReadOnly) {
+  Object.defineProperty(window, "DOMMatrixReadOnly", {
+    value: DOMMatrixReadOnlyMock,
+    configurable: true,
+  });
+}
+
 // Mock crypto.randomUUID and getRandomValues
 let uuidCounter = 0;
 Object.defineProperty(globalThis, 'crypto', {
