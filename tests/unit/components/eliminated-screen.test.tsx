@@ -5,6 +5,7 @@ import { EliminatedScreen } from '@/components/game/eliminated-screen';
 describe('EliminatedScreen', () => {
   const defaultProps = {
     playerName: 'TestPlayer',
+    playerRole: 'CREWMATE',
     onDismiss: vi.fn(),
   };
 
@@ -12,90 +13,58 @@ describe('EliminatedScreen', () => {
     vi.clearAllMocks();
   });
 
-  it('renders eliminated screen with proper styling', () => {
+  it('renders awaiting-meeting state by default', () => {
     render(<EliminatedScreen {...defaultProps} />);
-    
-    // Check for opaque background (no transparency)
-    const overlay = screen.getByText('VOUS AVEZ ÉTÉ ÉLIMINÉ').closest('div');
-    expect(overlay).toBeInTheDocument();
-    
-    // Check for prominent eliminated header
-    expect(screen.getByText('ÉLIMINÉ')).toBeInTheDocument();
-    expect(screen.getByText('VOUS AVEZ ÉTÉ ÉLIMINÉ')).toBeInTheDocument();
+
+    expect(screen.getByText('VOUS ÊTES MORT')).toBeInTheDocument();
+    expect(screen.getByText('EN ATTENTE DU MEETING')).toBeInTheDocument();
+    expect(screen.getByText('• Restez assis en silence tant que le meeting n\'est pas terminé.')).toBeInTheDocument();
   });
 
-  it('displays player name and Ghost Mode status', () => {
+  it('shows player name in awaiting state', () => {
     render(<EliminatedScreen {...defaultProps} />);
-    
+
     expect(screen.getByText('Joueur: TestPlayer')).toBeInTheDocument();
-    expect(screen.getByText('Statut: ÉLIMINÉ - MODE FANTÔME ACTIF')).toBeInTheDocument();
   });
 
-  it('shows Ghost Mode capabilities for Crewmates', () => {
-    render(<EliminatedScreen {...defaultProps} playerRole="CREWMATE" />);
-    
-    expect(screen.getByText('• Vous pouvez continuer à scanner des QR codes')).toBeInTheDocument();
-    expect(screen.getByText('• Terminez vos quêtes restantes assignées')).toBeInTheDocument();
-    expect(screen.getByText("• Aidez votre équipage à finir la mission depuis l'au-delà")).toBeInTheDocument();
-  });
-
-  it('renders correctly for Impostors without Ghost Mode info', () => {
-    render(<EliminatedScreen {...defaultProps} playerRole="IMPOSTOR" />);
-    
-    expect(screen.getByText('MISSION TERMINÉE')).toBeInTheDocument();
-    expect(screen.getByText('VOUS AVEZ ÉTÉ DÉSACTIVÉ')).toBeInTheDocument();
-    expect(screen.getByText("Votre mission de sabotage a échoué. L'équipage vous a neutralisé.")).toBeInTheDocument();
-    
-    // Should NOT show Ghost Mode info
-    expect(screen.queryByText('• Vous pouvez continuer à scanner des QR codes')).not.toBeInTheDocument();
-    expect(screen.queryByText('Statut: ÉLIMINÉ - MODE FANTÔME ACTIF')).not.toBeInTheDocument();
-    expect(screen.getByText('En attente de fin de partie ou retour au lobby.')).toBeInTheDocument();
-  });
-
-  it('has proper visual styling for Ghost Mode', () => {
+  it('does not render return-home link anymore', () => {
     render(<EliminatedScreen {...defaultProps} />);
-    
-    // Check for blue Ghost Mode styling
-    const ghostModeElement = screen.getByText('Statut: ÉLIMINÉ - MODE FANTÔME ACTIF');
-    expect(ghostModeElement).toHaveClass('text-blue-300');
+
+    expect(screen.queryByText("Retour à l'accueil")).not.toBeInTheDocument();
+  });
+
+  it('renders ghost-info popup for crewmate', () => {
+    render(<EliminatedScreen {...defaultProps} phase="ghost-info" />);
+
+    expect(screen.getByText('MODE FANTÔME ACTIVÉ')).toBeInTheDocument();
+    expect(screen.getByText('Fantôme crewmate')).toBeInTheDocument();
+    expect(screen.getByText('Vous pouvez terminer vos quêtes en silence, mais vous ne pouvez plus stopper les sabotages.')).toBeInTheDocument();
+  });
+
+  it('renders ghost-info popup for impostor', () => {
+    render(<EliminatedScreen {...defaultProps} playerRole="IMPOSTOR" phase="ghost-info" />);
+
+    expect(screen.getByText('Fantôme imposteur')).toBeInTheDocument();
+    expect(screen.getByText('Vous pouvez toujours déclencher des sabotages en silence.')).toBeInTheDocument();
   });
 
   it('calls onDismiss when close button is clicked', () => {
     render(<EliminatedScreen {...defaultProps} />);
-    
+
     const closeButton = screen.getByLabelText('Fermer');
     fireEvent.click(closeButton);
-    
+
     expect(defaultProps.onDismiss).toHaveBeenCalledTimes(1);
-  });
-
-  it('renders return to lobby link', () => {
-    render(<EliminatedScreen {...defaultProps} />);
-    
-    const returnLink = screen.getByText('Retour à l\'accueil');
-    expect(returnLink).toBeInTheDocument();
-    expect(returnLink.closest('a')).toHaveAttribute('href', '/');
-  });
-
-  it('works without player name', () => {
-    const propsWithoutName = { ...defaultProps };
-    // @ts-expect-error - Testing optional prop
-    delete propsWithoutName.playerName;
-    
-    render(<EliminatedScreen {...propsWithoutName} />);
-    
-    expect(screen.queryByText(/^Joueur:/)).not.toBeInTheDocument();
-    expect(screen.getByText('ÉLIMINÉ')).toBeInTheDocument();
   });
 
   it('works without onDismiss callback', () => {
     const propsWithoutCallback = { ...defaultProps };
-    // @ts-expect-error - Testing optional prop
+    // @ts-expect-error - testing optional prop
     delete propsWithoutCallback.onDismiss;
-    
+
     render(<EliminatedScreen {...propsWithoutCallback} />);
-    
+
     expect(screen.queryByLabelText('Fermer')).not.toBeInTheDocument();
-    expect(screen.getByText('ÉLIMINÉ')).toBeInTheDocument();
+    expect(screen.getByText('VOUS ÊTES MORT')).toBeInTheDocument();
   });
 });

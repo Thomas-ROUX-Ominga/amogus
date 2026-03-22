@@ -10,6 +10,8 @@ interface ScanButtonProps {
     onClick?: () => void;
     href?: string;
     communicationsSabotaged?: boolean;
+    disabledReason?: "coming-soon" | "death-waiting";
+    disabledHint?: string | null;
 }
 
 export function ScanButton({
@@ -17,6 +19,8 @@ export function ScanButton({
     onClick,
     href,
     communicationsSabotaged = false,
+    disabledReason = "coming-soon",
+    disabledHint = null,
 }: ScanButtonProps) {
     const t = useTranslations();
     const prefersReducedMotion = useReducedMotion();
@@ -63,23 +67,34 @@ export function ScanButton({
               ease: "easeInOut" as const,
           };
 
+    const deathWaitingDisabled = disabled && disabledReason === "death-waiting";
+    const hintLabel = disabledHint ?? (disabled && disabledReason === "coming-soon" ? t("game.scanButton.comingSoon") : null);
+
     const content = (
         <>
             <Scan
                 className={`w-10 h-10 ${
-                    communicationsSabotaged ? "text-red-200" : "text-primary"
+                    deathWaitingDisabled
+                        ? "text-slate-300"
+                        : communicationsSabotaged
+                        ? "text-red-200"
+                        : "text-primary"
                 }`}
             />
             <span
                 className={`text-xl font-black tracking-[0.3em] ${
-                    communicationsSabotaged ? "text-red-100" : "text-primary"
+                    deathWaitingDisabled
+                        ? "text-slate-200"
+                        : communicationsSabotaged
+                        ? "text-red-100"
+                        : "text-primary"
                 }`}
             >
                 {t("game.scanButton.label")}
             </span>
-            {disabled && (
-                <span className="text-xs text-primary/60 font-rajdhani tracking-widest">
-                    {t("game.scanButton.comingSoon")}
+            {hintLabel && (
+                <span className={`text-xs font-rajdhani tracking-widest ${deathWaitingDisabled ? "text-slate-300/80" : "text-primary/60"}`}>
+                    {hintLabel}
                 </span>
             )}
         </>
@@ -94,6 +109,9 @@ export function ScanButton({
         touch-manipulation
         transition-all duration-200
         ${
+            deathWaitingDisabled
+                ? "border-slate-400/50 bg-[linear-gradient(150deg,rgba(100,116,139,0.24)_0%,rgba(30,41,59,0.3)_45%,rgba(2,6,23,0.85)_100%)] shadow-[0_0_24px_rgba(100,116,139,0.2)]"
+                :
             communicationsSabotaged
                 ? "border-red-400/70 bg-[linear-gradient(150deg,rgba(239,68,68,0.22)_0%,rgba(153,27,27,0.22)_45%,rgba(2,6,23,0.85)_100%)] shadow-[0_0_28px_rgba(239,68,68,0.22)]"
                 : "border-primary bg-primary/10"
@@ -131,7 +149,9 @@ export function ScanButton({
                 disabled={disabled}
                 aria-label={
                     disabled
-                        ? t("game.scanButton.scannerComingSoonAria")
+                        ? deathWaitingDisabled
+                            ? t("game.home.awaitingMeetingScanDisabled")
+                            : t("game.scanButton.scannerComingSoonAria")
                         : t("game.scanButton.scannerAria")
                 }
                 className={className}

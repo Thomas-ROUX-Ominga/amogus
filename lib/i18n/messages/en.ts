@@ -290,21 +290,24 @@ const en = {
       cancelVote: "Cancel my vote",
     },
     eliminated: {
-      titleImpostor: "MISSION TERMINATED",
-      titleCrewmate: "ELIMINATED",
       dismissAria: "Dismiss",
-      messageImpostor: "YOU HAVE BEEN DECOMMISSIONED",
-      messageCrewmate: "YOU HAVE BEEN ELIMINATED",
-      descriptionImpostor:
-        "Your sabotage mission failed. The crew has neutralized you.",
-      descriptionCrewmate: "Your crew member status has been terminated.",
+      awaitingTitle: "YOU ARE DEAD",
+      awaitingMessage: "WAITING FOR MEETING",
+      awaitingDescription:
+        "Stay seated at your position until a player finds you or a meeting is triggered.",
       playerLabel: "Player: {playerName}",
-      ghostStatus: "Status: ELIMINATED - GHOST MODE ACTIVE",
-      hintScan: "• You can continue scanning QR codes",
-      hintComplete: "• Complete your remaining assigned quests",
-      hintHelp: "• Help your crew complete the mission from beyond",
-      awaitingConclusion: "Awaiting game conclusion or return to lobby.",
-      returnHome: "Return home",
+      awaitingHintSit: "• Stay seated and silent until the meeting is over.",
+      awaitingHintFound:
+        "• A player who finds you may buzz using your phone to trigger a meeting.",
+      awaitingHintSilence: "• You cannot take gameplay actions before that meeting.",
+      ghostPopupTitle: "GHOST MODE ENABLED",
+      ghostPopupMessageCrewmate: "Crewmate ghost",
+      ghostPopupDescriptionCrewmate:
+        "You can finish quests silently, but you can no longer stop sabotages.",
+      ghostPopupMessageImpostor: "Impostor ghost",
+      ghostPopupDescriptionImpostor:
+        "You can still trigger sabotages silently.",
+      ghostPopupFooter: "Stay quiet: you are out of voice debate.",
     },
     meeting: {
       loadingRoom: "Loading meeting room...",
@@ -314,6 +317,9 @@ const en = {
       noMeetingTitle: "No active meeting",
       noMeetingDescription:
         "Wait for a buzz to start a meeting and freeze the data.",
+      bodyFoundTitle: "Body found",
+      bodyFoundPrefix: "Body identified:",
+      bodyFoundTag: "BODY",
       completedTitle: "Meeting completed",
       eliminatedPlayer: "{playerName} was eliminated.",
       noElimination: "No elimination (no votes).",
@@ -388,6 +394,10 @@ const en = {
       locationLabel: "Location {index}",
       lastQuest: "Last quest: {time}",
       you: "YOU",
+      awaitingMeetingNotice:
+        "Dead player: quests and actions are suspended until the next meeting ends.",
+      awaitingMeetingStatus: "WAITING",
+      awaitingMeetingAction: "WAIT FOR MEETING",
     },
     questWidgets: {
       answerAria: "Quest answer",
@@ -514,6 +524,14 @@ const en = {
       footerRole: "Role: {role}",
       footerStatusReady: "Status: READY",
       footerStatusEliminated: "Status: ELIMINATED",
+      awaitingMeetingBanner:
+        "You are dead. Stay seated and wait until someone finds you or a meeting is triggered.",
+      awaitingMeetingScanDisabled:
+        "Scanner disabled until the next meeting is completed.",
+      ghostReminderCrewmate:
+        "Ghost: stay silent. You can finish quests, but you cannot stop sabotages.",
+      ghostReminderImpostor:
+        "Ghost: stay silent. You can still trigger sabotages.",
       meetingTriggeredTitle: "Meeting triggered",
       meetingTriggeredMessage:
         "A buzz has been triggered. Join the meeting room and gather IRL.",

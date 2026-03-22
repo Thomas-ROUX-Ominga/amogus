@@ -6,14 +6,11 @@ import { X, AlertCircle, Loader2 } from "lucide-react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
-import { EliminatedScreen } from "@/components/game/eliminated-screen";
 
 export interface CameraScannerProps {
     isOpen: boolean;
     onClose: () => void;
     onScan: (questId: string) => void | boolean | Promise<void | boolean>;
-    isPlayerEliminated?: boolean;
-    playerRole?: string;
     statusMessage?: string | null;
 }
 
@@ -21,8 +18,6 @@ export function CameraScanner({
     isOpen,
     onClose,
     onScan,
-    isPlayerEliminated = false,
-    playerRole,
     statusMessage = null,
 }: CameraScannerProps) {
     const t = useTranslations();
@@ -279,80 +274,65 @@ export function CameraScanner({
                                     </div>
                                 )}
 
-                                {isPlayerEliminated && playerRole === "CREWMATE" && (
-                                    <div className="mb-4 border border-blue-500/30 bg-blue-500/10 p-3 text-center">
-                                        <h3 className="text-xs font-bold uppercase tracking-wider text-blue-300 font-orbitron">
-                                            {t("game.scanner.ghostModeTitle")}
-                                        </h3>
-                                        <p className="text-xs text-blue-200/90 font-rajdhani mt-1">
-                                            {t("game.scanner.ghostModeDescription")}
-                                        </p>
-                                    </div>
-                                )}
-
                                 <div className="relative mx-auto w-full max-w-[560px]">
-                                    {isPlayerEliminated && playerRole === "IMPOSTOR" ? (
-                                        <EliminatedScreen onDismiss={onClose} playerRole={playerRole} />
-                                    ) : (
-                                        <div className="relative aspect-square w-full overflow-hidden border border-primary/35 bg-black/90 shadow-[0_0_40px_rgba(88,166,255,0.15)]">
-                                            <div
-                                                id={scannerRegionId}
-                                                className="h-full w-full overflow-hidden bg-black [&_video]:h-full [&_video]:w-full [&_video]:object-cover [&_canvas]:hidden [&_img]:hidden"
-                                                aria-label={t("game.scanner.cameraViewAria")}
-                                                role="img"
-                                            />
+                                    <div className="relative aspect-square w-full overflow-hidden border border-primary/35 bg-black/90 shadow-[0_0_40px_rgba(88,166,255,0.15)]">
+                                        <div
+                                            id={scannerRegionId}
+                                            className="h-full w-full overflow-hidden bg-black [&_video]:h-full [&_video]:w-full [&_video]:object-cover [&_canvas]:hidden [&_img]:hidden"
+                                            aria-label={t("game.scanner.cameraViewAria")}
+                                            role="img"
+                                        />
 
-                                            <div className="pointer-events-none absolute inset-0">
-                                                <div className="absolute inset-5 border border-primary/45" />
+                                        <div className="pointer-events-none absolute inset-0">
+                                            <div className="absolute inset-5 border border-primary/45" />
 
-                                                <div className="absolute left-5 top-5 h-8 w-8 border-l-2 border-t-2 border-white/80" />
-                                                <div className="absolute right-5 top-5 h-8 w-8 border-r-2 border-t-2 border-white/80" />
-                                                <div className="absolute left-5 bottom-5 h-8 w-8 border-l-2 border-b-2 border-white/80" />
-                                                <div className="absolute right-5 bottom-5 h-8 w-8 border-r-2 border-b-2 border-white/80" />
+                                            <div className="absolute left-5 top-5 h-8 w-8 border-l-2 border-t-2 border-white/80" />
+                                            <div className="absolute right-5 top-5 h-8 w-8 border-r-2 border-t-2 border-white/80" />
+                                            <div className="absolute left-5 bottom-5 h-8 w-8 border-l-2 border-b-2 border-white/80" />
+                                            <div className="absolute right-5 bottom-5 h-8 w-8 border-r-2 border-b-2 border-white/80" />
 
-                                                <div className="absolute inset-5">
-                                                    <m.div
-                                                        className="absolute left-3 right-3 h-[2px] bg-primary shadow-[0_0_14px_rgba(88,166,255,0.9)]"
-                                                        animate={{ top: ["calc(100% - 2px)", "0%"] }}
-                                                        transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
-                                                    />
+                                            <div className="absolute inset-5">
+                                                <m.div
+                                                    className="absolute left-3 right-3 h-[2px] bg-primary shadow-[0_0_14px_rgba(88,166,255,0.9)]"
+                                                    animate={{ top: ["calc(100% - 2px)", "0%"] }}
+                                                    transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {isLoading && (
+                                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/65">
+                                                <div className="space-y-3 text-center">
+                                                    <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" />
+                                                    <p className="text-xs uppercase tracking-wider text-primary font-rajdhani">
+                                                        {t("game.scanner.initializingCamera")}
+                                                    </p>
                                                 </div>
                                             </div>
+                                        )}
 
-                                            {isLoading && (
-                                                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/65">
-                                                    <div className="space-y-3 text-center">
-                                                        <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" />
-                                                        <p className="text-xs uppercase tracking-wider text-primary font-rajdhani">
-                                                            {t("game.scanner.initializingCamera")}
+                                        {error && (
+                                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/65 p-4">
+                                                <div className="w-full max-w-sm space-y-3 border border-destructive/35 bg-destructive/10 p-4 text-center">
+                                                    <AlertCircle className="mx-auto h-9 w-9 text-destructive" />
+                                                    <div>
+                                                        <h3 className="mb-1 text-sm font-bold text-destructive font-orbitron uppercase tracking-wider">
+                                                            {t("game.scanner.cameraErrorTitle")}
+                                                        </h3>
+                                                        <p className="text-xs text-muted-foreground font-rajdhani">
+                                                            {error}
                                                         </p>
                                                     </div>
+                                                    <button
+                                                        onClick={handleRetry}
+                                                        className="h-10 px-4 border border-primary bg-primary text-primary-foreground text-xs uppercase tracking-widest font-orbitron hover:opacity-90 transition-opacity"
+                                                    >
+                                                        {t("game.scanner.retry")}
+                                                    </button>
                                                 </div>
-                                            )}
-
-                                            {error && (
-                                                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/65 p-4">
-                                                    <div className="w-full max-w-sm space-y-3 border border-destructive/35 bg-destructive/10 p-4 text-center">
-                                                        <AlertCircle className="mx-auto h-9 w-9 text-destructive" />
-                                                        <div>
-                                                            <h3 className="mb-1 text-sm font-bold text-destructive font-orbitron uppercase tracking-wider">
-                                                                {t("game.scanner.cameraErrorTitle")}
-                                                            </h3>
-                                                            <p className="text-xs text-muted-foreground font-rajdhani">
-                                                                {error}
-                                                            </p>
-                                                        </div>
-                                                        <button
-                                                            onClick={handleRetry}
-                                                            className="h-10 px-4 border border-primary bg-primary text-primary-foreground text-xs uppercase tracking-widest font-orbitron hover:opacity-90 transition-opacity"
-                                                        >
-                                                            {t("game.scanner.retry")}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

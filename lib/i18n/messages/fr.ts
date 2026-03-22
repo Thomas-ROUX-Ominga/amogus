@@ -293,21 +293,24 @@ const fr = {
       cancelVote: "Annuler mon vote",
     },
     eliminated: {
-      titleImpostor: "MISSION TERMINÉE",
-      titleCrewmate: "ÉLIMINÉ",
       dismissAria: "Fermer",
-      messageImpostor: "VOUS AVEZ ÉTÉ DÉSACTIVÉ",
-      messageCrewmate: "VOUS AVEZ ÉTÉ ÉLIMINÉ",
-      descriptionImpostor:
-        "Votre mission de sabotage a échoué. L'équipage vous a neutralisé.",
-      descriptionCrewmate: "Votre statut membre d'équipage a été révoqué.",
+      awaitingTitle: "VOUS ÊTES MORT",
+      awaitingMessage: "EN ATTENTE DU MEETING",
+      awaitingDescription:
+        "Restez assis à votre position jusqu'à ce qu'un joueur vous trouve ou qu'un meeting soit déclenché.",
       playerLabel: "Joueur: {playerName}",
-      ghostStatus: "Statut: ÉLIMINÉ - MODE FANTÔME ACTIF",
-      hintScan: "• Vous pouvez continuer à scanner des QR codes",
-      hintComplete: "• Terminez vos quêtes restantes assignées",
-      hintHelp: "• Aidez votre équipage à finir la mission depuis l'au-delà",
-      awaitingConclusion: "En attente de fin de partie ou retour au lobby.",
-      returnHome: "Retour à l'accueil",
+      awaitingHintSit: "• Restez assis en silence tant que le meeting n'est pas terminé.",
+      awaitingHintFound:
+        "• Un joueur qui vous découvre peut buzzer via votre téléphone pour lancer le meeting.",
+      awaitingHintSilence: "• Vous ne participez plus aux actions de jeu avant ce meeting.",
+      ghostPopupTitle: "MODE FANTÔME ACTIVÉ",
+      ghostPopupMessageCrewmate: "Fantôme crewmate",
+      ghostPopupDescriptionCrewmate:
+        "Vous pouvez terminer vos quêtes en silence, mais vous ne pouvez plus stopper les sabotages.",
+      ghostPopupMessageImpostor: "Fantôme imposteur",
+      ghostPopupDescriptionImpostor:
+        "Vous pouvez toujours déclencher des sabotages en silence.",
+      ghostPopupFooter: "Restez discret: vous êtes hors débat vocal.",
     },
     meeting: {
       loadingRoom: "Chargement de la salle de meeting...",
@@ -317,6 +320,9 @@ const fr = {
       noMeetingTitle: "Aucun meeting en cours",
       noMeetingDescription:
         "Attendez un buzz pour lancer un meeting et figer les données.",
+      bodyFoundTitle: "Cadavre trouvé",
+      bodyFoundPrefix: "Cadavre identifié:",
+      bodyFoundTag: "CADAVRE",
       completedTitle: "Meeting terminé",
       eliminatedPlayer: "{playerName} a été éliminé.",
       noElimination: "Aucune élimination (aucun vote).",
@@ -391,6 +397,10 @@ const fr = {
       locationLabel: "Lieu {index}",
       lastQuest: "Dernière quête: {time}",
       you: "VOUS",
+      awaitingMeetingNotice:
+        "Joueur mort: quêtes et actions suspendues jusqu'à la fin du prochain meeting.",
+      awaitingMeetingStatus: "EN ATTENTE",
+      awaitingMeetingAction: "ATTENTE MEETING",
     },
     questWidgets: {
       answerAria: "Réponse de la quête",
@@ -518,6 +528,14 @@ const fr = {
       footerRole: "Rôle: {role}",
       footerStatusReady: "Statut: PRÊT",
       footerStatusEliminated: "Statut: ÉLIMINÉ",
+      awaitingMeetingBanner:
+        "Vous êtes mort. Restez assis et attendez qu'un joueur vous trouve ou qu'un meeting soit déclenché.",
+      awaitingMeetingScanDisabled:
+        "Scanner inactif tant que le meeting suivant n'est pas terminé.",
+      ghostReminderCrewmate:
+        "Fantôme: restez muet. Vous pouvez finir vos quêtes, mais pas stopper les sabotages.",
+      ghostReminderImpostor:
+        "Fantôme: restez muet. Vous pouvez encore déclencher des sabotages.",
       meetingTriggeredTitle: "Meeting déclenché",
       meetingTriggeredMessage:
         "Un buzz a été déclenché. Rejoignez la salle de meeting et rassemblez-vous IRL.",

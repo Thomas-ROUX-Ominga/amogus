@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { GameState, Player } from "@/types/game";
 import { useGameStore } from "@/lib/store/game-store";
 import { QuestProgress } from "@/components/game/quest-progress";
@@ -26,26 +26,41 @@ interface GameHomeProps {
 
 export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     const t = useTranslations();
+    const locale = useLocale();
+    const isFrench = locale.startsWith("fr");
     const gameWinner = gameState.winner;
     const isGameOver = gameState.status === "FINISHED" && Boolean(gameWinner);
-    const storageKey = `elimination-dismissed-${gameState.id}-${userId}`;
     const isMeetingActive = gameState.meeting?.status === "ACTIVE";
     const activeMeetingId = gameState.meeting?.id;
+
+    const ghostPopupStorageKey = `ghost-popup-dismissed-${gameState.id}-${userId}`;
     const meetingPopupStorageKey = activeMeetingId
         ? `meeting-popup-dismissed-${gameState.id}-${activeMeetingId}-${userId}`
         : null;
-    const [showEliminatedOverlay, setShowEliminatedOverlay] = React.useState(() => {
-        if (currentPlayer.isAlive) return false;
+
+    const hasPostEliminationBuzzerWindow =
+        !currentPlayer.isAlive &&
+        Boolean(currentPlayer.postEliminationBuzzerGrantedAt) &&
+        (currentPlayer.postEliminationBuzzerGrantedAt ?? 0) > (gameState.meeting?.startedAt ?? 0);
+    const isAwaitingMeetingAfterDeath = !currentPlayer.isAlive && hasPostEliminationBuzzerWindow;
+    const isGhostAfterMeeting =
+        !currentPlayer.isAlive &&
+        !isAwaitingMeetingAfterDeath &&
+        gameState.meeting?.status !== "ACTIVE";
+
+    const [showGhostPopup, setShowGhostPopup] = React.useState(() => {
+        if (!isGhostAfterMeeting || isGameOver) return false;
         if (typeof window !== "undefined") {
-            return !sessionStorage.getItem(storageKey);
+            return !sessionStorage.getItem(ghostPopupStorageKey);
         }
         return true;
     });
     const [showMeetingPopup, setShowMeetingPopup] = React.useState(false);
     const [scanFeedback, setScanFeedback] = React.useState<string | null>(null);
-    const { 
-        questsCompleted, 
-        questsTotal, 
+
+    const {
+        questsCompleted,
+        questsTotal,
         isLoading,
         refreshGameData,
         isEliminating,
@@ -58,23 +73,17 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         triggerMeetingAction = async () => false,
     } = useGameStore();
 
-    // Story 12.0: Check if all quests are finished to hide the scan button
     const allQuestsDone = questsTotal > 0 && questsCompleted >= questsTotal;
 
-    // Sync local overlay state with player alive status
     useEffect(() => {
-        if (isGameOver) {
-            setShowEliminatedOverlay(false);
+        if (isGameOver || !isGhostAfterMeeting) {
+            setShowGhostPopup(false);
             return;
         }
 
-        if (!currentPlayer.isAlive) {
-            const isDismissed = sessionStorage.getItem(storageKey);
-            if (!isDismissed) {
-                setShowEliminatedOverlay(true);
-            }
-        }
-    }, [currentPlayer.isAlive, storageKey, isGameOver]);
+        const dismissed = sessionStorage.getItem(ghostPopupStorageKey);
+        setShowGhostPopup(!dismissed);
+    }, [isGhostAfterMeeting, ghostPopupStorageKey, isGameOver]);
 
     useEffect(() => {
         if (!isMeetingActive || !meetingPopupStorageKey) {
@@ -86,10 +95,15 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         setShowMeetingPopup(!dismissed);
     }, [isMeetingActive, meetingPopupStorageKey]);
 
-    // Camera scanner state management
     const { isOpen, openScanner, closeScanner, handleScan: originalHandleScan } = useCameraScanner({
         gameId: gameState.id,
     });
+
+    useEffect(() => {
+        if (isAwaitingMeetingAfterDeath && isOpen) {
+            closeScanner();
+        }
+    }, [isAwaitingMeetingAfterDeath, isOpen, closeScanner]);
 
     const communicationsSabotaged = gameState.sabotageState?.active === "COMMUNICATIONS";
     const lightsSabotaged = gameState.sabotageState?.active === "LIGHTS";
@@ -104,8 +118,12 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         "ERR_SABOTAGE_COMMUNICATIONS_QUESTS_BLOCKED",
     ]);
 
-    // Wrapper for handleScan to intercept sabotage QR first
     const handleScan = async (questId: string): Promise<boolean> => {
+        if (isAwaitingMeetingAfterDeath) {
+            setScanFeedback(t("game.home.awaitingMeetingScanDisabled"));
+            return true;
+        }
+
         try {
             const sabotageResponse = await scanSabotage(gameState.id, userId, questId);
             const wasHandled = Boolean(sabotageResponse.data?.handled);
@@ -197,16 +215,14 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
             return true;
         }
     };
-    
-    // Elimination handler
+
     const handleElimination = async () => {
         const success = await eliminatePlayerAction(gameState.id, userId);
         if (!success) {
             console.error("Elimination failed");
         }
     };
-    
-    // Defensive validation: ensure role exists
+
     if (!currentPlayer.role) {
         return (
             <main className="flex min-h-screen flex-col items-center justify-start bg-background text-foreground font-mono px-4 pt-16 pb-4 sm:pt-20 overflow-y-auto">
@@ -228,14 +244,31 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
             </main>
         );
     }
-    
+
     const role = currentPlayer.role;
     const isImpostor = role === "IMPOSTOR";
+    const ghostReminderCrewmate = (() => {
+        try {
+            return t("game.home.ghostReminderCrewmate");
+        } catch {
+            return isFrench
+                ? "Fantôme: restez muet. Vous pouvez finir vos quêtes, mais pas stopper les sabotages."
+                : "Ghost: stay silent. You can finish quests, but you cannot stop sabotages.";
+        }
+    })();
+    const ghostReminderImpostor = (() => {
+        try {
+            return t("game.home.ghostReminderImpostor");
+        } catch {
+            return isFrench
+                ? "Fantôme: restez muet. Vous pouvez encore déclencher des sabotages."
+                : "Ghost: stay silent. You can still trigger sabotages.";
+        }
+    })();
+    const ghostReminderMessage = isImpostor
+        ? ghostReminderImpostor
+        : ghostReminderCrewmate;
     const hasUsedBuzzer = Boolean(currentPlayer.meetingBuzzUsedAt);
-    const hasPostEliminationBuzzerWindow =
-        !currentPlayer.isAlive &&
-        Boolean(currentPlayer.postEliminationBuzzerGrantedAt) &&
-        (currentPlayer.postEliminationBuzzerGrantedAt ?? 0) > (gameState.meeting?.startedAt ?? 0);
     const canUseBuzzer =
         (currentPlayer.isAlive || hasPostEliminationBuzzerWindow) &&
         !hasActiveSabotage &&
@@ -257,40 +290,64 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         setShowMeetingPopup(false);
     };
 
+    const dismissGhostPopup = () => {
+        sessionStorage.setItem(ghostPopupStorageKey, "true");
+        setShowGhostPopup(false);
+    };
+
     return (
         <main className="flex h-[100dvh] overflow-hidden flex-col items-center justify-start bg-background text-foreground font-mono px-4 pt-16 pb-4 sm:pt-20">
-            <div className={`max-w-2xl w-full border-2 p-6 md:p-10 bg-black/50 backdrop-blur-sm transition-all duration-500 ${
-                currentPlayer.isAlive 
-                    ? "border-primary/20 shadow-[0_0_50px_rgba(var(--primary),0.05)]" 
-                    : "border-red-500/40 shadow-[0_0_50px_rgba(239,68,68,0.2)]"
-            } h-full min-h-0 flex flex-col`}>
-                {/* Header: Title + Status Indicator */}
+            <div
+                className={`max-w-2xl w-full border-2 p-6 md:p-10 bg-black/50 backdrop-blur-sm transition-all duration-500 ${
+                    currentPlayer.isAlive
+                        ? "border-primary/20 shadow-[0_0_50px_rgba(var(--primary),0.05)]"
+                        : "border-red-500/40 shadow-[0_0_50px_rgba(239,68,68,0.2)]"
+                } h-full min-h-0 flex flex-col`}
+            >
                 <div className="flex items-center justify-between border-b border-primary/20 pb-4">
                     <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
                         {t("game.home.title")}
                     </h1>
                     <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full animate-pulse ${currentPlayer.isAlive ? "bg-green-500" : "bg-red-500"}`} aria-hidden="true" />
-                        <span className={`text-[10px] tracking-widest ${currentPlayer.isAlive ? "text-green-400/80" : "text-red-400/80 font-bold"}`}>
+                        <span
+                            className={`w-2 h-2 rounded-full animate-pulse ${
+                                currentPlayer.isAlive ? "bg-green-500" : "bg-red-500"
+                            }`}
+                            aria-hidden="true"
+                        />
+                        <span
+                            className={`text-[10px] tracking-widest ${
+                                currentPlayer.isAlive ? "text-green-400/80" : "text-red-400/80 font-bold"
+                            }`}
+                        >
                             {currentPlayer.isAlive ? t("game.home.statusActive") : t("game.home.statusDead")}
                         </span>
-                        <span className="sr-only">{currentPlayer.isAlive ? t("game.home.screenReaderAlive") : t("game.home.screenReaderDead")}</span>
+                        <span className="sr-only">
+                            {currentPlayer.isAlive
+                                ? t("game.home.screenReaderAlive")
+                                : t("game.home.screenReaderDead")}
+                        </span>
                     </div>
                 </div>
 
-                {/* Victory/Defeat Overlay */}
                 {isGameOver && gameWinner && (
-                    <GameOverScreen 
-                        winner={gameWinner}
-                        userRole={role}
-                        gameId={gameState.id}
-                    />
+                    <GameOverScreen winner={gameWinner} userRole={role} gameId={gameState.id} />
                 )}
 
                 <div className="min-h-0 flex-1 overflow-hidden flex flex-col gap-4">
                     <ReactorSabotageAlert gameState={gameState} />
 
-                    {/* Quest Progress (Crewmate and Host only) */}
+                    {isAwaitingMeetingAfterDeath && (
+                        <div className="border border-red-500/30 bg-red-950/35 p-3 text-center text-xs text-red-100 font-rajdhani tracking-wide">
+                            {t("game.home.awaitingMeetingBanner")}
+                        </div>
+                    )}
+                    {isGhostAfterMeeting && (
+                        <div className="border border-blue-500/30 bg-blue-950/30 p-3 text-center text-xs text-blue-100 font-rajdhani tracking-wide">
+                            {ghostReminderMessage}
+                        </div>
+                    )}
+
                     <div className="min-h-0 flex-1">
                         <QuestProgress
                             role={role}
@@ -304,14 +361,18 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                             communicationsSabotaged={currentPlayer.role === "CREWMATE" && communicationsSabotaged}
                             lightsSabotaged={currentPlayer.role === "CREWMATE" && lightsSabotaged}
                             gameStateOverride={gameState}
+                            deadAwaitingMeeting={isAwaitingMeetingAfterDeath}
                         />
                     </div>
 
-                    {/* SCAN Button (thumb zone — bottom) */}
                     {!isImpostor && !allQuestsDone && !isMeetingActive && (
-                        <ScanButton 
-                            disabled={false} 
-                            communicationsSabotaged={communicationsSabotaged}
+                        <ScanButton
+                            disabled={isAwaitingMeetingAfterDeath}
+                            disabledReason={isAwaitingMeetingAfterDeath ? "death-waiting" : "coming-soon"}
+                            disabledHint={
+                                isAwaitingMeetingAfterDeath ? t("game.home.awaitingMeetingScanDisabled") : null
+                            }
+                            communicationsSabotaged={!isAwaitingMeetingAfterDeath && communicationsSabotaged}
                             onClick={() => {
                                 setScanFeedback(null);
                                 openScanner();
@@ -319,7 +380,6 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         />
                     )}
 
-                    {/* Action Buttons: below scanner (crewmate) / below sabotages (impostor) */}
                     {isImpostor ? (
                         <div className="shrink-0">
                             <BuzzerButton
@@ -343,50 +403,44 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                             />
                             <EliminationButton
                                 onEliminate={handleElimination}
-                                disabled={isEliminating || !currentPlayer.isAlive || isMeetingActive || gameState.status !== "IN_PROGRESS"}
+                                disabled={
+                                    isEliminating ||
+                                    !currentPlayer.isAlive ||
+                                    isMeetingActive ||
+                                    gameState.status !== "IN_PROGRESS"
+                                }
                                 isEliminating={isEliminating}
                                 className="w-full min-h-[56px] justify-center gap-2 px-4 py-3 text-[11px] tracking-[0.12em]"
                             />
                         </div>
                     )}
 
-                    {/* Camera Scanner Overlay */}
-                    {!isImpostor && !allQuestsDone && (
+                    {!isImpostor && !allQuestsDone && !isAwaitingMeetingAfterDeath && (
                         <CameraScanner
                             isOpen={isOpen}
                             onClose={closeScanner}
                             onScan={handleScan}
-                            isPlayerEliminated={!currentPlayer.isAlive}
-                            playerRole={currentPlayer.role}
                             statusMessage={scanFeedback}
                         />
                     )}
 
-                    {/* Prominent Elimination Overlay */}
-                    {showEliminatedOverlay && !isGameOver && (
-                        <EliminatedScreen 
-                            playerName={currentPlayer.name}
-                            playerRole={currentPlayer.role}
-                            onDismiss={() => {
-                                sessionStorage.setItem(storageKey, "true");
-                                setShowEliminatedOverlay(false);
-                            }}
-                        />
-                    )}
-
                 </div>
 
-                {/* Footer */}
                 <div className="pt-4 flex justify-between items-center">
                     <div className="text-[8px] opacity-40 text-muted-foreground uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)]">
                         {t("game.home.footerRole", { role: currentPlayer.role })}
                     </div>
-                    <div className={`text-[8px] uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)] ${currentPlayer.isAlive ? "opacity-40 text-muted-foreground" : "text-red-500 font-bold"}`}>
-                        {currentPlayer.isAlive ? t("game.home.footerStatusReady") : t("game.home.footerStatusEliminated")}
+                    <div
+                        className={`text-[8px] uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)] ${
+                            currentPlayer.isAlive ? "opacity-40 text-muted-foreground" : "text-red-500 font-bold"
+                        }`}
+                    >
+                        {currentPlayer.isAlive
+                            ? t("game.home.footerStatusReady")
+                            : t("game.home.footerStatusEliminated")}
                     </div>
                 </div>
-                
-                {/* Elimination error display */}
+
                 {eliminationError && (
                     <div className="mt-2 p-2 border border-destructive/20 bg-destructive/10 text-destructive text-xs text-center">
                         {getLocalizedErrorMessage({
@@ -432,6 +486,14 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {showGhostPopup && !isGameOver && isGhostAfterMeeting && (
+                <EliminatedScreen
+                    playerRole={currentPlayer.role}
+                    phase="ghost-info"
+                    onDismiss={dismissGhostPopup}
+                />
             )}
         </main>
     );

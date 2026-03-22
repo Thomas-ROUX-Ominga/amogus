@@ -20,6 +20,7 @@ interface QuestProgressProps {
     communicationsSabotaged?: boolean;
     lightsSabotaged?: boolean;
     gameStateOverride?: GameState;
+    deadAwaitingMeeting?: boolean;
 }
 
 const EMPTY_ARRAY: string[] = [];
@@ -46,6 +47,7 @@ export function QuestProgress({
     communicationsSabotaged = false,
     lightsSabotaged = false,
     gameStateOverride,
+    deadAwaitingMeeting = false,
 }: QuestProgressProps) {
     const t = useTranslations();
     const {
@@ -93,14 +95,24 @@ export function QuestProgress({
     useEffect(() => {
         if (role !== "CREWMATE") return;
 
+        let cancelled = false;
+
         const fetchQuests = async () => {
             let assignedList: Array<Quest & { completed: boolean; location?: string }> = [];
 
                 if (batchId) {
                     let allQuests = resolvedGameQuests;
                     const activeGameId = activeGameState?.id;
+                    const hasMissingAssignedQuestDefinition =
+                        assignedQuests.length > 0 &&
+                        assignedQuests.some((questId) => !allQuests.some((quest) => quest.id === questId));
 
-                    if (allQuests.length === 0 && activeGameId && !isGameQuestsLoading && fetchGameQuests) {
+                    if (
+                        (allQuests.length === 0 || hasMissingAssignedQuestDefinition) &&
+                        activeGameId &&
+                        !isGameQuestsLoading &&
+                        fetchGameQuests
+                    ) {
                         const nowTs = Date.now();
                         const lastFetch = lastQuestCatalogFetchRef.current;
                         const shouldFetch =
@@ -176,9 +188,15 @@ export function QuestProgress({
                     });
                 }
 
-            setCrewQuests(assignedList);
+            if (!cancelled) {
+                setCrewQuests(assignedList);
+            }
         };
-        fetchQuests();
+        void fetchQuests();
+
+        return () => {
+            cancelled = true;
+        };
     }, [
         role,
         batchId,
@@ -186,7 +204,7 @@ export function QuestProgress({
         completedQuests,
         total,
         completed,
-        resolvedGameQuests.length,
+        resolvedGameQuests,
         activeGameState?.id,
         currentPlayerId,
         isGameQuestsLoading,
@@ -216,6 +234,7 @@ export function QuestProgress({
         const reactorActive = sabotageState?.active === "REACTOR";
         const lightsConfigured = Boolean(lightsConfig?.qrId);
         const isAnySabotageTriggering = isTriggeringSabotage !== null;
+        const disabledByDeathWaiting = deadAwaitingMeeting;
 
         const impostorTeammates = (activeGameState?.players ?? []).filter(
             (player) =>
@@ -244,7 +263,12 @@ export function QuestProgress({
             const isBlockedByOtherAction =
                 (isAnySabotageTriggering && !isTriggeringThis) || isAnotherSabotageAlreadyActive;
             const isDisabled =
-                isTriggeringThis || isBlockedByOtherAction || isUnavailable || isActive || isCoolingDown;
+                disabledByDeathWaiting ||
+                isTriggeringThis ||
+                isBlockedByOtherAction ||
+                isUnavailable ||
+                isActive ||
+                isCoolingDown;
 
             let statusLabel = t("game.sabotage.statusReady");
             let actionLabel = t("game.sabotage.triggerButton");
@@ -256,7 +280,17 @@ export function QuestProgress({
             let buttonClassName =
                 "border-emerald-300/50 bg-[linear-gradient(140deg,rgba(16,185,129,0.24),rgba(6,95,70,0.2))] text-emerald-100 hover:bg-emerald-500/28 shadow-[inset_0_1px_0_rgba(167,243,208,0.2)]";
 
-            if (isTriggeringThis) {
+            if (disabledByDeathWaiting) {
+                statusLabel = t("game.questProgress.awaitingMeetingStatus");
+                actionLabel = t("game.questProgress.awaitingMeetingAction");
+                cardClassName =
+                    "border-slate-400/35 bg-[linear-gradient(130deg,rgba(100,116,139,0.16)_0%,rgba(30,41,59,0.65)_58%,rgba(2,6,23,0.82)_100%)]";
+                accentClassName = "bg-slate-300/75";
+                statusClassName =
+                    "rounded-full text-slate-200/85 border border-slate-300/30 bg-slate-700/35";
+                buttonClassName =
+                    "border-slate-300/40 bg-[linear-gradient(140deg,rgba(71,85,105,0.6),rgba(51,65,85,0.55))] text-slate-300";
+            } else if (isTriggeringThis) {
                 statusLabel = t("game.sabotage.triggeringButton");
                 actionLabel = t("game.sabotage.triggeringButton");
                 cardClassName =
@@ -336,10 +370,15 @@ export function QuestProgress({
         });
 
         return (
-            <div className="p-4 border border-primary/25 bg-slate-950/45 space-y-4 h-full min-h-0 overflow-y-auto">
+            <div className={`p-4 border border-primary/25 bg-slate-950/45 space-y-4 h-full min-h-0 overflow-y-auto ${deadAwaitingMeeting ? "opacity-60 saturate-50" : ""}`}>
                 <div className="text-xs text-primary/90 uppercase tracking-widest font-rajdhani">
                     {t("game.sabotage.impostorPanelTitle")}
                 </div>
+                {deadAwaitingMeeting && (
+                    <div className="border border-red-500/30 bg-red-950/35 p-2 text-[11px] text-red-100 font-rajdhani tracking-wide">
+                        {t("game.questProgress.awaitingMeetingNotice")}
+                    </div>
+                )}
 
                 <div className="space-y-2">
                     <div className="text-[10px] text-slate-200/70 uppercase tracking-widest">
@@ -470,7 +509,7 @@ export function QuestProgress({
         );
     }
 
-    if (role === "CREWMATE" && lightsSabotaged) {
+    if (role === "CREWMATE" && lightsSabotaged && !deadAwaitingMeeting) {
         return (
             <div className="p-4 border border-yellow-500/30 bg-yellow-950/20 space-y-2">
                 <div className="text-sm text-yellow-100 font-orbitron uppercase tracking-wider text-center">
@@ -486,7 +525,12 @@ export function QuestProgress({
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     return (
-        <div className="p-4 border border-primary/20 bg-black/30 relative h-full min-h-0 flex flex-col">
+        <div className={`p-4 border border-primary/20 bg-black/30 relative h-full min-h-0 flex flex-col ${deadAwaitingMeeting ? "opacity-60 saturate-50" : ""}`}>
+            {deadAwaitingMeeting && (
+                <div className="border border-red-500/30 bg-red-950/35 p-2 text-center text-[11px] text-red-100 font-rajdhani tracking-wide shrink-0 mb-3">
+                    {t("game.questProgress.awaitingMeetingNotice")}
+                </div>
+            )}
             {role === "CREWMATE" && communicationsSabotaged && (
                 <div className="border border-red-500/30 bg-red-950/30 p-3 text-center shrink-0 mb-3">
                     <div className="text-xs text-red-100 font-orbitron uppercase tracking-wider">
@@ -540,7 +584,7 @@ export function QuestProgress({
             </div>
 
             {role === "CREWMATE" && (
-                <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
+                <div className={`mt-3 min-h-0 flex-1 overflow-y-auto pr-1 ${deadAwaitingMeeting ? "pointer-events-none select-none" : ""}`}>
                     <QuestList quests={crewQuests} isLoading={isLoading} />
                 </div>
             )}

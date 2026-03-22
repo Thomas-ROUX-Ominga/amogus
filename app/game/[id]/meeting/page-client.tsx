@@ -124,6 +124,11 @@ export default function MeetingPage() {
     const timerLabel = formatRemaining(remainingMs);
     const myVoteTargetId = meetingView?.myVoteTargetId ?? null;
     const isEligibleVoter = !!(active && userId && meeting?.eligibleVoterIds.includes(userId));
+    const bodyFoundTagLabel = t("game.meeting.bodyFoundTitle").toUpperCase();
+    const foundBodyPlayer =
+        meeting && snapshot
+            ? snapshot.players.find((player) => player.id === meeting.startedBy && !player.isAlive) ?? null
+            : null;
 
     const playersForMeetingList = !meeting || !snapshot
         ? []
@@ -174,20 +179,6 @@ export default function MeetingPage() {
                         </p>
                     </div>
                 )}
-
-                {completed && meeting && (
-                    <div className="p-4 border border-primary/30 bg-primary/10 space-y-2">
-                        <div className="text-xs uppercase tracking-widest text-primary font-orbitron">
-                            {t("game.meeting.completedTitle")}
-                        </div>
-                        <p className="text-sm text-muted-foreground font-rajdhani">
-                            {meeting.eliminatedPlayerName
-                                ? t("game.meeting.eliminatedPlayer", { playerName: meeting.eliminatedPlayerName })
-                                : t("game.meeting.noElimination")}
-                        </p>
-                    </div>
-                )}
-
                 {snapshot && (
                     <>
                         <div className="p-4 border border-primary/20 bg-black/30 space-y-3">
@@ -232,6 +223,7 @@ export default function MeetingPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 {playersForMeetingList.map((player) => {
                                     const selected = myVoteTargetId === player.id;
+                                    const foundBody = foundBodyPlayer?.id === player.id;
                                     const disabled =
                                         !active ||
                                         !isEligibleVoter ||
@@ -252,15 +244,27 @@ export default function MeetingPage() {
                                             className={`p-3 border text-left text-xs uppercase tracking-widest transition-colors ${
                                                 selected
                                                     ? "border-red-400 bg-red-500/20 text-red-100"
+                                                    : foundBody
+                                                    ? "border-red-500/80 bg-[linear-gradient(135deg,rgba(127,29,29,0.4)_0%,rgba(69,10,10,0.45)_55%,rgba(15,23,42,0.72)_100%)] text-red-100 shadow-[0_0_18px_rgba(248,113,113,0.2)]"
                                                     : disabled
                                                     ? "border-white/10 bg-white/5 text-muted-foreground/60"
                                                     : "border-white/10 bg-white/5 text-muted-foreground hover:border-primary/40"
                                             } disabled:cursor-not-allowed`}
                                         >
                                             <div className="flex items-center justify-between gap-2">
-                                                <span className="truncate">{player.name}</span>
+                                                <div className="min-w-0 flex items-center gap-2">
+                                                    <span className="truncate">{player.name}</span>
+                                                    {foundBody && (
+                                                        <span className="inline-flex shrink-0 items-center gap-1 border border-red-300/60 bg-red-500/25 px-1.5 py-0.5 text-[9px] font-orbitron tracking-[0.14em] text-red-50">
+                                                            <Skull className="w-3 h-3" />
+                                                            {bodyFoundTagLabel}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 {!player.isAlive ? (
-                                                    <span className="text-red-400">{t("game.meeting.dead")}</span>
+                                                    <span className={foundBody ? "text-red-200 font-bold" : "text-red-400"}>
+                                                        {t("game.meeting.dead")}
+                                                    </span>
                                                 ) : (
                                                     <VoteSkulls votes={player.votes} id={player.id} />
                                                 )}
@@ -296,7 +300,7 @@ export default function MeetingPage() {
                     </>
                 )}
 
-                {!active && (
+                {!active && !completed && (
                     <div className="pt-2">
                         <Link
                             href={`/game/${gameId}`}
@@ -308,6 +312,29 @@ export default function MeetingPage() {
                     </div>
                 )}
             </div>
+
+            {completed && meeting && !shouldShowGameOver && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="max-w-md w-full border border-primary/30 bg-black p-6 space-y-4 shadow-xl">
+                        <h2 className="text-lg font-bold uppercase tracking-wider text-primary font-orbitron">
+                            {t("game.meeting.completedTitle")}
+                        </h2>
+                        <p className="text-sm text-muted-foreground font-rajdhani">
+                            {meeting.eliminatedPlayerName
+                                ? t("game.meeting.eliminatedPlayer", { playerName: meeting.eliminatedPlayerName })
+                                : t("game.meeting.noElimination")}
+                        </p>
+                        <div className="flex justify-end">
+                            <Link
+                                href={`/game/${gameId}`}
+                                className="inline-flex min-h-[44px] items-center justify-center px-4 py-2 text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors uppercase tracking-widest font-rajdhani"
+                            >
+                                {t("game.meeting.returnCockpit")}
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
