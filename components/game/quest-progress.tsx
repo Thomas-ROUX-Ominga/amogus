@@ -27,6 +27,23 @@ const EMPTY_ARRAY: string[] = [];
 const EMPTY_QUESTS: Quest[] = [];
 const QUEST_CATALOG_RETRY_MS = 10000;
 
+function sortQuestsForDisplay<T extends { completed: boolean }>(
+    quests: T[],
+): T[] {
+    const inProgress: T[] = [];
+    const done: T[] = [];
+
+    quests.forEach((quest) => {
+        if (quest.completed) {
+            done.push(quest);
+            return;
+        }
+        inProgress.push(quest);
+    });
+
+    return [...inProgress, ...done];
+}
+
 function formatCooldown(ms: number): string {
     if (ms <= 0) return "00:00";
     const seconds = Math.floor(ms / 1000);
@@ -189,7 +206,7 @@ export function QuestProgress({
                 }
 
             if (!cancelled) {
-                setCrewQuests(assignedList);
+                setCrewQuests(sortQuestsForDisplay(assignedList));
             }
         };
         void fetchQuests();

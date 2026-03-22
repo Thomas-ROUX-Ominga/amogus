@@ -205,14 +205,22 @@ describe("GameHome", () => {
         expect(screen.queryByText("Signaler mon élimination")).toBeNull();
     });
 
-    it("keeps buzzer available during post-elimination meeting window", () => {
+    it("keeps buzzer available during post-elimination meeting window even with active sabotage", () => {
         const deadWithBuzzerWindow: Player = {
             ...crewmatePlayer,
             isAlive: false,
             postEliminationBuzzerGrantedAt: Date.now(),
         };
+        const sabotagedState: GameState = {
+            ...mockGameState,
+            sabotageState: {
+                active: "COMMUNICATIONS",
+                reactor: null,
+                cooldowns: { communicationsAvailableAt: 0, lightsAvailableAt: 0, reactorAvailableAt: 0 },
+            },
+        };
 
-        render(<GameHome gameState={mockGameState} currentPlayer={deadWithBuzzerWindow} userId="user-1" />);
+        render(<GameHome gameState={sabotagedState} currentPlayer={deadWithBuzzerWindow} userId="user-1" />);
         expect(screen.getByRole("button", { name: /buzzer/i })).not.toBeDisabled();
     });
 

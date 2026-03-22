@@ -23,17 +23,20 @@ export function ReactorSabotageAlert({ gameState }: ReactorSabotageAlertProps) {
     const reactorState = gameState.sabotageState?.active === "REACTOR"
         ? gameState.sabotageState?.reactor
         : null;
+    const isPaused = typeof reactorState?.pausedRemainingMs === "number";
 
     useEffect(() => {
-        if (!reactorState) return;
+        if (!reactorState || isPaused) return;
         const timer = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(timer);
-    }, [reactorState?.endsAt]);
+    }, [reactorState?.endsAt, isPaused]);
 
     if (!reactorState) return null;
 
     const scanned = reactorState.scannedByQrId.length;
-    const remainingMs = Math.max(0, reactorState.endsAt - now);
+    const remainingMs = isPaused
+        ? Math.max(0, reactorState.pausedRemainingMs ?? 0)
+        : Math.max(0, reactorState.endsAt - now);
     const locationA =
         gameState.sabotages?.reactor[0]?.location?.trim() || t("game.sabotage.locationUnknown");
     const locationB =

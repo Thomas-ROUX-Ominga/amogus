@@ -49,7 +49,7 @@ vi.mock("@/lib/redis/auth-utils", () => ({
 
 import { redis } from "@/lib/redis/client";
 import { createPlayerSession, verifyPlayerSession, verifySession } from "@/lib/redis/auth-utils";
-import { triggerMeeting, castMeetingVote, getMeetingView, cancelMeetingVote } from "@/lib/redis/actions";
+import { triggerMeeting, castMeetingVote, getMeetingView, cancelMeetingVote, refreshGame } from "@/lib/redis/actions";
 import * as redisClientModule from "@/lib/redis/client";
 
 const gameId = "game-meeting";
@@ -195,6 +195,88 @@ describe("meeting actions", () => {
         const result = await triggerMeeting(gameId, "u1");
         expect(result.success).toBe(true);
         expect(result.data?.meeting?.status).toBe("ACTIVE");
+    });
+
+    it("allows body-phone buzzer during active sabotage and resumes reactor timer after meeting", async () => {
+        vi.useFakeTimers();
+        const now = new Date("2026-03-22T12:00:00.000Z").getTime();
+        vi.setSystemTime(now);
+
+        try {
+            await redis.set(stateKey, {
+                id: gameId,
+                status: "IN_PROGRESS",
+                createdAt: now,
+                revision: 1,
+                updatedAt: now,
+                players: [
+                    { id: "admin", name: "Admin", isAlive: true },
+                    {
+                        id: "u1",
+                        name: "Alice",
+                        role: "CREWMATE",
+                        isAlive: false,
+                        postEliminationBuzzerGrantedAt: now - 2_000,
+                    },
+                    { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
+                    { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true, completedQuests: [] },
+                    { id: "u4", name: "Dina", role: "CREWMATE", isAlive: true, completedQuests: [] },
+                    { id: "u5", name: "Eli", role: "CREWMATE", isAlive: true, completedQuests: [] },
+                ],
+                sabotageState: {
+                    active: "REACTOR",
+                    reactor: {
+                        startedAt: now - 10_000,
+                        endsAt: now + 40_000,
+                        scannedByQrId: [],
+                        scannedUserIds: [],
+                    },
+                    cooldowns: {
+                        communicationsAvailableAt: 0,
+                        lightsAvailableAt: 0,
+                        reactorAvailableAt: 0,
+                    },
+                },
+            });
+
+            const trigger = await triggerMeeting(gameId, "u1");
+            expect(trigger.success).toBe(true);
+            expect(trigger.data?.meeting?.status).toBe("ACTIVE");
+
+            let state = await redis.get<GameState>(stateKey);
+            expect(state?.sabotageState?.active).toBe("REACTOR");
+            expect(state?.sabotageState?.reactor?.pausedRemainingMs).toBe(40_000);
+            expect(state?.sabotageState?.reactor?.pausedAt).toBe(now);
+
+            vi.setSystemTime(now + 15_000);
+
+            await castMeetingVote(gameId, "u2", "u3");
+            await castMeetingVote(gameId, "u3", "u2");
+            await castMeetingVote(gameId, "u4", "u3");
+            const finalVote = await castMeetingVote(gameId, "u5", "u3");
+            expect(finalVote.success).toBe(true);
+            expect(finalVote.data?.meeting?.status).toBe("COMPLETED");
+
+            state = await redis.get<GameState>(stateKey);
+            expect(state?.status).toBe("IN_PROGRESS");
+            expect(state?.sabotageState?.active).toBe("REACTOR");
+            expect(state?.sabotageState?.reactor?.pausedRemainingMs).toBeUndefined();
+            expect(state?.sabotageState?.reactor?.pausedAt).toBeUndefined();
+            expect(state?.sabotageState?.reactor?.endsAt).toBe(now + 55_000);
+
+            vi.setSystemTime(now + 54_000);
+            const stillRunning = await refreshGame(gameId);
+            expect(stillRunning.success).toBe(true);
+            expect(stillRunning.data?.status).toBe("IN_PROGRESS");
+
+            vi.setSystemTime(now + 56_000);
+            const expired = await refreshGame(gameId);
+            expect(expired.success).toBe(true);
+            expect(expired.data?.status).toBe("FINISHED");
+            expect(expired.data?.winner).toBe("IMPOSTOR");
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it("removes post-elimination buzzer access after a meeting has started", async () => {

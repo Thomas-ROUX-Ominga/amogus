@@ -13,6 +13,8 @@ vi.mock("@/lib/redis/actions", () => ({
 }));
 
 describe("QuestProgress", () => {
+    const DOCUMENT_POSITION_FOLLOWING = 4;
+
     beforeEach(() => {
         vi.clearAllMocks();
         mockUseGameStore.mockReturnValue({
@@ -119,5 +121,62 @@ describe("QuestProgress", () => {
         const progressBar = screen.getByRole("progressbar");
         expect(progressBar.getAttribute("aria-valuenow")).toBe("2");
         expect(progressBar.getAttribute("aria-valuemax")).toBe("4");
+    });
+
+    it("places completed assigned quests at the end of the list", async () => {
+        mockUseGameStore.mockReturnValue({
+            gameQuests: [
+                { id: "q1", type: "qcm", duration: "short", location: "Pont" },
+                { id: "q2", type: "qcm", duration: "short", location: "Cuisine" },
+                { id: "q3", type: "qcm", duration: "short", location: "Moteur" },
+            ],
+            fetchGameQuests: vi.fn(),
+            isGameQuestsLoading: false,
+            gameState: {
+                id: "game-1",
+                status: "IN_PROGRESS",
+                createdAt: Date.now(),
+                revision: 1,
+                updatedAt: Date.now(),
+                players: [],
+                sabotageState: {
+                    active: null,
+                    reactor: null,
+                    cooldowns: {
+                        communicationsAvailableAt: 0,
+                        lightsAvailableAt: 0,
+                        reactorAvailableAt: 0,
+                    },
+                },
+            },
+        });
+
+        render(
+            <QuestProgress
+                role="CREWMATE"
+                completed={1}
+                total={3}
+                batchId="batch-1"
+                assignedQuests={["q1", "q2", "q3"]}
+                completedQuests={["q2"]}
+            />,
+        );
+
+        const pontNode = await screen.findByText("Pont");
+        const moteurNode = screen.getByText("Moteur");
+        const cuisineNode = screen.getByText("Cuisine");
+
+        expect(
+            Boolean(
+                pontNode.compareDocumentPosition(cuisineNode) &
+                    DOCUMENT_POSITION_FOLLOWING,
+            ),
+        ).toBe(true);
+        expect(
+            Boolean(
+                moteurNode.compareDocumentPosition(cuisineNode) &
+                    DOCUMENT_POSITION_FOLLOWING,
+            ),
+        ).toBe(true);
     });
 });

@@ -271,7 +271,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     const hasUsedBuzzer = Boolean(currentPlayer.meetingBuzzUsedAt);
     const canUseBuzzer =
         (currentPlayer.isAlive || hasPostEliminationBuzzerWindow) &&
-        !hasActiveSabotage &&
+        (!hasActiveSabotage || hasPostEliminationBuzzerWindow) &&
         !hasUsedBuzzer &&
         !isMeetingActive &&
         gameState.status === "IN_PROGRESS";

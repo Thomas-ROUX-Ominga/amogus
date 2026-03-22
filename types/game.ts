@@ -52,6 +52,8 @@ export interface ReactorSabotageState {
     endsAt: number;
     scannedByQrId: string[];
     scannedUserIds: string[];
+    pausedAt?: number;
+    pausedRemainingMs?: number;
 }
 
 export interface SabotageCooldownState {

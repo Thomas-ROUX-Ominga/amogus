@@ -186,6 +186,65 @@ function sumVoteCounts(voteCounts: Record<string, number>, eligibleVoterIds: str
     }, 0);
 }
 
+function getReactorRemainingMs(reactor: ReactorSabotageState, now: number): number {
+    if (typeof reactor.pausedRemainingMs === "number") {
+        return Math.max(0, reactor.pausedRemainingMs);
+    }
+
+    return Math.max(0, reactor.endsAt - now);
+}
+
+function pauseActiveReactorSabotage(state: GameState, now: number): GameState {
+    const sabotageState = getNormalizedSabotageState(state);
+    if (sabotageState.active !== "REACTOR" || !sabotageState.reactor) {
+        return state;
+    }
+
+    const reactor = sabotageState.reactor;
+    if (typeof reactor.pausedRemainingMs === "number") {
+        return state;
+    }
+
+    return {
+        ...state,
+        sabotageState: {
+            ...sabotageState,
+            reactor: {
+                ...reactor,
+                pausedAt: now,
+                pausedRemainingMs: getReactorRemainingMs(reactor, now),
+            },
+        },
+    };
+}
+
+function resumePausedReactorSabotage(state: GameState, now: number): GameState {
+    const sabotageState = getNormalizedSabotageState(state);
+    if (sabotageState.active !== "REACTOR" || !sabotageState.reactor) {
+        return state;
+    }
+
+    const reactor = sabotageState.reactor;
+    if (typeof reactor.pausedRemainingMs !== "number") {
+        return state;
+    }
+
+    const resumedReactor: ReactorSabotageState = {
+        ...reactor,
+        endsAt: now + Math.max(0, reactor.pausedRemainingMs),
+    };
+    delete resumedReactor.pausedAt;
+    delete resumedReactor.pausedRemainingMs;
+
+    return {
+        ...state,
+        sabotageState: {
+            ...sabotageState,
+            reactor: resumedReactor,
+        },
+    };
+}
+
 function resolveMeetingState(
     state: GameState,
     reason: "ALL_VOTED" | "TIMEOUT",
@@ -256,11 +315,12 @@ function resolveMeetingState(
         endedAt: now,
     };
 
-    const updatedState: GameState = {
+    let updatedState: GameState = {
         ...state,
         players: updatedPlayers,
         meeting: completedMeeting,
     };
+    updatedState = resumePausedReactorSabotage(updatedState, now);
 
     if (eliminatedPlayerId) {
         const winCheck = checkWinConditions(updatedState);
@@ -291,8 +351,16 @@ function resolveSabotageIfExpired(state: GameState, now: number): GameState {
         return state;
     }
 
+    if (state.meeting?.status === "ACTIVE") {
+        return state;
+    }
+
     const sabotageState = getNormalizedSabotageState(state);
     if (sabotageState.active !== "REACTOR" || !sabotageState.reactor) {
+        return state;
+    }
+
+    if (typeof sabotageState.reactor.pausedRemainingMs === "number") {
         return state;
     }
 
@@ -2432,7 +2500,7 @@ export async function scanSabotage(
                         reactorProgress: {
                             scanned: currentReactor.scannedByQrId.length,
                             total: 2,
-                            remainingMs: Math.max(0, currentReactor.endsAt - now),
+                            remainingMs: getReactorRemainingMs(currentReactor, now),
                         },
                         gameState: workingState,
                     };
@@ -2446,7 +2514,7 @@ export async function scanSabotage(
                         reactorProgress: {
                             scanned: currentReactor.scannedByQrId.length,
                             total: 2,
-                            remainingMs: Math.max(0, currentReactor.endsAt - now),
+                            remainingMs: getReactorRemainingMs(currentReactor, now),
                         },
                         gameState: workingState,
                     };
@@ -2484,7 +2552,7 @@ export async function scanSabotage(
                     reactorProgress: {
                         scanned: scannedByQrId.length,
                         total: 2,
-                        remainingMs: repaired ? 0 : Math.max(0, currentReactor.endsAt - now),
+                        remainingMs: repaired ? 0 : getReactorRemainingMs(currentReactor, now),
                     },
                     gameState: updatedState,
                 };
@@ -2661,7 +2729,7 @@ export async function triggerMeeting(
                 return null;
             }
 
-            if (workingState.sabotageState?.active) {
+            if (workingState.sabotageState?.active && !hasPostEliminationBuzzerGrant) {
                 validationError = {
                     success: false,
                     error: "A sabotage is active. Meetings cannot be triggered.",
@@ -2715,11 +2783,12 @@ export async function triggerMeeting(
                 ...(index === playerIndex ? { meetingBuzzUsedAt: now } : {}),
             }));
 
-            return {
+            const nextState: GameState = {
                 ...workingState,
                 players: updatedPlayers,
                 meeting,
             };
+            return pauseActiveReactorSabotage(nextState, now);
         });
 
         if (validationError) {
