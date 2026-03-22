@@ -247,6 +247,11 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
 
     const role = currentPlayer.role;
     const isImpostor = role === "IMPOSTOR";
+    const canCrewmateScanToRepairSabotage = !isImpostor && currentPlayer.isAlive && hasActiveSabotage;
+    const shouldShowScanControls =
+        !isImpostor &&
+        !isMeetingActive &&
+        (!allQuestsDone || canCrewmateScanToRepairSabotage);
     const ghostReminderCrewmate = (() => {
         try {
             return t("game.home.ghostReminderCrewmate");
@@ -365,7 +370,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         />
                     </div>
 
-                    {!isImpostor && !allQuestsDone && !isMeetingActive && (
+                    {shouldShowScanControls && (
                         <ScanButton
                             disabled={isAwaitingMeetingAfterDeath}
                             disabledReason={isAwaitingMeetingAfterDeath ? "death-waiting" : "coming-soon"}
@@ -415,7 +420,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                         </div>
                     )}
 
-                    {!isImpostor && !allQuestsDone && !isAwaitingMeetingAfterDeath && (
+                    {shouldShowScanControls && !isAwaitingMeetingAfterDeath && (
                         <CameraScanner
                             isOpen={isOpen}
                             onClose={closeScanner}

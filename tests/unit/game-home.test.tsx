@@ -197,6 +197,27 @@ describe("GameHome", () => {
         expect(screen.queryByText("SCANNER")).toBeNull();
     });
 
+    it("keeps scanner visible for alive crewmate when sabotage is active even if all quests are completed", () => {
+        vi.mocked(useGameStore).mockReturnValue({
+            questsCompleted: 5,
+            questsTotal: 5,
+            refreshGameData: vi.fn(),
+            triggerMeetingAction: vi.fn(async () => true),
+        } as Partial<ReturnType<typeof useGameStore>>);
+
+        const sabotagedState: GameState = {
+            ...mockGameState,
+            sabotageState: {
+                active: "COMMUNICATIONS",
+                reactor: null,
+                cooldowns: { communicationsAvailableAt: 0, lightsAvailableAt: 0, reactorAvailableAt: 0 },
+            },
+        };
+
+        render(<GameHome gameState={sabotagedState} currentPlayer={crewmatePlayer} userId="user-1" />);
+        expect(screen.getByRole("button", { name: /Scanner/i })).not.toBeDisabled();
+    });
+
     it("shows elimination button for crewmate only", () => {
         const { rerender } = render(<GameHome gameState={mockGameState} currentPlayer={crewmatePlayer} userId="user-1" />);
         expect(screen.getByText("Signaler mon élimination")).toBeTruthy();
