@@ -23,6 +23,17 @@ function createQuest(duration: QuestDuration, type: QuestType): Quest {
   };
 }
 
+function getDeterministicOffset(seed: string, modulo: number): number {
+  if (modulo <= 0) return 0;
+
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash += seed.charCodeAt(i);
+  }
+
+  return hash % modulo;
+}
+
 export function generateBatch(input: BatchCreateInput): Batch {
   const { totalQuests, name } = input;
 
@@ -34,6 +45,10 @@ export function generateBatch(input: BatchCreateInput): Batch {
   // Deterministic duration split: short, medium, long.
   const distribution = distributeQuests(totalQuests);
   const quests: Quest[] = [];
+  const normalizedName = name?.trim();
+  const offsetSeed = normalizedName ? `${normalizedName}:${totalQuests}` : String(totalQuests);
+  const startOffset = getDeterministicOffset(offsetSeed, AVAILABLE_QUEST_TYPES.length);
+  let classicCursor = 0;
 
   DURATIONS.forEach((duration) => {
     const totalForDuration = distribution[duration];
@@ -47,8 +62,11 @@ export function generateBatch(input: BatchCreateInput): Batch {
 
     // Then add classic quests with deterministic type rotation for equitable spread.
     for (let i = 0; i < classicCount; i++) {
-      const classicType = AVAILABLE_QUEST_TYPES[i % AVAILABLE_QUEST_TYPES.length];
+      const classicType = AVAILABLE_QUEST_TYPES[
+        (startOffset + classicCursor) % AVAILABLE_QUEST_TYPES.length
+      ];
       quests.push(createQuest(duration, classicType));
+      classicCursor += 1;
     }
   });
 
@@ -70,7 +88,7 @@ export function generateBatch(input: BatchCreateInput): Batch {
 
   return {
     id: globalThis.crypto.randomUUID(),
-    name: name?.trim() || undefined,
+    name: normalizedName || undefined,
     questCount: totalQuests,
     quests,
     sabotages,

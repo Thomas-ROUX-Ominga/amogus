@@ -16,6 +16,17 @@ function getClassicTypeCounts(classics: Array<{ type: QuestType }>) {
   }, {});
 }
 
+function getClassicTypeCountsForBatch(batch: ReturnType<typeof generateBatch>) {
+  const classics = batch.quests.filter((q) => q.type !== "mini-game");
+  return getClassicTypeCounts(classics);
+}
+
+function getClassicDistributionGap(typeCounts: Record<string, number>) {
+  const counts = Object.values(typeCounts);
+  if (counts.length === 0) return 0;
+  return Math.max(...counts) - Math.min(...counts);
+}
+
 describe("Batch Generator", () => {
   describe("generateBatch", () => {
     it("should accept a single quest batch", () => {
@@ -56,28 +67,15 @@ describe("Batch Generator", () => {
       expect(longSummary.classics).toHaveLength(7);
     });
 
-    it("should distribute classic quest types as evenly as possible per duration", () => {
+    it("should distribute classic quest types as evenly as possible globally", () => {
       const input: BatchCreateInput = { totalQuests: 30 };
       const batch = generateBatch(input);
+      const typeCounts = getClassicTypeCountsForBatch(batch);
+      const counts = Object.values(typeCounts);
 
-      const expectedCounts = {
-        "true-false": 2,
-        qcm: 2,
-        "single-input": 1,
-        "number-input": 1,
-        intrus: 1,
-      };
-
-      (["short", "medium", "long"] as const).forEach((duration) => {
-        const { classics } = getDurationSummary(batch, duration);
-        const typeCounts = getClassicTypeCounts(classics);
-
-        expect(typeCounts["true-false"]).toBe(expectedCounts["true-false"]);
-        expect(typeCounts.qcm).toBe(expectedCounts.qcm);
-        expect(typeCounts["single-input"]).toBe(expectedCounts["single-input"]);
-        expect(typeCounts["number-input"]).toBe(expectedCounts["number-input"]);
-        expect(typeCounts.intrus).toBe(expectedCounts.intrus);
-      });
+      expect(counts.reduce((sum, count) => sum + count, 0)).toBe(21);
+      expect(Object.keys(typeCounts)).toHaveLength(5);
+      expect(getClassicDistributionGap(typeCounts)).toBeLessThanOrEqual(1);
     });
 
     it("should remain deterministic in quest type/duration sequence", () => {
@@ -88,6 +86,43 @@ describe("Batch Generator", () => {
       const signatureA = batchA.quests.map((q) => `${q.duration}:${q.type}`);
       const signatureB = batchB.quests.map((q) => `${q.duration}:${q.type}`);
       expect(signatureA).toEqual(signatureB);
+    });
+
+    it("should vary deterministic classic rotation with different names while staying balanced", () => {
+      const batchA = generateBatch({ totalQuests: 30, name: "A" });
+      const batchB = generateBatch({ totalQuests: 30, name: "B" });
+
+      const signatureA = batchA.quests.map((q) => `${q.duration}:${q.type}`);
+      const signatureB = batchB.quests.map((q) => `${q.duration}:${q.type}`);
+
+      expect(signatureA).not.toEqual(signatureB);
+      expect(getClassicDistributionGap(getClassicTypeCountsForBatch(batchA))).toBeLessThanOrEqual(1);
+      expect(getClassicDistributionGap(getClassicTypeCountsForBatch(batchB))).toBeLessThanOrEqual(1);
+    });
+
+    it("should keep 10-quest batches diversified with 4/3/3 durations and 1 mini-game per duration", () => {
+      const batch = generateBatch({ totalQuests: 10 });
+
+      const shortSummary = getDurationSummary(batch, "short");
+      const mediumSummary = getDurationSummary(batch, "medium");
+      const longSummary = getDurationSummary(batch, "long");
+
+      expect(shortSummary.durationQuests).toHaveLength(4);
+      expect(mediumSummary.durationQuests).toHaveLength(3);
+      expect(longSummary.durationQuests).toHaveLength(3);
+
+      expect(shortSummary.miniGames).toHaveLength(1);
+      expect(mediumSummary.miniGames).toHaveLength(1);
+      expect(longSummary.miniGames).toHaveLength(1);
+
+      const classicTypeCounts = getClassicTypeCountsForBatch(batch);
+      const repeatedTypes = Object.values(classicTypeCounts).filter((count) => count > 1);
+      const totalClassicCount = Object.values(classicTypeCounts).reduce((sum, count) => sum + count, 0);
+
+      expect(totalClassicCount).toBe(7);
+      expect(Object.keys(classicTypeCounts)).toHaveLength(5);
+      expect(repeatedTypes).toHaveLength(2);
+      expect(Math.max(...Object.values(classicTypeCounts))).toBe(2);
     });
 
     it("should generate default sabotage QR entries", () => {
