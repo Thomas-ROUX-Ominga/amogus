@@ -405,6 +405,7 @@ const fr = {
     questWidgets: {
       answerAria: "Réponse de la quête",
       numberAria: "Nombre de la quête",
+      almostTryAgain: "Presque, essaye encore !",
       retryAria: "Réessayer la question",
       submitAria: "Valider la réponse",
       responseChoiceAria: "Choix de réponse",

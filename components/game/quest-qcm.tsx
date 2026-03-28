@@ -24,9 +24,11 @@ export function QuestQCM({ quest, onSuccess, onError }: QuestQCMProps) {
         (val) => {
             const expected = quest.data.answerIds;
             if (Array.isArray(val)) {
-                return val.length === expected.length && val.every((v) => expected.includes(v));
+                return val.length === expected.length && val.every((v) => expected.includes(v))
+                    ? "correct"
+                    : "wrong";
             }
-            return expected.length === 1 && expected[0] === val;
+            return expected.length === 1 && expected[0] === val ? "correct" : "wrong";
         },
         onSuccess,
         onError

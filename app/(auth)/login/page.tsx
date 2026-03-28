@@ -11,17 +11,18 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 interface LoginPageProps {
-  searchParams?: {
+  searchParams?: Promise<{
     redirect?: string | string[];
     registered?: string | string[];
-  };
+  }>;
 }
 
-export default function LoginPage({ searchParams }: LoginPageProps) {
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const resolvedSearchParams = await searchParams;
   const redirectParam =
-    typeof searchParams?.redirect === "string" ? searchParams.redirect : null;
+    typeof resolvedSearchParams?.redirect === "string" ? resolvedSearchParams.redirect : null;
   const registeredParam =
-    typeof searchParams?.registered === "string" ? searchParams.registered : null;
+    typeof resolvedSearchParams?.registered === "string" ? resolvedSearchParams.registered : null;
 
   return (
     <LoginPageClient

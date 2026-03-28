@@ -17,7 +17,7 @@ export function QuestTrueFalse({ quest, onSuccess, onError }: QuestTrueFalseProp
     const prefersReducedMotion = useReducedMotion();
     const { selectedValue, isCorrect, answered, failed, handleAnswer, handleRetry } = useQuestAnswer(
         quest,
-        (val: string) => quest.data.answerIds.includes(val),
+        (val: string) => (quest.data.answerIds.includes(val) ? "correct" : "wrong"),
         onSuccess, 
         onError
     );

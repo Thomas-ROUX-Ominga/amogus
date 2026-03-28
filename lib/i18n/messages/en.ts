@@ -402,6 +402,7 @@ const en = {
     questWidgets: {
       answerAria: "Quest answer",
       numberAria: "Quest number",
+      almostTryAgain: "Almost, try again!",
       retryAria: "Retry question",
       submitAria: "Submit answer",
       responseChoiceAria: "Answer choice",

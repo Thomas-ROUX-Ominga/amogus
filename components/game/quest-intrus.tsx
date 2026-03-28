@@ -16,7 +16,7 @@ export function QuestIntrus({ quest, onSuccess, onError }: QuestIntrusProps) {
     const prefersReducedMotion = useReducedMotion();
     const { selectedValue, isCorrect, answered, failed, handleAnswer, handleRetry } = useQuestAnswer(
         quest,
-        (val: string) => quest.data.answerIds.includes(val),
+        (val: string) => (quest.data.answerIds.includes(val) ? "correct" : "wrong"),
         onSuccess,
         onError
     );

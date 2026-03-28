@@ -4,7 +4,7 @@ import { useState } from "react";
 import { m, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { QuestGame } from "@/types/quest";
-import { useQuestAnswer } from "@/hooks/use-quest-answer";
+import { AnswerValidationResult, useQuestAnswer } from "@/hooks/use-quest-answer";
 
 interface QuestNumberInputProps {
     quest: Extract<QuestGame, { type: "number-input" }>;
@@ -12,17 +12,39 @@ interface QuestNumberInputProps {
     onError: () => void;
 }
 
+const NUMBER_TOLERANCE_RATIO = 0.05;
+const ZERO_ANSWER_ABSOLUTE_TOLERANCE = 1;
+
 export function QuestNumberInput({ quest, onSuccess, onError }: QuestNumberInputProps) {
     const t = useTranslations();
     const prefersReducedMotion = useReducedMotion();
-    const { isCorrect, answered, failed, handleAnswer, handleRetry } = useQuestAnswer(
+    const { isCorrect, answered, failed, almost, feedbackMessage, handleAnswer, handleRetry, clearFeedback } = useQuestAnswer(
         quest,
-        (val: string) => {
-            const numericVal = parseInt(val, 10);
-            return !isNaN(numericVal) && numericVal === quest.data.answer;
+        (val: string): AnswerValidationResult => {
+            const numericVal = Number.parseFloat(val);
+            const expected = quest.data.answer;
+
+            if (Number.isNaN(numericVal)) {
+                return "wrong";
+            }
+
+            if (numericVal === expected) {
+                return "correct";
+            }
+
+            if (expected === 0) {
+                return Math.abs(numericVal) <= ZERO_ANSWER_ABSOLUTE_TOLERANCE ? "almost" : "wrong";
+            }
+
+            const toleratedDelta = Math.abs(expected) * NUMBER_TOLERANCE_RATIO;
+            return Math.abs(numericVal - expected) <= toleratedDelta ? "almost" : "wrong";
         },
-        onSuccess, 
-        onError
+        onSuccess,
+        onError,
+        {
+            hasTolerance: true,
+            almostMessage: t("game.questWidgets.almostTryAgain"),
+        }
     );
     const [inputValue, setInputValue] = useState("");
 
@@ -63,13 +85,22 @@ export function QuestNumberInput({ quest, onSuccess, onError }: QuestNumberInput
                 <input
                     type="number"
                     value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
+                    onChange={(e) => {
+                        setInputValue(e.target.value);
+                        clearFeedback();
+                    }}
                     disabled={answered || failed}
                     className={getInputStyle()}
                     placeholder={t("game.questWidgets.numberAria")}
                     aria-label={t("game.questWidgets.numberAria")}
                 />
             </m.div>
+
+            {almost && feedbackMessage && (
+                <p className="text-sm font-rajdhani text-[#D29922]" role="status" aria-live="polite">
+                    {feedbackMessage}
+                </p>
+            )}
 
             {failed ? (
                 <button

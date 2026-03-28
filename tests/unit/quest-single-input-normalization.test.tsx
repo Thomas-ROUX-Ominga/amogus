@@ -1,27 +1,18 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QuestSingleInput } from "@/components/game/quest-single-input";
 import { QuestGame } from "@/types/quest";
 
-vi.mock("@/lib/store/game-store", () => ({
-    useGameStore: () => ({}),
-}));
-
-vi.mock("@/hooks/use-quest-answer", () => ({
-    useQuestAnswer: vi.fn((quest, validateAnswer, onSuccess, onError) => ({
-        isCorrect: null,
-        answered: false,
-        failed: false,
-        handleAnswer: (val: string) => {
-            const correct = validateAnswer(val);
-            if (correct) onSuccess();
-            else onError();
-        },
-        handleRetry: vi.fn(),
-    })),
-}));
-
 describe("QuestSingleInput Normalization", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        Object.defineProperty(navigator, "vibrate", {
+            value: vi.fn(),
+            writable: true,
+            configurable: true,
+        });
+    });
+
     it("should accept answers with different accents when case insensitive", () => {
         const onSuccess = vi.fn();
         const onError = vi.fn();
@@ -46,6 +37,7 @@ describe("QuestSingleInput Normalization", () => {
         fireEvent.submit(input.closest("form")!);
         
         expect(onSuccess).toHaveBeenCalled();
+        expect(onError).not.toHaveBeenCalled();
     });
 
     it("should reject wrong answers", () => {
@@ -72,5 +64,34 @@ describe("QuestSingleInput Normalization", () => {
         fireEvent.submit(input.closest("form")!);
         
         expect(onError).toHaveBeenCalled();
+        expect(onSuccess).not.toHaveBeenCalled();
+    });
+
+    it("should show almost feedback for close typo and keep quest active", () => {
+        const onSuccess = vi.fn();
+        const onError = vi.fn();
+
+        const quest: Extract<QuestGame, { type: "single-input" }> = {
+            id: "q2",
+            type: "single-input",
+            duration: "short",
+            title: "Test",
+            instruction: "Type 'schumacher'",
+            data: {
+                answer: "schumacher",
+                placeholder: "Type...",
+                validation: { trim: true, case: "insensitive" }
+            }
+        };
+
+        render(<QuestSingleInput quest={quest} onSuccess={onSuccess} onError={onError} />);
+
+        const input = screen.getByLabelText("Réponse de la quête");
+        fireEvent.change(input, { target: { value: "schumaher" } });
+        fireEvent.submit(input.closest("form")!);
+
+        expect(screen.getByText("Presque, essaye encore !")).toBeTruthy();
+        expect(onSuccess).not.toHaveBeenCalled();
+        expect(onError).not.toHaveBeenCalled();
     });
 });

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { m, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { QuestGame } from "@/types/quest";
-import { useQuestAnswer } from "@/hooks/use-quest-answer";
+import { AnswerValidationResult, useQuestAnswer } from "@/hooks/use-quest-answer";
 import { normalize } from "@/lib/utils/word-utils";
 
 interface QuestSingleInputProps {
@@ -13,12 +13,40 @@ interface QuestSingleInputProps {
     onError: () => void;
 }
 
+function getLevenshteinDistance(a: string, b: string): number {
+    const rows = a.length + 1;
+    const cols = b.length + 1;
+    const matrix = Array.from({ length: rows }, () => new Array<number>(cols).fill(0));
+
+    for (let i = 0; i < rows; i++) {
+        matrix[i][0] = i;
+    }
+
+    for (let j = 0; j < cols; j++) {
+        matrix[0][j] = j;
+    }
+
+    for (let i = 1; i < rows; i++) {
+        for (let j = 1; j < cols; j++) {
+            const substitutionCost = a[i - 1] === b[j - 1] ? 0 : 1;
+
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j - 1] + substitutionCost
+            );
+        }
+    }
+
+    return matrix[rows - 1][cols - 1];
+}
+
 export function QuestSingleInput({ quest, onSuccess, onError }: QuestSingleInputProps) {
     const t = useTranslations();
     const prefersReducedMotion = useReducedMotion();
-    const { isCorrect, answered, failed, handleAnswer, handleRetry } = useQuestAnswer(
+    const { isCorrect, answered, failed, almost, feedbackMessage, handleAnswer, handleRetry, clearFeedback } = useQuestAnswer(
         quest,
-        (val: string) => {
+        (val: string): AnswerValidationResult => {
             const { validation, answer } = quest.data;
             let input = val;
             let expected = answer;
@@ -30,10 +58,22 @@ export function QuestSingleInput({ quest, onSuccess, onError }: QuestSingleInput
                 input = normalize(input);
                 expected = normalize(expected);
             }
-            return input === expected;
+
+            if (input === expected) {
+                return "correct";
+            }
+
+            const typoThreshold = expected.length <= 5 ? 1 : 2;
+            const distance = getLevenshteinDistance(input, expected);
+
+            return distance <= typoThreshold ? "almost" : "wrong";
         },
-        onSuccess, 
-        onError
+        onSuccess,
+        onError,
+        {
+            hasTolerance: true,
+            almostMessage: t("game.questWidgets.almostTryAgain"),
+        }
     );
     const [inputValue, setInputValue] = useState("");
 
@@ -74,13 +114,22 @@ export function QuestSingleInput({ quest, onSuccess, onError }: QuestSingleInput
                 <input
                     type="text"
                     value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
+                    onChange={(e) => {
+                        setInputValue(e.target.value);
+                        clearFeedback();
+                    }}
                     disabled={answered || failed}
                     className={getInputStyle()}
                     placeholder={t("game.questWidgets.answerAria")}
                     aria-label={t("game.questWidgets.answerAria")}
                 />
             </m.div>
+
+            {almost && feedbackMessage && (
+                <p className="text-sm font-rajdhani text-[#D29922]" role="status" aria-live="polite">
+                    {feedbackMessage}
+                </p>
+            )}
 
             {failed ? (
                 <button
