@@ -47,7 +47,8 @@ export function QuestSingleInput({ quest, onSuccess, onError }: QuestSingleInput
     const { isCorrect, answered, failed, almost, feedbackMessage, handleAnswer, handleRetry, clearFeedback } = useQuestAnswer(
         quest,
         (val: string): AnswerValidationResult => {
-            const { validation, answer } = quest.data;
+            const validation = quest.data.validation ?? { trim: true, case: "insensitive" };
+            const answer = typeof quest.data.answer === "string" ? quest.data.answer : "";
             let input = val;
             let expected = answer;
             if (validation.trim) {

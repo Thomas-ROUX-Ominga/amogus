@@ -87,7 +87,7 @@ export function RoleRevealScreen({ role, onComplete }: RoleRevealScreenProps) {
         initial={{ opacity: 0, scale: 0.9, y: 10 }}
         animate={{ opacity: [0, 1, 0.92, 1], scale: [0.9, 1.02, 1] }}
         transition={{ duration: 0.55 }}
-        className="relative z-10 w-full max-w-3xl px-5 text-center"
+        className="relative z-10 w-full max-w-3xl px-4 sm:px-5 text-center"
       >
         <m.div
           animate={{ opacity: [1, 0.78, 1, 0.88, 1] }}
@@ -99,24 +99,24 @@ export function RoleRevealScreen({ role, onComplete }: RoleRevealScreenProps) {
           <Icon className="w-20 h-20 sm:w-24 sm:h-24" style={{ color }} />
         </m.div>
 
-        <div className="text-[10px] uppercase tracking-[0.35em] text-muted-foreground mb-3 font-rajdhani">
+        <div className="mb-3 px-2 text-[9px] uppercase tracking-[0.2em] sm:text-[10px] sm:tracking-[0.35em] text-muted-foreground font-rajdhani">
           {t("game.roleReveal.assigned")}
         </div>
 
         <m.h1
           animate={{ opacity: [1, 0.76, 1] }}
           transition={{ duration: 0.75, repeat: Infinity }}
-          className="text-5xl sm:text-7xl font-black uppercase tracking-[0.18em] font-orbitron"
+          className="mx-auto max-w-[92vw] text-[clamp(1.9rem,11.5vw,4.5rem)] leading-[0.95] font-black uppercase tracking-[0.06em] sm:tracking-[0.18em] font-orbitron break-words"
           style={{ color, textShadow: glow }}
         >
           {t(labelKey)}
         </m.h1>
 
-        <p className="mt-4 text-xs sm:text-sm uppercase tracking-[0.16em] text-foreground/80 font-rajdhani">
+        <p className="mt-4 px-2 text-[11px] sm:text-sm uppercase tracking-[0.09em] sm:tracking-[0.16em] text-foreground/80 font-rajdhani">
           {t(subtitleKey)}
         </p>
 
-        <div className="mt-8 text-[10px] uppercase tracking-[0.25em] text-foreground/65 animate-pulse">
+        <div className="mt-8 px-2 text-[9px] sm:text-[10px] uppercase tracking-[0.14em] sm:tracking-[0.25em] text-foreground/65 animate-pulse">
           {t("game.roleReveal.enteringCockpit")}
         </div>
       </m.div>

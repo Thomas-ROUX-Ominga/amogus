@@ -104,9 +104,9 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
 
     // Handle background redirect during success overlay
     const handleAutoRedirect = useCallback(async () => {
-        // Story 11.2: Clear quest state IMMEDIATELY when leaving
-        clearQuest();
-        
+        if (typeof clearQuest === "function") {
+            clearQuest({ preserveCurrentQuest: true, preserveCurrentQuestContent: true });
+        }
         try {
             await router.push(`/game/${gameId}`);
         } catch (error) {
@@ -119,8 +119,9 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
     // Remove the old auto-redirect useEffect since we handle it in SuccessOverlay
 
     const handleManualExit = useCallback(() => {
-        // Story 11.2: Clear quest state IMMEDIATELY when leaving
-        clearQuest();
+        if (typeof clearQuest === "function") {
+            clearQuest({ preserveCurrentQuest: true, preserveCurrentQuestContent: true });
+        }
         router.push(`/game/${gameId}`);
     }, [clearQuest, router, gameId]);
 
@@ -157,7 +158,9 @@ export function QuestView({ quest, gameId, userId }: QuestViewProps) {
         } catch {
             // Ignore haptic failures
         }
-        clearQuest();
+        if (typeof clearQuest === "function") {
+            clearQuest({ preserveCurrentQuest: true, preserveCurrentQuestContent: true });
+        }
         router.push(`/game/${gameId}`);
     }, [clearQuest, router, gameId]);
 

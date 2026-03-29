@@ -144,7 +144,7 @@ interface GameStore {
     chooseRole: (gameId: string, userId: string, role: PlayerRole) => Promise<boolean>;
     completeQuestAction: (gameId: string, userId: string, questId: string) => Promise<boolean>;
     setCurrentQuest: (quest: Quest) => void;
-    clearQuest: () => void;
+    clearQuest: (options?: { preserveCurrentQuest?: boolean; preserveCurrentQuestContent?: boolean }) => void;
     setQuestAnswered: (answered: boolean) => void;
     reset: () => void;
     
@@ -916,14 +916,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
     },
 
-    clearQuest: () => set({
-        currentQuest: null,
-        currentQuestContent: null,
-        questAnswered: false,
-        isCompletingQuest: false,
-        completionError: null,
-        completionErrorCode: null,
-    }),
+    clearQuest: (options) =>
+        set((state) => ({
+            currentQuest: options?.preserveCurrentQuest ? state.currentQuest : null,
+            currentQuestContent: options?.preserveCurrentQuestContent
+                ? state.currentQuestContent
+                : null,
+            questAnswered: false,
+            isCompletingQuest: false,
+            completionError: null,
+            completionErrorCode: null,
+        })),
 
     setQuestAnswered: (answered: boolean) => set({ questAnswered: answered }),
 

@@ -180,8 +180,8 @@ export function QuestPad({ duration, onSuccess, onError }: QuestPadProps) {
                         ))}
                     </div>
 
-                    <div className="relative w-full max-w-[180px] sm:max-w-[220px] mx-auto">
-                        <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
+                    <div className="relative border-2 border-slate-200/60 bg-black aspect-square w-full max-w-[180px] sm:max-w-[220px] mx-auto p-2 sm:p-3">
+                        <div className="grid grid-cols-3 gap-1.5 sm:gap-3 h-full">
                             {cellIndexes.map((cellId) => {
                                 const pressed = !isPlaying && activeCell === cellId;
                                 return (

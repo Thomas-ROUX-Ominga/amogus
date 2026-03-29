@@ -94,4 +94,30 @@ describe("QuestSingleInput Normalization", () => {
         expect(onSuccess).not.toHaveBeenCalled();
         expect(onError).not.toHaveBeenCalled();
     });
+
+    it("should not crash when validation is missing and still accept normalized answer", () => {
+        const onSuccess = vi.fn();
+        const onError = vi.fn();
+
+        const quest = {
+            id: "q3",
+            type: "single-input",
+            duration: "short",
+            title: "Test",
+            instruction: "Type 'elephant'",
+            data: {
+                answer: "elephant",
+                placeholder: "Type...",
+            },
+        } as unknown as Extract<QuestGame, { type: "single-input" }>;
+
+        render(<QuestSingleInput quest={quest} onSuccess={onSuccess} onError={onError} />);
+
+        const input = screen.getByLabelText("Réponse de la quête");
+        fireEvent.change(input, { target: { value: "  Éléphant  " } });
+        fireEvent.submit(input.closest("form")!);
+
+        expect(onSuccess).toHaveBeenCalled();
+        expect(onError).not.toHaveBeenCalled();
+    });
 });
