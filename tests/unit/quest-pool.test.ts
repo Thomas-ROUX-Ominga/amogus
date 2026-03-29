@@ -154,8 +154,12 @@ describe("quest-pool", () => {
     describe("getTotalQuestGamesCount", () => {
         it("should return total count of all quest games", () => {
             const count = getTotalQuestGamesCount();
+            const expectedCount =
+                getQuestGamesByDuration("short").length +
+                getQuestGamesByDuration("medium").length +
+                getQuestGamesByDuration("long").length;
             expect(count).toBeGreaterThan(0);
-            expect(count).toBe(60); // 20 games each for short, medium, long
+            expect(count).toBe(expectedCount);
         });
     });
 

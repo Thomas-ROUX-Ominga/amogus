@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useGameStore } from "@/lib/store/game-store";
 import { getGame, joinGame, startGame, completeQuest } from "@/lib/redis/actions";
+import { getTotalQuests } from "@/lib/utils/quest-calculations";
 import { GameState } from "@/types/game";
 
 // Mock the server actions
@@ -227,7 +228,7 @@ describe("game-store", () => {
 
             const state = useGameStore.getState();
             expect(state.questsCompleted).toBe(2);
-            expect(state.questsTotal).toBe(60);
+            expect(state.questsTotal).toBe(getTotalQuests(mockGame));
         });
 
         it("should default questsCompleted to 0 when completedQuests is undefined", async () => {
@@ -247,7 +248,7 @@ describe("game-store", () => {
 
             const state = useGameStore.getState();
             expect(state.questsCompleted).toBe(0);
-            expect(state.questsTotal).toBe(60);
+            expect(state.questsTotal).toBe(getTotalQuests(mockGame));
         });
     });
 

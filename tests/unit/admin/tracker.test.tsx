@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { PlayerList } from "@/components/admin/player-list";
 import { ProgressBar } from "@/components/admin/progress-bar";
 import { TrackerStats } from "@/components/admin/tracker-stats";
@@ -127,13 +127,21 @@ describe("ProgressBar", () => {
     it("should show individual progress", () => {
         render(<ProgressBar gameState={mockGameState} />);
         
-        expect(screen.getByText("TestPlayer1")).toBeDefined();
-        expect(screen.getByText("TestPlayer2")).toBeDefined();
+        const player1Row = screen.getByText("TestPlayer1").parentElement;
+        const player2Row = screen.getByText("TestPlayer2").parentElement;
+
+        expect(player1Row).toBeDefined();
+        expect(player2Row).toBeDefined();
+
         expect(
-            screen.getByText(`${calculatePlayerProgress(mockGameState.players[0].completedQuests ?? [], mockGameState).toFixed(0)}%`),
+            within(player1Row as HTMLElement).getByText(
+                `${calculatePlayerProgress(mockGameState.players[0].completedQuests ?? [], mockGameState).toFixed(0)}%`,
+            ),
         ).toBeDefined();
         expect(
-            screen.getByText(`${calculatePlayerProgress(mockGameState.players[1].completedQuests ?? [], mockGameState).toFixed(0)}%`),
+            within(player2Row as HTMLElement).getByText(
+                `${calculatePlayerProgress(mockGameState.players[1].completedQuests ?? [], mockGameState).toFixed(0)}%`,
+            ),
         ).toBeDefined();
     });
 });
