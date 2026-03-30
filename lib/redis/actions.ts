@@ -19,6 +19,12 @@ import { generateShortCode } from "@/lib/utils/short-code.server";
 import { Quest, BatchSabotages, SabotageType } from "@/types/quest";
 import { optimizeCrewmateAssignmentsFromLoadedBatch } from "@/lib/quests/quest-assignment";
 import {
+    hasCustomGameTimerSettings,
+    normalizeGameTimerSettings,
+    resolveGameTimerSettings,
+    secondsToMs,
+} from "@/lib/game/timers";
+import {
     getFailedQuestsKey,
     getGameNamespacePattern,
     getPlayerPresenceKey,
@@ -29,10 +35,6 @@ import {
 import { verifySession, createPlayerSession, verifyPlayerSession } from "@/lib/redis/auth-utils";
 import { getGlobalQuestStats } from "@/lib/utils/quest-calculations";
 
-const MEETING_DURATION_MS = 5 * 60 * 1000;
-const REACTOR_SABOTAGE_DURATION_MS = 90 * 1000;
-const SABOTAGE_COOLDOWN_MS = 120 * 1000;
-const POST_MEETING_GRACE_MS = 60 * 1000;
 const MAX_PLAYERS_PER_GAME = 50;
 const PLAYER_PRESENCE_TTL_SECONDS = 30;
 
@@ -198,7 +200,9 @@ function getPostMeetingGraceRemainingMs(state: GameState, now: number): number {
         return 0;
     }
 
-    return Math.max(0, endedAt + POST_MEETING_GRACE_MS - now);
+    const timerSettings = resolveGameTimerSettings(state);
+    const postMeetingGraceMs = secondsToMs(timerSettings.postMeetingGraceSeconds);
+    return Math.max(0, endedAt + postMeetingGraceMs - now);
 }
 
 function getReactorRemainingMs(reactor: ReactorSabotageState, now: number): number {
@@ -358,7 +362,9 @@ function resolveMeetingIfExpired(state: GameState, now: number): GameState {
     if (now < state.meeting.endsAt) {
         return state;
     }
-    return resolveMeetingState(state, "TIMEOUT", now);
+    // Use the scheduled end timestamp instead of "now" so timeout completion
+    // remains stable across repeated reads/refreshes.
+    return resolveMeetingState(state, "TIMEOUT", state.meeting.endsAt);
 }
 
 function resolveSabotageIfExpired(state: GameState, now: number): GameState {
@@ -1212,6 +1218,12 @@ export interface CreateGameInput {
     impostorMode?: ImpostorAssignmentMode;
     manualImpostorCount?: number;
     enforceDurationLimits?: boolean;
+    timerSettings?: {
+        meetingDurationSeconds?: number;
+        postMeetingGraceSeconds?: number;
+        sabotageDurationSeconds?: number;
+        sabotageCooldownSeconds?: number;
+    };
 }
 
 export async function createGame(input?: CreateGameInput): Promise<ActionResponse<string>> {
@@ -1237,6 +1249,7 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
         const manualImpostorCount = impostorMode === "manual"
             ? getManualImpostorCount(input?.manualImpostorCount)
             : undefined;
+        const timerSettings = normalizeGameTimerSettings(input?.timerSettings);
 
         // Validate minimum quests per player (must be at least 1 total)
         const totalRequested = questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long;
@@ -1325,6 +1338,7 @@ export async function createGame(input?: CreateGameInput): Promise<ActionRespons
             questsPerPlayer,
             impostorMode,
             manualImpostorCount,
+            timerSettings: hasCustomGameTimerSettings(timerSettings) ? timerSettings : undefined,
             sabotages: batchSabotages,
             sabotageState: getDefaultSabotageState(),
         };
@@ -2248,6 +2262,8 @@ export async function triggerSabotage(
             }
 
             const sabotageState = getNormalizedSabotageState(workingState);
+            const timerSettings = resolveGameTimerSettings(workingState);
+            const sabotageDurationMs = secondsToMs(timerSettings.sabotageDurationSeconds);
             if (sabotageState.active) {
                 validationError = {
                     success: false,
@@ -2294,7 +2310,7 @@ export async function triggerSabotage(
                               active: "REACTOR",
                               reactor: {
                                   startedAt: now,
-                                  endsAt: now + REACTOR_SABOTAGE_DURATION_MS,
+                                  endsAt: now + sabotageDurationMs,
                                   scannedByQrId: [],
                                   scannedUserIds: [],
                               },
@@ -2343,7 +2359,9 @@ export async function triggerSabotage(
                         ? {
                               scanned: 0,
                               total: 2,
-                              remainingMs: REACTOR_SABOTAGE_DURATION_MS,
+                              remainingMs: secondsToMs(
+                                  resolveGameTimerSettings(updatedState).sabotageDurationSeconds
+                              ),
                           }
                         : undefined,
                 gameState: sanitizedState,
@@ -2448,6 +2466,8 @@ export async function scanSabotage(
             }
 
             const sabotageState = getNormalizedSabotageState(workingState);
+            const timerSettings = resolveGameTimerSettings(workingState);
+            const sabotageCooldownMs = secondsToMs(timerSettings.sabotageCooldownSeconds);
 
             if (isCommsQr || isLightsQr) {
                 if (player.role !== "CREWMATE") {
@@ -2479,10 +2499,10 @@ export async function scanSabotage(
                         cooldowns: {
                             ...sabotageState.cooldowns,
                             communicationsAvailableAt: isCommsQr
-                                ? now + SABOTAGE_COOLDOWN_MS
+                                ? now + sabotageCooldownMs
                                 : sabotageState.cooldowns.communicationsAvailableAt,
                             lightsAvailableAt: isLightsQr
-                                ? now + SABOTAGE_COOLDOWN_MS
+                                ? now + sabotageCooldownMs
                                 : sabotageState.cooldowns.lightsAvailableAt,
                         },
                     },
@@ -2565,7 +2585,7 @@ export async function scanSabotage(
                         cooldowns: {
                             ...sabotageState.cooldowns,
                             reactorAvailableAt: repaired
-                                ? now + SABOTAGE_COOLDOWN_MS
+                                ? now + sabotageCooldownMs
                                 : sabotageState.cooldowns.reactorAvailableAt,
                         },
                     },
@@ -2773,7 +2793,7 @@ export async function triggerMeeting(
                 return null;
             }
 
-            if (player.meetingBuzzUsedAt) {
+            if (player.meetingBuzzUsedAt && !hasPostEliminationBuzzerGrant) {
                 validationError = {
                     success: false,
                     error: "You already used your buzzer in this game.",
@@ -2798,11 +2818,12 @@ export async function triggerMeeting(
             });
 
             const meetingId = `${now}-${Math.floor(Math.random() * 1_000_000)}`;
+            const meetingDurationMs = secondsToMs(resolveGameTimerSettings(workingState).meetingDurationSeconds);
             const meeting: MeetingState = {
                 id: meetingId,
                 status: "ACTIVE",
                 startedAt: now,
-                endsAt: now + MEETING_DURATION_MS,
+                endsAt: now + meetingDurationMs,
                 startedBy: userId,
                 snapshot: buildMeetingSnapshot(workingState, now),
                 eligibleVoterIds,

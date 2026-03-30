@@ -127,6 +127,52 @@ describe('Game Creation Integration', () => {
       );
     });
 
+    it('should persist custom timer settings when provided', async () => {
+      const { getBatchData } = await import('@/lib/redis/batch-actions');
+      vi.mocked(getBatchData).mockResolvedValue({
+        success: true,
+        data: {
+          id: 'batch-timers',
+          questCount: 12,
+          quests: Array(12).fill(null).map((_, i) => ({
+            id: `quest-${i}`,
+            type: 'true-false' as const,
+            duration: 'short' as const,
+            location: `Zone ${i}`,
+          })),
+          createdAt: new Date().toISOString(),
+        },
+      });
+
+      const input: CreateGameInput = {
+        batchId: 'batch-timers',
+        timerSettings: {
+          meetingDurationSeconds: 70,
+          postMeetingGraceSeconds: 30,
+          sabotageDurationSeconds: 45,
+          sabotageCooldownSeconds: 80,
+        },
+      };
+
+      const result = await createGame(input);
+
+      expect(result.success).toBe(true);
+
+      const { redis } = await import('@/lib/redis/client');
+      expect(redis.set).toHaveBeenCalledWith(
+        'game:v2:AH72X9:state',
+        expect.objectContaining({
+          timerSettings: {
+            meetingDurationSeconds: 70,
+            postMeetingGraceSeconds: 30,
+            sabotageDurationSeconds: 45,
+            sabotageCooldownSeconds: 80,
+          },
+        }),
+        86400
+      );
+    });
+
     it('should reject game creation when requested quests exceed available', async () => {
       const { getBatchData } = await import('@/lib/redis/batch-actions');
       vi.mocked(getBatchData).mockResolvedValue({

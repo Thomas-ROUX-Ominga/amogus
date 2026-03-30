@@ -278,6 +278,7 @@ const fr = {
     },
     actions: {
       buzz: "Buzzer",
+      reportBody: "Signaler le corps",
       buzzUsed: "Buzz utilisé",
       buzzActive: "Meeting actif",
       buzzing: "BUZZ...",
@@ -320,9 +321,9 @@ const fr = {
       noMeetingTitle: "Aucun meeting en cours",
       noMeetingDescription:
         "Attendez un buzz pour lancer un meeting et figer les données.",
-      bodyFoundTitle: "Cadavre trouvé",
-      bodyFoundPrefix: "Cadavre identifié:",
-      bodyFoundTag: "CADAVRE",
+      bodyFoundTitle: "Corps trouvé",
+      bodyFoundPrefix: "Corps identifié:",
+      bodyFoundTag: "CORPS",
       completedTitle: "Meeting terminé",
       eliminatedPlayer: "{playerName} a été éliminé.",
       noElimination: "Aucune élimination (aucun vote).",
@@ -493,7 +494,7 @@ const fr = {
       statusUnavailable: "INDISPONIBLE",
       triggerButton: "Déclencher",
       triggeringButton: "Déclenchement...",
-      postMeetingGraceNotice: "Grâce post-meeting active ({time}) : sabotages bloqués pendant 1 minute.",
+      postMeetingGraceNotice: "Grâce post-meeting active ({time}) : sabotages bloqués.",
       communicationsOverlayTitle: "COMMUNICATIONS SABOTÉES",
       communicationsOverlayMessage:
         "Les scans de quête sont bloqués. Scannez le QR communications pour réparer.",
@@ -506,7 +507,7 @@ const fr = {
         communicationsQuestBlocked: "Communications sabotées: impossible de scanner une quête.",
         lightsActivated: "Sabotage lumières activé.",
         lightsRepaired: "Lumières réparées.",
-        reactorActivated: "Sabotage réacteur activé. 90 secondes.",
+        reactorActivated: "Sabotage réacteur activé.",
         reactorProgress: "Réacteur: {scanned}/{total}.",
         reactorRepaired: "Réacteur stabilisé.",
         reactorAlreadyScanned: "Ce réacteur est déjà validé.",
@@ -540,7 +541,7 @@ const fr = {
       ghostReminderImpostor:
         "Fantôme: restez muet. Vous pouvez encore déclencher des sabotages.",
       postMeetingGraceBanner:
-        "Grâce post-meeting active ({time}) : buzzer et sabotages imposteurs bloqués (sauf signalement de cadavre).",
+        "Grâce post-meeting active ({time}) : buzzer et sabotages imposteurs bloqués (sauf signalement de corps).",
       meetingTriggeredTitle: "Meeting déclenché",
       meetingTriggeredMessage:
         "Un buzz a été déclenché. Rejoignez la salle de meeting et rassemblez-vous IRL.",
@@ -767,6 +768,12 @@ const fr = {
       manualImpostorCountLabel: "Nombre d'imposteurs",
       autoImpostorRule: "Auto: 1 imposteur par tranche de 5 joueurs (3-5:1, 6-10:2, 11-15:3...)",
       manualImpostorRule: "Mode manuel: {impostors} imposteur(s), minimum {minPlayers} joueur(s) pour lancer",
+      timersConfigTitle: "Timers partie (secondes)",
+      meetingDurationSeconds: "Durée meeting (s)",
+      postMeetingGraceSeconds: "Grâce post-meeting (s)",
+      sabotageDurationSeconds: "Durée sabotage réacteur (s)",
+      sabotageCooldownSeconds: "Cooldown sabotage (s)",
+      timersHint: "Valeurs en secondes (0 à 3600).",
       totalPerPlayer: "Total par joueur: {count} quêtes",
       minimumRequired: "Minimum 1 quête requise",
       creatingGame: "Création de la partie...",

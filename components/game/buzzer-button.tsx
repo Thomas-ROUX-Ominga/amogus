@@ -9,6 +9,7 @@ interface BuzzerButtonProps {
     isBuzzing?: boolean;
     hasUsed?: boolean;
     meetingActive?: boolean;
+    defaultLabelKey?: "game.actions.buzz" | "game.actions.reportBody";
     className?: string;
 }
 
@@ -18,6 +19,7 @@ export function BuzzerButton({
     isBuzzing = false,
     hasUsed = false,
     meetingActive = false,
+    defaultLabelKey = "game.actions.buzz",
     className = "",
 }: BuzzerButtonProps) {
     const t = useTranslations();
@@ -41,7 +43,7 @@ export function BuzzerButton({
         ? t("game.actions.buzzActive")
         : hasUsed
         ? t("game.actions.buzzUsed")
-        : t("game.actions.buzz");
+        : t(defaultLabelKey);
 
     return (
         <button

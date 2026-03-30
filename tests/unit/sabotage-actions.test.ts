@@ -167,6 +167,73 @@ describe("Sabotage actions", () => {
         expect(result.data?.event).toBe("COMMUNICATIONS_ACTIVATED");
     });
 
+    it("uses custom timer settings for grace, sabotage duration and cooldown", async () => {
+        const now = Date.now();
+        const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
+
+        const customTimersState: GameState = {
+            ...baseState,
+            timerSettings: {
+                meetingDurationSeconds: 300,
+                postMeetingGraceSeconds: 5,
+                sabotageDurationSeconds: 25,
+                sabotageCooldownSeconds: 40,
+            },
+            meeting: {
+                id: "meeting-custom",
+                status: "COMPLETED",
+                startedAt: now - 30_000,
+                endsAt: now - 10_000,
+                startedBy: "imp-1",
+                snapshot: {
+                    capturedAt: now - 30_000,
+                    progress: { completed: 0, total: 3, percentage: 0 },
+                    players: [
+                        { id: "imp-1", name: "Impostor", role: "IMPOSTOR", isAlive: true },
+                        { id: "crew-1", name: "Crewmate", role: "CREWMATE", isAlive: true },
+                        { id: "crew-2", name: "Crewmate2", role: "CREWMATE", isAlive: true },
+                    ],
+                },
+                eligibleVoterIds: ["imp-1", "crew-1", "crew-2"],
+                voteCounts: { "imp-1": 0, "crew-1": 0, "crew-2": 0 },
+                totalEligibleVoters: 3,
+                totalVotes: 0,
+                endReason: "TIMEOUT",
+                endedAt: now - 10_000,
+            },
+        };
+
+        mockAtomicUpdate(customTimersState);
+        const commsResult = await triggerSabotage("game-1", "imp-1", "COMMUNICATIONS");
+        expect(commsResult.success).toBe(true);
+        expect(commsResult.data?.event).toBe("COMMUNICATIONS_ACTIVATED");
+
+        const reactorTriggerState: GameState = {
+            ...baseState,
+            timerSettings: customTimersState.timerSettings,
+        };
+        mockAtomicUpdate(reactorTriggerState);
+        const reactorResult = await triggerSabotage("game-1", "imp-1", "REACTOR");
+        expect(reactorResult.success).toBe(true);
+        expect(reactorResult.data?.reactorProgress?.remainingMs).toBe(25_000);
+        expect(reactorResult.data?.gameState?.sabotageState?.reactor?.endsAt).toBe(now + 25_000);
+
+        const commsActiveState: GameState = {
+            ...baseState,
+            timerSettings: customTimersState.timerSettings,
+            sabotageState: {
+                ...baseState.sabotageState!,
+                active: "COMMUNICATIONS",
+            },
+        };
+        mockAtomicUpdate(commsActiveState);
+        const repairResult = await scanSabotage("game-1", "crew-1", "comms-qr");
+        expect(repairResult.success).toBe(true);
+        expect(repairResult.data?.gameState?.sabotageState?.cooldowns.communicationsAvailableAt).toBe(now + 40_000);
+
+        dateNowSpy.mockRestore();
+    });
+
     it("allows alive crewmate to repair communications when active", async () => {
         const state: GameState = {
             ...baseState,

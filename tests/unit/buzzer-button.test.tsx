@@ -25,6 +25,11 @@ describe("BuzzerButton", () => {
         expect(onBuzz).toHaveBeenCalledTimes(1);
     });
 
+    it("supports body-report label in post-elimination mode", () => {
+        render(<BuzzerButton onBuzz={onBuzz} defaultLabelKey="game.actions.reportBody" />);
+        expect(screen.getByRole("button", { name: /signaler le corps/i })).toBeInTheDocument();
+    });
+
     it("shows used label when buzzer already used", () => {
         render(<BuzzerButton onBuzz={onBuzz} hasUsed disabled />);
         expect(screen.getByRole("button", { name: /buzz utilisé/i })).toBeDisabled();

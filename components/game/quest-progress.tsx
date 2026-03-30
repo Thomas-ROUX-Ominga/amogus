@@ -7,6 +7,7 @@ import { QuestList } from "./quest-list";
 import { useGameStore } from "@/lib/store/game-store";
 import { Quest, SabotageType } from "@/types/quest";
 import { triggerSabotage } from "@/lib/redis/actions";
+import { resolveGameTimerSettings, secondsToMs } from "@/lib/game/timers";
 
 interface QuestProgressProps {
     role: PlayerRole;
@@ -26,8 +27,6 @@ interface QuestProgressProps {
 const EMPTY_ARRAY: string[] = [];
 const EMPTY_QUESTS: Quest[] = [];
 const QUEST_CATALOG_RETRY_MS = 10000;
-const POST_MEETING_GRACE_MS = 60 * 1000;
-
 function sortQuestsForDisplay<T extends { completed: boolean }>(
     quests: T[],
 ): T[] {
@@ -59,7 +58,8 @@ function getPostMeetingGraceRemainingMs(gameState: GameState | null | undefined,
     }
 
     const endedAt = gameState.meeting.endedAt ?? gameState.meeting.endsAt;
-    return Math.max(0, endedAt + POST_MEETING_GRACE_MS - now);
+    const postMeetingGraceMs = secondsToMs(resolveGameTimerSettings(gameState).postMeetingGraceSeconds);
+    return Math.max(0, endedAt + postMeetingGraceMs - now);
 }
 
 export function QuestProgress({

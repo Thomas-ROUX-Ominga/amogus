@@ -89,10 +89,10 @@ describe("MeetingPage", () => {
 
     render(<MeetingPage />);
 
-    expect(screen.queryByText("Cadavre trouvé")).not.toBeInTheDocument();
+    expect(screen.queryByText("Corps trouvé")).not.toBeInTheDocument();
     const foundBodyPlayerButton = screen.getByRole("button", { name: /Alex/i });
     expect(foundBodyPlayerButton.className).toContain("border-red-500/80");
-    expect(screen.getByText(/CADAVRE/)).toBeInTheDocument();
+    expect(screen.getByText(/CORPS/)).toBeInTheDocument();
   });
 
   it("shows a completion modal with eliminated player and cockpit primary CTA", () => {

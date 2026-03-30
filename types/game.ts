@@ -68,6 +68,13 @@ export interface SabotageState {
     cooldowns: SabotageCooldownState;
 }
 
+export interface GameTimerSettings {
+    meetingDurationSeconds: number;
+    postMeetingGraceSeconds: number;
+    sabotageDurationSeconds: number;
+    sabotageCooldownSeconds: number;
+}
+
 export interface Player {
     id: string;
     name: string;
@@ -99,6 +106,7 @@ export interface GameState {
     manualImpostorCount?: number; // Used when impostorMode is "manual"
     assignedImpostorCount?: number; // Final impostor count used once game starts
     winner?: PlayerRole; // Victory condition result
+    timerSettings?: GameTimerSettings;
     meeting?: MeetingState;
     sabotages?: BatchSabotages;
     sabotageState?: SabotageState;

@@ -16,6 +16,7 @@ import { GameOverScreen } from "@/components/game/game-over-screen";
 import { ReactorSabotageAlert } from "@/components/game/reactor-sabotage-alert";
 import { useCameraScanner } from "@/hooks/use-camera-scanner";
 import { scanSabotage } from "@/lib/redis/actions";
+import { resolveGameTimerSettings, secondsToMs } from "@/lib/game/timers";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
 interface GameHomeProps {
@@ -23,8 +24,6 @@ interface GameHomeProps {
     currentPlayer: Player;
     userId: string;
 }
-
-const POST_MEETING_GRACE_MS = 60 * 1000;
 
 function formatGraceCountdown(ms: number): string {
     if (ms <= 0) return "00:00";
@@ -85,9 +84,11 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     } = useGameStore();
 
     const allQuestsDone = questsTotal > 0 && questsCompleted >= questsTotal;
+    const timerSettings = resolveGameTimerSettings(gameState);
+    const postMeetingGraceMs = secondsToMs(timerSettings.postMeetingGraceSeconds);
     const postMeetingGraceEndsAt =
         gameState.meeting?.status === "COMPLETED"
-            ? (gameState.meeting.endedAt ?? gameState.meeting.endsAt) + POST_MEETING_GRACE_MS
+            ? (gameState.meeting.endedAt ?? gameState.meeting.endsAt) + postMeetingGraceMs
             : null;
     const postMeetingGraceRemainingMs = postMeetingGraceEndsAt ? Math.max(0, postMeetingGraceEndsAt - now) : 0;
     const isPostMeetingGraceActive = postMeetingGraceRemainingMs > 0;
@@ -300,7 +301,10 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     const ghostReminderMessage = isImpostor
         ? ghostReminderImpostor
         : ghostReminderCrewmate;
-    const hasUsedBuzzer = Boolean(currentPlayer.meetingBuzzUsedAt);
+    const hasUsedBuzzer = Boolean(currentPlayer.meetingBuzzUsedAt) && !hasPostEliminationBuzzerWindow;
+    const defaultBuzzerLabelKey = hasPostEliminationBuzzerWindow
+        ? "game.actions.reportBody"
+        : "game.actions.buzz";
     const canUseBuzzer =
         (currentPlayer.isAlive || hasPostEliminationBuzzerWindow) &&
         (!isPostMeetingGraceActive || hasPostEliminationBuzzerWindow) &&
@@ -428,6 +432,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                                 isBuzzing={isTriggeringMeeting}
                                 hasUsed={hasUsedBuzzer}
                                 meetingActive={isMeetingActive}
+                                defaultLabelKey={defaultBuzzerLabelKey}
                                 className="w-full min-h-[56px] justify-center gap-2 px-4 py-3 text-[11px] border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary-foreground tracking-[0.14em]"
                             />
                         </div>
@@ -439,6 +444,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                                 isBuzzing={isTriggeringMeeting}
                                 hasUsed={hasUsedBuzzer}
                                 meetingActive={isMeetingActive}
+                                defaultLabelKey={defaultBuzzerLabelKey}
                                 className="w-full min-h-[56px] justify-center gap-2 px-4 py-3 text-[11px] border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary-foreground tracking-[0.12em]"
                             />
                             <EliminationButton

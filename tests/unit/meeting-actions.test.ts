@@ -129,6 +129,32 @@ describe("meeting actions", () => {
         });
     });
 
+    it("uses custom meeting duration when configured", async () => {
+        vi.useFakeTimers();
+        const now = new Date("2026-03-22T12:00:00.000Z").getTime();
+        vi.setSystemTime(now);
+
+        try {
+            const state = await redis.get<GameState>(stateKey);
+            await redis.set(stateKey, {
+                ...state!,
+                timerSettings: {
+                    meetingDurationSeconds: 45,
+                    postMeetingGraceSeconds: 60,
+                    sabotageDurationSeconds: 90,
+                    sabotageCooldownSeconds: 120,
+                },
+            });
+
+            const result = await triggerMeeting(gameId, "u1");
+
+            expect(result.success).toBe(true);
+            expect(result.data?.meeting?.endsAt).toBe(now + 45_000);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it("blocks crewmate buzzer when a sabotage is active", async () => {
         const state = await redis.get<GameState>(stateKey);
         await redis.set(stateKey, {
@@ -355,6 +381,35 @@ describe("meeting actions", () => {
         expect(result.data?.meeting?.status).toBe("ACTIVE");
     });
 
+    it("allows a dead player to trigger body-phone buzzer even after using normal buzzer earlier", async () => {
+        const now = Date.now();
+        await redis.set(stateKey, {
+            id: gameId,
+            status: "IN_PROGRESS",
+            createdAt: now,
+            revision: 1,
+            updatedAt: now,
+            players: [
+                { id: "admin", name: "Admin", isAlive: true },
+                {
+                    id: "u1",
+                    name: "Alice",
+                    role: "CREWMATE",
+                    isAlive: false,
+                    meetingBuzzUsedAt: now - 30_000,
+                    postEliminationBuzzerGrantedAt: now,
+                },
+                { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
+                { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true, completedQuests: [] },
+                { id: "u4", name: "Dina", role: "CREWMATE", isAlive: true, completedQuests: [] },
+            ],
+        });
+
+        const result = await triggerMeeting(gameId, "u1");
+        expect(result.success).toBe(true);
+        expect(result.data?.meeting?.status).toBe("ACTIVE");
+    });
+
     it("allows body-phone buzzer during active sabotage and resumes reactor timer after meeting", async () => {
         vi.useFakeTimers();
         const now = new Date("2026-03-22T12:00:00.000Z").getTime();
@@ -563,11 +618,12 @@ describe("meeting actions", () => {
     it("resolves timed-out meeting with no elimination when there are no votes", async () => {
         await triggerMeeting(gameId, "u1");
         const state = await redis.get<GameState>(stateKey);
+        const forcedEndsAt = Date.now() - 1000;
         await redis.set(stateKey, {
             ...state!,
             meeting: {
                 ...state!.meeting!,
-                endsAt: Date.now() - 1000,
+                endsAt: forcedEndsAt,
             },
         });
 
@@ -576,6 +632,7 @@ describe("meeting actions", () => {
         expect(view.data?.meeting?.status).toBe("COMPLETED");
         expect(view.data?.meeting?.endReason).toBe("TIMEOUT");
         expect(view.data?.meeting?.eliminatedPlayerId).toBeUndefined();
+        expect(view.data?.meeting?.endedAt).toBe(forcedEndsAt);
     });
 
     it("ends the game with CREWMATE victory when the last impostor is eliminated in meeting", async () => {

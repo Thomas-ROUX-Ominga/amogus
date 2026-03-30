@@ -273,7 +273,7 @@ describe("GameHome", () => {
         };
 
         render(<GameHome gameState={sabotagedState} currentPlayer={deadWithBuzzerWindow} userId="user-1" />);
-        expect(screen.getByRole("button", { name: /buzzer/i })).not.toBeDisabled();
+        expect(screen.getByRole("button", { name: /signaler le corps/i })).not.toBeDisabled();
     });
 
     it("keeps body-phone buzzer available during post-meeting grace", () => {
@@ -313,7 +313,25 @@ describe("GameHome", () => {
         };
 
         render(<GameHome gameState={graceState} currentPlayer={deadWithBuzzerWindow} userId="user-1" />);
-        expect(screen.getByRole("button", { name: /buzzer/i })).not.toBeDisabled();
+        expect(screen.getByRole("button", { name: /signaler le corps/i })).not.toBeDisabled();
+    });
+
+    it("keeps body-phone buzzer available even if player already used normal buzzer", () => {
+        const deadWithBuzzerWindowAndUsedBuzz: Player = {
+            ...crewmatePlayer,
+            isAlive: false,
+            meetingBuzzUsedAt: Date.now() - 60_000,
+            postEliminationBuzzerGrantedAt: Date.now(),
+        };
+
+        render(
+            <GameHome
+                gameState={mockGameState}
+                currentPlayer={deadWithBuzzerWindowAndUsedBuzz}
+                userId="user-1"
+            />,
+        );
+        expect(screen.getByRole("button", { name: /signaler le corps/i })).not.toBeDisabled();
     });
 
     it("renders awaiting-death state with disabled scanner and quests", () => {

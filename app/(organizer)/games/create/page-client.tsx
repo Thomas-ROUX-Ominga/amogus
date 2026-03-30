@@ -7,9 +7,12 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { createGame, CreateGameInput } from "@/lib/redis/actions";
 import { getAllBatches, getBatch } from "@/lib/redis/batch-actions";
+import { DEFAULT_GAME_TIMER_SETTINGS } from "@/lib/game/timers";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 import { NumberStepperInput } from "@/components/common/number-stepper-input";
 import { BatchListItem } from "@/types/quest";
+
+const MAX_TIMER_SECONDS = 60 * 60;
 
 export default function CreateGamePage() {
   const t = useTranslations();
@@ -32,6 +35,12 @@ export default function CreateGamePage() {
   });
   const [impostorMode, setImpostorMode] = useState<"auto" | "manual">("auto");
   const [manualImpostorCount, setManualImpostorCount] = useState(1);
+  const [timerSettings, setTimerSettings] = useState({
+    meetingDurationSeconds: DEFAULT_GAME_TIMER_SETTINGS.meetingDurationSeconds,
+    postMeetingGraceSeconds: DEFAULT_GAME_TIMER_SETTINGS.postMeetingGraceSeconds,
+    sabotageDurationSeconds: DEFAULT_GAME_TIMER_SETTINGS.sabotageDurationSeconds,
+    sabotageCooldownSeconds: DEFAULT_GAME_TIMER_SETTINGS.sabotageCooldownSeconds,
+  });
   const totalQuests = questsPerPlayer.short + questsPerPlayer.medium + questsPerPlayer.long;
   const isValidTotal = totalQuests >= 1;
   const isBatchLimitsReady = !selectedBatch || selectedBatchLimits !== null;
@@ -110,6 +119,21 @@ export default function CreateGamePage() {
     }));
   };
 
+  const updateTimerSetting = (
+    key:
+      | "meetingDurationSeconds"
+      | "postMeetingGraceSeconds"
+      | "sabotageDurationSeconds"
+      | "sabotageCooldownSeconds",
+    nextValue: number,
+  ) => {
+    const clamped = Math.max(0, Math.min(MAX_TIMER_SECONDS, nextValue));
+    setTimerSettings((prev) => ({
+      ...prev,
+      [key]: clamped,
+    }));
+  };
+
   const loadBatches = async () => {
     try {
       const response = await getAllBatches();
@@ -167,6 +191,7 @@ export default function CreateGamePage() {
         impostorMode,
         manualImpostorCount: impostorMode === "manual" ? manualImpostorCount : undefined,
         enforceDurationLimits: true,
+        timerSettings,
       };
 
       const response = await createGame(input);
@@ -500,6 +525,79 @@ export default function CreateGamePage() {
                     impostors: String(manualImpostorCount),
                     minPlayers: String(minimumPlayersForLaunch),
                   })}
+            </p>
+          </section>
+
+          {/* Timer Configuration */}
+          <section className="pt-3 sm:pt-4 border-t border-primary/15">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-primary mb-2">
+              {t("organizer.gamesCreate.timersConfigTitle")}
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-4">
+              <div>
+                <label htmlFor="timer-meeting-duration" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-[0.12em] leading-tight block mb-1.5 min-h-[1.75rem]">
+                  {t("organizer.gamesCreate.meetingDurationSeconds")}
+                </label>
+                <NumberStepperInput
+                  id="timer-meeting-duration"
+                  value={timerSettings.meetingDurationSeconds}
+                  min={0}
+                  max={MAX_TIMER_SECONDS}
+                  onChange={(value) => updateTimerSetting("meetingDurationSeconds", value)}
+                  incrementAriaLabel="Increase meeting duration"
+                  decrementAriaLabel="Decrease meeting duration"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="timer-post-meeting-grace" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-[0.12em] leading-tight block mb-1.5 min-h-[1.75rem]">
+                  {t("organizer.gamesCreate.postMeetingGraceSeconds")}
+                </label>
+                <NumberStepperInput
+                  id="timer-post-meeting-grace"
+                  value={timerSettings.postMeetingGraceSeconds}
+                  min={0}
+                  max={MAX_TIMER_SECONDS}
+                  onChange={(value) => updateTimerSetting("postMeetingGraceSeconds", value)}
+                  incrementAriaLabel="Increase post-meeting grace"
+                  decrementAriaLabel="Decrease post-meeting grace"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="timer-sabotage-duration" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-[0.12em] leading-tight block mb-1.5 min-h-[1.75rem]">
+                  {t("organizer.gamesCreate.sabotageDurationSeconds")}
+                </label>
+                <NumberStepperInput
+                  id="timer-sabotage-duration"
+                  value={timerSettings.sabotageDurationSeconds}
+                  min={0}
+                  max={MAX_TIMER_SECONDS}
+                  onChange={(value) => updateTimerSetting("sabotageDurationSeconds", value)}
+                  incrementAriaLabel="Increase sabotage duration"
+                  decrementAriaLabel="Decrease sabotage duration"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="timer-sabotage-cooldown" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-[0.12em] leading-tight block mb-1.5 min-h-[1.75rem]">
+                  {t("organizer.gamesCreate.sabotageCooldownSeconds")}
+                </label>
+                <NumberStepperInput
+                  id="timer-sabotage-cooldown"
+                  value={timerSettings.sabotageCooldownSeconds}
+                  min={0}
+                  max={MAX_TIMER_SECONDS}
+                  onChange={(value) => updateTimerSetting("sabotageCooldownSeconds", value)}
+                  incrementAriaLabel="Increase sabotage cooldown"
+                  decrementAriaLabel="Decrease sabotage cooldown"
+                />
+              </div>
+            </div>
+
+            <p className="mt-3 text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-wider">
+              {t("organizer.gamesCreate.timersHint")}
             </p>
           </section>
         </div>
