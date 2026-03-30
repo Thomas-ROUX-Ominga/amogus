@@ -148,6 +148,37 @@ describe("GameHome", () => {
         expect(screen.getByText("COMMUNICATIONS SABOTÉES")).toBeTruthy();
     });
 
+    it("disables normal buzzer during post-meeting grace", () => {
+        const graceState: GameState = {
+            ...mockGameState,
+            meeting: {
+                id: "meeting-prev",
+                status: "COMPLETED",
+                startedAt: Date.now() - 45_000,
+                endsAt: Date.now() - 10_000,
+                startedBy: "user-2",
+                snapshot: {
+                    capturedAt: Date.now() - 45_000,
+                    progress: { completed: 0, total: 2, percentage: 0 },
+                    players: [
+                        { id: "user-1", name: "Alice", role: "CREWMATE", isAlive: true },
+                        { id: "user-2", name: "Bob", role: "IMPOSTOR", isAlive: true },
+                    ],
+                },
+                eligibleVoterIds: ["user-1", "user-2"],
+                voteCounts: { "user-1": 0, "user-2": 0 },
+                totalEligibleVoters: 2,
+                totalVotes: 0,
+                endReason: "TIMEOUT",
+                endedAt: Date.now() - 10_000,
+            },
+        };
+
+        render(<GameHome gameState={graceState} currentPlayer={crewmatePlayer} userId="user-1" />);
+        expect(screen.getByRole("button", { name: /buzzer/i })).toBeDisabled();
+        expect(screen.getByText(/Grâce post-meeting active/i)).toBeTruthy();
+    });
+
     it("keeps scanner open and shows communications-blocked feedback when lights is scanned during communications sabotage", async () => {
         vi.mocked(useCameraScanner).mockReturnValue({
             isOpen: true,
@@ -242,6 +273,46 @@ describe("GameHome", () => {
         };
 
         render(<GameHome gameState={sabotagedState} currentPlayer={deadWithBuzzerWindow} userId="user-1" />);
+        expect(screen.getByRole("button", { name: /buzzer/i })).not.toBeDisabled();
+    });
+
+    it("keeps body-phone buzzer available during post-meeting grace", () => {
+        const now = Date.now();
+        const deadWithBuzzerWindow: Player = {
+            ...crewmatePlayer,
+            isAlive: false,
+            postEliminationBuzzerGrantedAt: now - 1_000,
+        };
+        const graceState: GameState = {
+            ...mockGameState,
+            players: [
+                { id: "user-1", name: "Alice", role: "CREWMATE", isAlive: false, postEliminationBuzzerGrantedAt: now - 1_000 },
+                { id: "user-2", name: "Bob", role: "IMPOSTOR", isAlive: true },
+            ],
+            meeting: {
+                id: "meeting-prev",
+                status: "COMPLETED",
+                startedAt: now - 30_000,
+                endsAt: now - 10_000,
+                startedBy: "user-2",
+                snapshot: {
+                    capturedAt: now - 30_000,
+                    progress: { completed: 0, total: 2, percentage: 0 },
+                    players: [
+                        { id: "user-1", name: "Alice", role: "CREWMATE", isAlive: false },
+                        { id: "user-2", name: "Bob", role: "IMPOSTOR", isAlive: true },
+                    ],
+                },
+                eligibleVoterIds: ["user-2"],
+                voteCounts: { "user-2": 0 },
+                totalEligibleVoters: 1,
+                totalVotes: 0,
+                endReason: "TIMEOUT",
+                endedAt: now - 10_000,
+            },
+        };
+
+        render(<GameHome gameState={graceState} currentPlayer={deadWithBuzzerWindow} userId="user-1" />);
         expect(screen.getByRole("button", { name: /buzzer/i })).not.toBeDisabled();
     });
 

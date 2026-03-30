@@ -487,11 +487,13 @@ const fr = {
       reactorCardTitle: "Réacteur",
       reactorPositions: "Réacteur A: {locationA} • Réacteur B: {locationB}",
       statusActive: "ACTIF",
+      statusPostMeetingGrace: "GRÂCE: {time}",
       statusCooldown: "Cooldown: {time}",
       statusReady: "PRÊT",
       statusUnavailable: "INDISPONIBLE",
       triggerButton: "Déclencher",
       triggeringButton: "Déclenchement...",
+      postMeetingGraceNotice: "Grâce post-meeting active ({time}) : sabotages bloqués pendant 1 minute.",
       communicationsOverlayTitle: "COMMUNICATIONS SABOTÉES",
       communicationsOverlayMessage:
         "Les scans de quête sont bloqués. Scannez le QR communications pour réparer.",
@@ -537,6 +539,8 @@ const fr = {
         "Fantôme: restez muet. Vous pouvez finir vos quêtes, mais pas stopper les sabotages.",
       ghostReminderImpostor:
         "Fantôme: restez muet. Vous pouvez encore déclencher des sabotages.",
+      postMeetingGraceBanner:
+        "Grâce post-meeting active ({time}) : buzzer et sabotages imposteurs bloqués (sauf signalement de cadavre).",
       meetingTriggeredTitle: "Meeting déclenché",
       meetingTriggeredMessage:
         "Un buzz a été déclenché. Rejoignez la salle de meeting et rassemblez-vous IRL.",
@@ -818,10 +822,14 @@ const fr = {
       ERR_MEETING_VOTE_INVALID: "Vote invalide.",
       ERR_MEETING_FORBIDDEN: "Action meeting non autorisée.",
       ERR_MEETING_BLOCKED_BY_SABOTAGE: "Meeting impossible: un sabotage est actif.",
+      ERR_MEETING_BLOCKED_BY_POST_MEETING_GRACE:
+        "Meeting impossible: période de grâce post-meeting en cours.",
       ERR_SABOTAGE_FORBIDDEN: "Action sabotage non autorisée.",
       ERR_SABOTAGE_ALREADY_ACTIVE: "Un sabotage est déjà actif.",
       ERR_SABOTAGE_COOLDOWN: "Sabotage en cooldown.",
       ERR_SABOTAGE_NOT_ACTIVE: "Ce sabotage n'est pas actif.",
+      ERR_SABOTAGE_BLOCKED_BY_POST_MEETING_GRACE:
+        "Sabotage impossible: période de grâce post-meeting en cours.",
       ERR_SABOTAGE_COMMUNICATIONS_ACTIVE:
         "Communications sabotées: les équipiers ne peuvent pas buzzer.",
       ERR_SABOTAGE_COMMUNICATIONS_QUESTS_BLOCKED:

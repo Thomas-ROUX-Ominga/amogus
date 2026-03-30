@@ -483,11 +483,13 @@ const en = {
       reactorCardTitle: "Reactor",
       reactorPositions: "Reactor A: {locationA} • Reactor B: {locationB}",
       statusActive: "ACTIVE",
+      statusPostMeetingGrace: "GRACE: {time}",
       statusCooldown: "Cooldown: {time}",
       statusReady: "READY",
       statusUnavailable: "UNAVAILABLE",
       triggerButton: "Trigger",
       triggeringButton: "Triggering...",
+      postMeetingGraceNotice: "Post-meeting grace active ({time}): sabotages are blocked for 1 minute.",
       communicationsOverlayTitle: "COMMUNICATIONS SABOTAGED",
       communicationsOverlayMessage:
         "Quest scans are blocked. Scan the communications QR to repair.",
@@ -533,6 +535,8 @@ const en = {
         "Ghost: stay silent. You can finish quests, but you cannot stop sabotages.",
       ghostReminderImpostor:
         "Ghost: stay silent. You can still trigger sabotages.",
+      postMeetingGraceBanner:
+        "Post-meeting grace active ({time}): buzzer and impostor sabotages are blocked (except body-report buzz).",
       meetingTriggeredTitle: "Meeting triggered",
       meetingTriggeredMessage:
         "A buzz has been triggered. Join the meeting room and gather IRL.",
@@ -813,10 +817,14 @@ const en = {
       ERR_MEETING_VOTE_INVALID: "Invalid vote.",
       ERR_MEETING_FORBIDDEN: "Meeting action is forbidden.",
       ERR_MEETING_BLOCKED_BY_SABOTAGE: "Cannot trigger a meeting while a sabotage is active.",
+      ERR_MEETING_BLOCKED_BY_POST_MEETING_GRACE:
+        "Cannot trigger a meeting during post-meeting grace.",
       ERR_SABOTAGE_FORBIDDEN: "Sabotage action is forbidden.",
       ERR_SABOTAGE_ALREADY_ACTIVE: "A sabotage is already active.",
       ERR_SABOTAGE_COOLDOWN: "Sabotage is on cooldown.",
       ERR_SABOTAGE_NOT_ACTIVE: "This sabotage is not active.",
+      ERR_SABOTAGE_BLOCKED_BY_POST_MEETING_GRACE:
+        "Cannot trigger sabotage during post-meeting grace.",
       ERR_SABOTAGE_COMMUNICATIONS_ACTIVE:
         "Communications are sabotaged: crewmates cannot buzz.",
       ERR_SABOTAGE_COMMUNICATIONS_QUESTS_BLOCKED:

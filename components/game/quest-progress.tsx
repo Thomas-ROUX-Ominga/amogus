@@ -26,6 +26,7 @@ interface QuestProgressProps {
 const EMPTY_ARRAY: string[] = [];
 const EMPTY_QUESTS: Quest[] = [];
 const QUEST_CATALOG_RETRY_MS = 10000;
+const POST_MEETING_GRACE_MS = 60 * 1000;
 
 function sortQuestsForDisplay<T extends { completed: boolean }>(
     quests: T[],
@@ -52,6 +53,15 @@ function formatCooldown(ms: number): string {
     return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
+function getPostMeetingGraceRemainingMs(gameState: GameState | null | undefined, now: number): number {
+    if (gameState?.meeting?.status !== "COMPLETED") {
+        return 0;
+    }
+
+    const endedAt = gameState.meeting.endedAt ?? gameState.meeting.endsAt;
+    return Math.max(0, endedAt + POST_MEETING_GRACE_MS - now);
+}
+
 export function QuestProgress({
     role,
     completed,
@@ -75,17 +85,19 @@ export function QuestProgress({
         refreshGameData,
     } = useGameStore();
     const resolvedGameQuests = gameQuests ?? EMPTY_QUESTS;
+    const [now, setNow] = useState(() => Date.now());
 
     const activeGameState = gameStateOverride ?? gameState;
     const sabotageState = activeGameState?.sabotageState;
+    const postMeetingGraceRemainingMs = getPostMeetingGraceRemainingMs(activeGameState, now);
+    const isPostMeetingGraceActive = postMeetingGraceRemainingMs > 0;
     const shouldRunImpostorTimer =
         role === "IMPOSTOR" &&
         (sabotageState?.active === "REACTOR" ||
+            isPostMeetingGraceActive ||
             (sabotageState?.cooldowns.communicationsAvailableAt ?? 0) > Date.now() ||
             (sabotageState?.cooldowns.lightsAvailableAt ?? 0) > Date.now() ||
             (sabotageState?.cooldowns.reactorAvailableAt ?? 0) > Date.now());
-
-    const [now, setNow] = useState(() => Date.now());
 
     useEffect(() => {
         if (!shouldRunImpostorTimer) return;
@@ -281,6 +293,7 @@ export function QuestProgress({
                 (isAnySabotageTriggering && !isTriggeringThis) || isAnotherSabotageAlreadyActive;
             const isDisabled =
                 disabledByDeathWaiting ||
+                isPostMeetingGraceActive ||
                 isTriggeringThis ||
                 isBlockedByOtherAction ||
                 isUnavailable ||
@@ -307,6 +320,18 @@ export function QuestProgress({
                     "rounded-full text-slate-200/85 border border-slate-300/30 bg-slate-700/35";
                 buttonClassName =
                     "border-slate-300/40 bg-[linear-gradient(140deg,rgba(71,85,105,0.6),rgba(51,65,85,0.55))] text-slate-300";
+            } else if (isPostMeetingGraceActive) {
+                statusLabel = t("game.sabotage.statusPostMeetingGrace", {
+                    time: formatCooldown(postMeetingGraceRemainingMs),
+                });
+                actionLabel = `T-${formatCooldown(postMeetingGraceRemainingMs)}`;
+                cardClassName =
+                    "border-amber-300/40 bg-[linear-gradient(130deg,rgba(245,158,11,0.2)_0%,rgba(120,53,15,0.7)_58%,rgba(2,6,23,0.82)_100%)]";
+                accentClassName = "bg-amber-200/95";
+                statusClassName =
+                    "rounded-full text-amber-100 border border-amber-300/40 bg-amber-500/18";
+                buttonClassName =
+                    "border-amber-300/60 bg-[linear-gradient(140deg,rgba(245,158,11,0.28),rgba(146,64,14,0.25))] text-amber-50";
             } else if (isTriggeringThis) {
                 statusLabel = t("game.sabotage.triggeringButton");
                 actionLabel = t("game.sabotage.triggeringButton");
@@ -394,6 +419,13 @@ export function QuestProgress({
                 {deadAwaitingMeeting && (
                     <div className="border border-red-500/30 bg-red-950/35 p-2 text-[11px] text-red-100 font-rajdhani tracking-wide">
                         {t("game.questProgress.awaitingMeetingNotice")}
+                    </div>
+                )}
+                {isPostMeetingGraceActive && (
+                    <div className="border border-amber-500/35 bg-amber-950/35 p-2 text-[11px] text-amber-100 font-rajdhani tracking-wide">
+                        {t("game.sabotage.postMeetingGraceNotice", {
+                            time: formatCooldown(postMeetingGraceRemainingMs),
+                        })}
                     </div>
                 )}
 

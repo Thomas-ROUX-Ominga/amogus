@@ -99,6 +99,74 @@ describe("Sabotage actions", () => {
         expect(result.data?.gameState?.sabotageState?.active).toBe("LIGHTS");
     });
 
+    it("blocks sabotage trigger during post-meeting grace window", async () => {
+        const state: GameState = {
+            ...baseState,
+            meeting: {
+                id: "meeting-prev",
+                status: "COMPLETED",
+                startedAt: Date.now() - 45_000,
+                endsAt: Date.now() - 10_000,
+                startedBy: "imp-1",
+                snapshot: {
+                    capturedAt: Date.now() - 45_000,
+                    progress: { completed: 0, total: 3, percentage: 0 },
+                    players: [
+                        { id: "imp-1", name: "Impostor", role: "IMPOSTOR", isAlive: true },
+                        { id: "crew-1", name: "Crewmate", role: "CREWMATE", isAlive: true },
+                        { id: "crew-2", name: "Crewmate2", role: "CREWMATE", isAlive: true },
+                    ],
+                },
+                eligibleVoterIds: ["imp-1", "crew-1", "crew-2"],
+                voteCounts: { "imp-1": 0, "crew-1": 0, "crew-2": 0 },
+                totalEligibleVoters: 3,
+                totalVotes: 0,
+                endReason: "TIMEOUT",
+                endedAt: Date.now() - 10_000,
+            },
+        };
+        mockAtomicUpdate(state);
+
+        const result = await triggerSabotage("game-1", "imp-1", "COMMUNICATIONS");
+
+        expect(result.success).toBe(false);
+        expect(result.code).toBe(ERROR_CODES.ERR_SABOTAGE_BLOCKED_BY_POST_MEETING_GRACE);
+    });
+
+    it("allows sabotage trigger once post-meeting grace window is over", async () => {
+        const state: GameState = {
+            ...baseState,
+            meeting: {
+                id: "meeting-prev",
+                status: "COMPLETED",
+                startedAt: Date.now() - 120_000,
+                endsAt: Date.now() - 61_000,
+                startedBy: "imp-1",
+                snapshot: {
+                    capturedAt: Date.now() - 120_000,
+                    progress: { completed: 0, total: 3, percentage: 0 },
+                    players: [
+                        { id: "imp-1", name: "Impostor", role: "IMPOSTOR", isAlive: true },
+                        { id: "crew-1", name: "Crewmate", role: "CREWMATE", isAlive: true },
+                        { id: "crew-2", name: "Crewmate2", role: "CREWMATE", isAlive: true },
+                    ],
+                },
+                eligibleVoterIds: ["imp-1", "crew-1", "crew-2"],
+                voteCounts: { "imp-1": 0, "crew-1": 0, "crew-2": 0 },
+                totalEligibleVoters: 3,
+                totalVotes: 0,
+                endReason: "TIMEOUT",
+                endedAt: Date.now() - 61_000,
+            },
+        };
+        mockAtomicUpdate(state);
+
+        const result = await triggerSabotage("game-1", "imp-1", "COMMUNICATIONS");
+
+        expect(result.success).toBe(true);
+        expect(result.data?.event).toBe("COMMUNICATIONS_ACTIVATED");
+    });
+
     it("allows alive crewmate to repair communications when active", async () => {
         const state: GameState = {
             ...baseState,

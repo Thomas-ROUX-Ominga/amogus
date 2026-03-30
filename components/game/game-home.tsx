@@ -24,6 +24,16 @@ interface GameHomeProps {
     userId: string;
 }
 
+const POST_MEETING_GRACE_MS = 60 * 1000;
+
+function formatGraceCountdown(ms: number): string {
+    if (ms <= 0) return "00:00";
+    const totalSeconds = Math.ceil(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
 export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     const t = useTranslations();
     const locale = useLocale();
@@ -57,6 +67,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     });
     const [showMeetingPopup, setShowMeetingPopup] = React.useState(false);
     const [scanFeedback, setScanFeedback] = React.useState<string | null>(null);
+    const [now, setNow] = React.useState(() => Date.now());
 
     const {
         questsCompleted,
@@ -74,6 +85,12 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     } = useGameStore();
 
     const allQuestsDone = questsTotal > 0 && questsCompleted >= questsTotal;
+    const postMeetingGraceEndsAt =
+        gameState.meeting?.status === "COMPLETED"
+            ? (gameState.meeting.endedAt ?? gameState.meeting.endsAt) + POST_MEETING_GRACE_MS
+            : null;
+    const postMeetingGraceRemainingMs = postMeetingGraceEndsAt ? Math.max(0, postMeetingGraceEndsAt - now) : 0;
+    const isPostMeetingGraceActive = postMeetingGraceRemainingMs > 0;
 
     useEffect(() => {
         if (isGameOver || !isGhostAfterMeeting) {
@@ -94,6 +111,16 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
         const dismissed = sessionStorage.getItem(meetingPopupStorageKey);
         setShowMeetingPopup(!dismissed);
     }, [isMeetingActive, meetingPopupStorageKey]);
+
+    useEffect(() => {
+        setNow(Date.now());
+    }, [gameState.meeting?.id, gameState.meeting?.status, gameState.meeting?.endedAt, gameState.meeting?.endsAt]);
+
+    useEffect(() => {
+        if (!isPostMeetingGraceActive) return;
+        const timer = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(timer);
+    }, [isPostMeetingGraceActive]);
 
     const { isOpen, openScanner, closeScanner, handleScan: originalHandleScan } = useCameraScanner({
         gameId: gameState.id,
@@ -276,6 +303,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
     const hasUsedBuzzer = Boolean(currentPlayer.meetingBuzzUsedAt);
     const canUseBuzzer =
         (currentPlayer.isAlive || hasPostEliminationBuzzerWindow) &&
+        (!isPostMeetingGraceActive || hasPostEliminationBuzzerWindow) &&
         (!hasActiveSabotage || hasPostEliminationBuzzerWindow) &&
         !hasUsedBuzzer &&
         !isMeetingActive &&
@@ -350,6 +378,13 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     {isGhostAfterMeeting && (
                         <div className="border border-blue-500/30 bg-blue-950/30 p-3 text-center text-xs text-blue-100 font-rajdhani tracking-wide">
                             {ghostReminderMessage}
+                        </div>
+                    )}
+                    {isPostMeetingGraceActive && (
+                        <div className="border border-amber-500/30 bg-amber-950/30 p-3 text-center text-xs text-amber-100 font-rajdhani tracking-wide">
+                            {t("game.home.postMeetingGraceBanner", {
+                                time: formatGraceCountdown(postMeetingGraceRemainingMs),
+                            })}
                         </div>
                     )}
 

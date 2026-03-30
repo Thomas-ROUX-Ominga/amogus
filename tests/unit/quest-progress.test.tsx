@@ -103,6 +103,163 @@ describe("QuestProgress", () => {
         expect(screen.getAllByText("Réacteur 1/2").length).toBeGreaterThan(0);
     });
 
+    it("disables impostor sabotage actions during post-meeting grace", () => {
+        vi.useFakeTimers();
+        const now = new Date("2026-03-22T12:00:00.000Z").getTime();
+        vi.setSystemTime(now);
+        try {
+            mockUseGameStore.mockReturnValue({
+                gameQuests: [],
+                fetchGameQuests: vi.fn(),
+                isGameQuestsLoading: false,
+                gameState: {
+                    id: "game-1",
+                    status: "IN_PROGRESS",
+                    createdAt: now - 300_000,
+                    revision: 1,
+                    updatedAt: now - 300_000,
+                    players: [
+                        { id: "i1", name: "Alpha", role: "IMPOSTOR", isAlive: true },
+                        { id: "i2", name: "Bravo", role: "IMPOSTOR", isAlive: true },
+                    ],
+                    sabotages: {
+                        communications: { qrId: "comms-1", location: "Salon" },
+                        lights: { qrId: "lights-1", location: "Électrique" },
+                        reactor: [
+                            { qrId: "reactor-a", location: "Garage" },
+                            { qrId: "reactor-b", location: "Cuisine" },
+                        ],
+                    },
+                    sabotageState: {
+                        active: null,
+                        reactor: null,
+                        cooldowns: {
+                            communicationsAvailableAt: 0,
+                            lightsAvailableAt: 0,
+                            reactorAvailableAt: 0,
+                        },
+                    },
+                    meeting: {
+                        id: "meeting-prev",
+                        status: "COMPLETED",
+                        startedAt: now - 30_000,
+                        endsAt: now - 10_000,
+                        startedBy: "i2",
+                        snapshot: {
+                            capturedAt: now - 30_000,
+                            progress: { completed: 0, total: 2, percentage: 0 },
+                            players: [
+                                { id: "i1", name: "Alpha", role: "IMPOSTOR", isAlive: true },
+                                { id: "i2", name: "Bravo", role: "IMPOSTOR", isAlive: true },
+                            ],
+                        },
+                        eligibleVoterIds: ["i1", "i2"],
+                        voteCounts: { i1: 0, i2: 0 },
+                        totalEligibleVoters: 2,
+                        totalVotes: 0,
+                        endReason: "TIMEOUT",
+                        endedAt: now - 10_000,
+                    },
+                },
+            });
+
+            render(
+                <QuestProgress
+                    role="IMPOSTOR"
+                    completed={0}
+                    total={0}
+                    currentPlayerId="i1"
+                />,
+            );
+
+            expect(screen.getByText(/Grâce post-meeting active/i)).toBeTruthy();
+            screen.getAllByRole("button").forEach((button) => {
+                expect(button).toBeDisabled();
+            });
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("re-enables impostor sabotage actions after post-meeting grace", () => {
+        vi.useFakeTimers();
+        const now = new Date("2026-03-22T12:00:00.000Z").getTime();
+        vi.setSystemTime(now);
+        try {
+            mockUseGameStore.mockReturnValue({
+                gameQuests: [],
+                fetchGameQuests: vi.fn(),
+                isGameQuestsLoading: false,
+                gameState: {
+                    id: "game-1",
+                    status: "IN_PROGRESS",
+                    createdAt: now - 300_000,
+                    revision: 1,
+                    updatedAt: now - 300_000,
+                    players: [
+                        { id: "i1", name: "Alpha", role: "IMPOSTOR", isAlive: true },
+                        { id: "i2", name: "Bravo", role: "IMPOSTOR", isAlive: true },
+                    ],
+                    sabotages: {
+                        communications: { qrId: "comms-1", location: "Salon" },
+                        lights: { qrId: "lights-1", location: "Électrique" },
+                        reactor: [
+                            { qrId: "reactor-a", location: "Garage" },
+                            { qrId: "reactor-b", location: "Cuisine" },
+                        ],
+                    },
+                    sabotageState: {
+                        active: null,
+                        reactor: null,
+                        cooldowns: {
+                            communicationsAvailableAt: 0,
+                            lightsAvailableAt: 0,
+                            reactorAvailableAt: 0,
+                        },
+                    },
+                    meeting: {
+                        id: "meeting-prev",
+                        status: "COMPLETED",
+                        startedAt: now - 200_000,
+                        endsAt: now - 61_000,
+                        startedBy: "i2",
+                        snapshot: {
+                            capturedAt: now - 200_000,
+                            progress: { completed: 0, total: 2, percentage: 0 },
+                            players: [
+                                { id: "i1", name: "Alpha", role: "IMPOSTOR", isAlive: true },
+                                { id: "i2", name: "Bravo", role: "IMPOSTOR", isAlive: true },
+                            ],
+                        },
+                        eligibleVoterIds: ["i1", "i2"],
+                        voteCounts: { i1: 0, i2: 0 },
+                        totalEligibleVoters: 2,
+                        totalVotes: 0,
+                        endReason: "TIMEOUT",
+                        endedAt: now - 61_000,
+                    },
+                },
+            });
+
+            render(
+                <QuestProgress
+                    role="IMPOSTOR"
+                    completed={0}
+                    total={0}
+                    currentPlayerId="i1"
+                />,
+            );
+
+            expect(screen.queryByText(/Grâce post-meeting active/i)).toBeNull();
+            expect(screen.getAllByRole("button", { name: /Déclencher/i }).length).toBeGreaterThan(0);
+            screen.getAllByRole("button", { name: /Déclencher/i }).forEach((button) => {
+                expect(button).not.toBeDisabled();
+            });
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it("hides crewmate quest list during lights sabotage", () => {
         render(
             <QuestProgress

@@ -32,6 +32,7 @@ import { getGlobalQuestStats } from "@/lib/utils/quest-calculations";
 const MEETING_DURATION_MS = 5 * 60 * 1000;
 const REACTOR_SABOTAGE_DURATION_MS = 90 * 1000;
 const SABOTAGE_COOLDOWN_MS = 120 * 1000;
+const POST_MEETING_GRACE_MS = 60 * 1000;
 const MAX_PLAYERS_PER_GAME = 50;
 const PLAYER_PRESENCE_TTL_SECONDS = 30;
 
@@ -184,6 +185,20 @@ function sumVoteCounts(voteCounts: Record<string, number>, eligibleVoterIds: str
         const count = voteCounts[playerId] ?? 0;
         return sum + (count > 0 ? count : 0);
     }, 0);
+}
+
+function getPostMeetingGraceRemainingMs(state: GameState, now: number): number {
+    const meeting = state.meeting;
+    if (!meeting || meeting.status !== "COMPLETED") {
+        return 0;
+    }
+
+    const endedAt = typeof meeting.endedAt === "number" ? meeting.endedAt : meeting.endsAt;
+    if (typeof endedAt !== "number") {
+        return 0;
+    }
+
+    return Math.max(0, endedAt + POST_MEETING_GRACE_MS - now);
 }
 
 function getReactorRemainingMs(reactor: ReactorSabotageState, now: number): number {
@@ -2222,6 +2237,16 @@ export async function triggerSabotage(
                 return null;
             }
 
+            const postMeetingGraceRemainingMs = getPostMeetingGraceRemainingMs(workingState, now);
+            if (postMeetingGraceRemainingMs > 0) {
+                validationError = {
+                    success: false,
+                    error: "Post-meeting grace is active. Sabotage cannot be triggered yet.",
+                    code: ERROR_CODES.ERR_SABOTAGE_BLOCKED_BY_POST_MEETING_GRACE,
+                };
+                return null;
+            }
+
             const sabotageState = getNormalizedSabotageState(workingState);
             if (sabotageState.active) {
                 validationError = {
@@ -2725,6 +2750,16 @@ export async function triggerMeeting(
                     success: false,
                     error: "You are not allowed to trigger meetings.",
                     code: ERROR_CODES.ERR_MEETING_FORBIDDEN,
+                };
+                return null;
+            }
+
+            const postMeetingGraceRemainingMs = getPostMeetingGraceRemainingMs(workingState, now);
+            if (postMeetingGraceRemainingMs > 0 && !hasPostEliminationBuzzerGrant) {
+                validationError = {
+                    success: false,
+                    error: "Post-meeting grace is active. Meeting cannot be triggered yet.",
+                    code: ERROR_CODES.ERR_MEETING_BLOCKED_BY_POST_MEETING_GRACE,
                 };
                 return null;
             }

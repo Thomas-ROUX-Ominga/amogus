@@ -169,6 +169,164 @@ describe("meeting actions", () => {
         expect(result.code).toBe(ERROR_CODES.ERR_MEETING_BLOCKED_BY_SABOTAGE);
     });
 
+    it("blocks normal buzzer during post-meeting grace window", async () => {
+        vi.useFakeTimers();
+        const now = new Date("2026-03-22T12:00:00.000Z").getTime();
+        vi.setSystemTime(now);
+
+        try {
+            await redis.set(stateKey, {
+                id: gameId,
+                status: "IN_PROGRESS",
+                createdAt: now - 200_000,
+                revision: 1,
+                updatedAt: now - 200_000,
+                players: [
+                    { id: "admin", name: "Admin", isAlive: true },
+                    { id: "u1", name: "Alice", role: "CREWMATE", isAlive: true, completedQuests: [] },
+                    { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
+                    { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true, completedQuests: [] },
+                ],
+                meeting: {
+                    id: "meeting-prev",
+                    status: "COMPLETED",
+                    startedAt: now - 50_000,
+                    endsAt: now - 10_000,
+                    startedBy: "u2",
+                    snapshot: {
+                        capturedAt: now - 50_000,
+                        progress: { completed: 0, total: 3, percentage: 0 },
+                        players: [
+                            { id: "u1", name: "Alice", role: "CREWMATE", isAlive: true },
+                            { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true },
+                            { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true },
+                        ],
+                    },
+                    eligibleVoterIds: ["u1", "u2", "u3"],
+                    voteCounts: { u1: 0, u2: 0, u3: 0 },
+                    totalEligibleVoters: 3,
+                    totalVotes: 0,
+                    endReason: "TIMEOUT",
+                    endedAt: now - 10_000,
+                },
+            });
+
+            const result = await triggerMeeting(gameId, "u1");
+            expect(result.success).toBe(false);
+            expect(result.code).toBe(ERROR_CODES.ERR_MEETING_BLOCKED_BY_POST_MEETING_GRACE);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("allows body-phone buzzer during post-meeting grace window", async () => {
+        vi.useFakeTimers();
+        const now = new Date("2026-03-22T12:00:00.000Z").getTime();
+        vi.setSystemTime(now);
+
+        try {
+            await redis.set(stateKey, {
+                id: gameId,
+                status: "IN_PROGRESS",
+                createdAt: now - 200_000,
+                revision: 1,
+                updatedAt: now - 200_000,
+                players: [
+                    { id: "admin", name: "Admin", isAlive: true },
+                    {
+                        id: "u1",
+                        name: "Alice",
+                        role: "CREWMATE",
+                        isAlive: false,
+                        postEliminationBuzzerGrantedAt: now - 5_000,
+                    },
+                    { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
+                    { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true, completedQuests: [] },
+                    { id: "u4", name: "Dina", role: "CREWMATE", isAlive: true, completedQuests: [] },
+                ],
+                meeting: {
+                    id: "meeting-prev",
+                    status: "COMPLETED",
+                    startedAt: now - 25_000,
+                    endsAt: now - 10_000,
+                    startedBy: "u2",
+                    snapshot: {
+                        capturedAt: now - 25_000,
+                        progress: { completed: 0, total: 3, percentage: 0 },
+                        players: [
+                            { id: "u1", name: "Alice", role: "CREWMATE", isAlive: false },
+                            { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true },
+                            { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true },
+                            { id: "u4", name: "Dina", role: "CREWMATE", isAlive: true },
+                        ],
+                    },
+                    eligibleVoterIds: ["u2", "u3", "u4"],
+                    voteCounts: { u2: 0, u3: 0, u4: 0 },
+                    totalEligibleVoters: 3,
+                    totalVotes: 0,
+                    endReason: "TIMEOUT",
+                    endedAt: now - 10_000,
+                },
+            });
+
+            const result = await triggerMeeting(gameId, "u1");
+            expect(result.success).toBe(true);
+            expect(result.data?.meeting?.status).toBe("ACTIVE");
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("allows normal buzzer again after post-meeting grace expires", async () => {
+        vi.useFakeTimers();
+        const now = new Date("2026-03-22T12:00:00.000Z").getTime();
+        vi.setSystemTime(now);
+
+        try {
+            await redis.set(stateKey, {
+                id: gameId,
+                status: "IN_PROGRESS",
+                createdAt: now - 200_000,
+                revision: 1,
+                updatedAt: now - 200_000,
+                players: [
+                    { id: "admin", name: "Admin", isAlive: true },
+                    { id: "u1", name: "Alice", role: "CREWMATE", isAlive: true, completedQuests: [] },
+                    { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
+                    { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true, completedQuests: [] },
+                ],
+                meeting: {
+                    id: "meeting-prev",
+                    status: "COMPLETED",
+                    startedAt: now - 150_000,
+                    endsAt: now - 61_000,
+                    startedBy: "u2",
+                    snapshot: {
+                        capturedAt: now - 150_000,
+                        progress: { completed: 0, total: 3, percentage: 0 },
+                        players: [
+                            { id: "u1", name: "Alice", role: "CREWMATE", isAlive: true },
+                            { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true },
+                            { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true },
+                        ],
+                    },
+                    eligibleVoterIds: ["u1", "u2", "u3"],
+                    voteCounts: { u1: 0, u2: 0, u3: 0 },
+                    totalEligibleVoters: 3,
+                    totalVotes: 0,
+                    endReason: "TIMEOUT",
+                    endedAt: now - 61_000,
+                },
+            });
+
+            const result = await triggerMeeting(gameId, "u1");
+            expect(result.success).toBe(true);
+            expect(result.data?.meeting?.status).toBe("ACTIVE");
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it("allows a just-eliminated player to trigger buzzer until the next meeting", async () => {
         const now = Date.now();
         await redis.set(stateKey, {
