@@ -483,6 +483,8 @@ const en = {
       locationUnknown: "Unknown location",
       reactorCardTitle: "Reactor",
       reactorPositions: "Reactor A: {locationA} • Reactor B: {locationB}",
+      reactorLocationDisarmed: "Disarmed",
+      reactorLocationPending: "To disarm",
       statusActive: "ACTIVE",
       statusPostMeetingGrace: "GRACE: {time}",
       statusCooldown: "Cooldown: {time}",

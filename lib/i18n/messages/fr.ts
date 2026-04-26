@@ -487,6 +487,8 @@ const fr = {
       locationUnknown: "Lieu non renseigné",
       reactorCardTitle: "Réacteur",
       reactorPositions: "Réacteur A: {locationA} • Réacteur B: {locationB}",
+      reactorLocationDisarmed: "Désamorcé",
+      reactorLocationPending: "À désamorcer",
       statusActive: "ACTIF",
       statusPostMeetingGrace: "GRÂCE: {time}",
       statusCooldown: "Cooldown: {time}",
