@@ -61,25 +61,25 @@ export function ReactorSabotageAlert({ gameState }: ReactorSabotageAlertProps) {
     ];
 
     return (
-        <div className="border-2 border-red-500/50 bg-red-950/40 p-4 animate-pulse">
+        <div className="border-2 border-red-500/50 bg-red-950/40 p-3 sm:p-4 animate-pulse">
             <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-red-200">
-                    <AlertTriangle className="w-5 h-5" />
+                    <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span className="text-xs font-orbitron uppercase tracking-[0.2em]">
                         {t("game.sabotage.reactorAlertTitle")}
                     </span>
                 </div>
-                <span className="text-lg font-black text-red-100 font-orbitron">
+                <span className="text-base sm:text-lg font-black text-red-100 font-orbitron">
                     {formatRemaining(remainingMs)}
                 </span>
             </div>
-            <div className="mt-2 text-sm text-red-100 font-rajdhani uppercase tracking-widest">
+            <div className="mt-1.5 text-xs sm:text-sm text-red-100 font-rajdhani uppercase tracking-widest">
                 {t("game.sabotage.reactorProgress", {
                     scanned: String(scanned),
                     total: String(2),
                 })}
             </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
                 {reactorLocations.map((reactorLocation) => {
                     const StatusIcon = reactorLocation.isDisarmed ? CheckCircle2 : CircleAlert;
                     const statusLabel = reactorLocation.isDisarmed
@@ -89,31 +89,33 @@ export function ReactorSabotageAlert({ gameState }: ReactorSabotageAlertProps) {
                     return (
                         <div
                             key={reactorLocation.label}
-                            className={`rounded-md border p-3 font-rajdhani uppercase tracking-widest ${
+                            className={`flex min-h-10 items-center justify-between gap-2 border px-2.5 py-1.5 font-rajdhani uppercase tracking-[0.12em] ${
                                 reactorLocation.isDisarmed
                                     ? "border-emerald-400/50 bg-emerald-950/30 text-emerald-100"
                                     : "border-red-300/35 bg-red-950/50 text-red-100"
                             }`}
                         >
-                            <div className="flex items-start justify-between gap-3">
-                                <div>
-                                    <div className="text-[11px] font-bold">
-                                        {reactorLocation.label}
-                                    </div>
-                                    <div className="mt-1 text-sm tracking-[0.16em] text-current/90">
-                                        {reactorLocation.location}
-                                    </div>
-                                </div>
-                                <div
-                                    className={`inline-flex min-h-7 shrink-0 items-center gap-1.5 border px-2 py-1 text-[10px] font-bold ${
-                                        reactorLocation.isDisarmed
-                                            ? "border-emerald-300/50 bg-emerald-500/15"
-                                            : "border-red-200/40 bg-red-500/15"
-                                    }`}
-                                >
-                                    <StatusIcon className="h-3.5 w-3.5" />
-                                    <span>{statusLabel}</span>
-                                </div>
+                            <div className="flex min-w-0 items-baseline gap-2">
+                                <span className="shrink-0 text-[10px] font-bold">
+                                    {reactorLocation.label}
+                                </span>
+                                <span className="truncate text-xs text-current/85">
+                                    {reactorLocation.location}
+                                </span>
+                            </div>
+                            <div
+                                aria-label={statusLabel}
+                                title={statusLabel}
+                                className={`inline-flex min-h-7 shrink-0 items-center gap-1.5 border px-1.5 min-[430px]:px-2 py-1 text-[10px] font-bold ${
+                                    reactorLocation.isDisarmed
+                                        ? "border-emerald-300/50 bg-emerald-500/15"
+                                        : "border-red-200/40 bg-red-500/15"
+                                }`}
+                            >
+                                <StatusIcon className="h-3.5 w-3.5" />
+                                <span className="sr-only min-[430px]:not-sr-only">
+                                    {statusLabel}
+                                </span>
                             </div>
                         </div>
                     );
