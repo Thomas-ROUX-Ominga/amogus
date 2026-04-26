@@ -1,9 +1,13 @@
 import { QuestDuration } from "@/types/quest";
 
-export const AVAILABLE_MINI_GAMES = ["mini-bac", "simon", "wires", "gauges", "pad", "memory", "rings"] as const;
-export type MiniGameId = typeof AVAILABLE_MINI_GAMES[number];
+export const ALL_MINI_GAMES = ["mini-bac", "simon", "wires", "gauges", "pad", "memory", "rings"] as const;
+export type MiniGameId = typeof ALL_MINI_GAMES[number];
 
-export function getRandomMiniGame(): MiniGameId {
+export const DISABLED_MINI_GAMES = ["mini-bac"] as const satisfies readonly MiniGameId[];
+export const AVAILABLE_MINI_GAMES = ["simon", "wires", "gauges", "pad", "memory", "rings"] as const satisfies readonly MiniGameId[];
+export type AvailableMiniGameId = typeof AVAILABLE_MINI_GAMES[number];
+
+export function getRandomMiniGame(): AvailableMiniGameId {
     const index = Math.floor(Math.random() * AVAILABLE_MINI_GAMES.length);
     return AVAILABLE_MINI_GAMES[index];
 }

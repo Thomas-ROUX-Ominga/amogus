@@ -13,7 +13,7 @@ import { QuestGauges } from "@/components/game/mini-games/quest-gauges";
 import { QuestPad } from "@/components/game/mini-games/quest-pad";
 import { QuestMemory } from "@/components/game/mini-games/quest-memory";
 import { QuestRings } from "@/components/game/mini-games/quest-rings";
-import { getRandomMiniGame } from "@/lib/mini-games";
+import { getRandomMiniGame, type MiniGameId } from "@/lib/mini-games";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -28,7 +28,7 @@ interface QuestRendererProps {
 
 export function QuestRenderer({ quest, gameId, onSuccess, onError }: QuestRendererProps) {
     const t = useTranslations();
-    const [selectedMiniGame] = useState(() => getRandomMiniGame());
+    const [selectedMiniGame] = useState<MiniGameId>(() => getRandomMiniGame());
 
     // Validate quest has data field
     if (!quest.data) {
