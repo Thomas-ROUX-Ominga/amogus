@@ -15,11 +15,16 @@ function distributeQuests(totalCount: number): { short: number; medium: number; 
   };
 }
 
-function createQuest(duration: QuestDuration, type: QuestType): Quest {
+function getDefaultQuestLocation(index: number): string {
+  return `Lieu ${index + 1}`;
+}
+
+function createQuest(duration: QuestDuration, type: QuestType, index: number): Quest {
   return {
     id: globalThis.crypto.randomUUID(),
     type,
     duration,
+    location: getDefaultQuestLocation(index),
   };
 }
 
@@ -57,7 +62,7 @@ export function generateBatch(input: BatchCreateInput): Batch {
 
     // First, add mini-games (1/3 target by duration, rounded down).
     for (let i = 0; i < miniGameCount; i++) {
-      quests.push(createQuest(duration, 'mini-game'));
+      quests.push(createQuest(duration, 'mini-game', quests.length));
     }
 
     // Then add classic quests with deterministic type rotation for equitable spread.
@@ -65,23 +70,30 @@ export function generateBatch(input: BatchCreateInput): Batch {
       const classicType = AVAILABLE_QUEST_TYPES[
         (startOffset + classicCursor) % AVAILABLE_QUEST_TYPES.length
       ];
-      quests.push(createQuest(duration, classicType));
+      quests.push(createQuest(duration, classicType, quests.length));
       classicCursor += 1;
     }
   });
 
+  const firstSabotageLocationIndex = quests.length;
   const sabotages: BatchSabotages = {
     communications: {
       qrId: globalThis.crypto.randomUUID(),
-      location: "",
+      location: getDefaultQuestLocation(firstSabotageLocationIndex),
     },
     lights: {
       qrId: globalThis.crypto.randomUUID(),
-      location: "",
+      location: getDefaultQuestLocation(firstSabotageLocationIndex + 1),
     },
     reactor: [
-      { qrId: globalThis.crypto.randomUUID(), location: "" },
-      { qrId: globalThis.crypto.randomUUID(), location: "" },
+      {
+        qrId: globalThis.crypto.randomUUID(),
+        location: getDefaultQuestLocation(firstSabotageLocationIndex + 2),
+      },
+      {
+        qrId: globalThis.crypto.randomUUID(),
+        location: getDefaultQuestLocation(firstSabotageLocationIndex + 3),
+      },
     ],
   };
 

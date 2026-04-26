@@ -131,10 +131,14 @@ describe("Batch Generator", () => {
 
       expect(batch.sabotages).toBeDefined();
       expect(batch.sabotages?.communications.qrId).toBeTruthy();
+      expect(batch.sabotages?.communications.location).toBe("Lieu 11");
       expect(batch.sabotages?.lights.qrId).toBeTruthy();
+      expect(batch.sabotages?.lights.location).toBe("Lieu 12");
       expect(batch.sabotages?.reactor).toHaveLength(2);
       expect(batch.sabotages?.reactor[0].qrId).toBeTruthy();
+      expect(batch.sabotages?.reactor[0].location).toBe("Lieu 13");
       expect(batch.sabotages?.reactor[1].qrId).toBeTruthy();
+      expect(batch.sabotages?.reactor[1].location).toBe("Lieu 14");
     });
 
     it("should generate unique IDs for batch and all quests", () => {
@@ -154,10 +158,11 @@ describe("Batch Generator", () => {
       const input: BatchCreateInput = { totalQuests: 5 };
       const batch = generateBatch(input);
 
-      batch.quests.forEach((quest) => {
+      batch.quests.forEach((quest, index) => {
         expect(quest).toHaveProperty("id");
         expect(quest).toHaveProperty("type");
         expect(quest).toHaveProperty("duration");
+        expect(quest).toHaveProperty("location", `Lieu ${index + 1}`);
         expect(typeof quest.id).toBe("string");
         expect(quest.id.length).toBeGreaterThan(0);
       });
