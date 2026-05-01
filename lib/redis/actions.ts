@@ -2479,16 +2479,6 @@ export async function scanSabotage(
             const sabotageCooldownMs = secondsToMs(timerSettings.sabotageCooldownSeconds);
 
             if (isCommsQr || isLightsQr) {
-                if (player.role !== "CREWMATE") {
-                    validationError = {
-                        success: false,
-                        error: "Only crewmates can repair this sabotage.",
-                        code: ERROR_CODES.ERR_SABOTAGE_FORBIDDEN,
-                        data: { handled: true },
-                    };
-                    return null;
-                }
-
                 const type: SabotageType = isCommsQr ? "COMMUNICATIONS" : "LIGHTS";
                 if (sabotageState.active !== type) {
                     validationError = {
@@ -2526,16 +2516,6 @@ export async function scanSabotage(
             }
 
             if (isReactorQr) {
-                if (player.role !== "CREWMATE") {
-                    validationError = {
-                        success: false,
-                        error: "Only crewmates can repair reactor sabotage.",
-                        code: ERROR_CODES.ERR_SABOTAGE_FORBIDDEN,
-                        data: { handled: true },
-                    };
-                    return null;
-                }
-
                 if (sabotageState.active !== "REACTOR" || !sabotageState.reactor) {
                     validationError = {
                         success: false,

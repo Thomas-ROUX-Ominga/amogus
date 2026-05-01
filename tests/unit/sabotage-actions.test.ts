@@ -254,6 +254,23 @@ describe("Sabotage actions", () => {
         ).toBe(true);
     });
 
+    it("allows alive impostor to repair communications when active", async () => {
+        const state: GameState = {
+            ...baseState,
+            sabotageState: {
+                ...baseState.sabotageState!,
+                active: "COMMUNICATIONS",
+            },
+        };
+        mockAtomicUpdate(state);
+
+        const result = await scanSabotage("game-1", "imp-1", "comms-qr");
+
+        expect(result.success).toBe(true);
+        expect(result.data?.event).toBe("COMMUNICATIONS_REPAIRED");
+        expect(result.data?.gameState?.sabotageState?.active).toBeNull();
+    });
+
     it("prevents triggering reactor while another sabotage is active", async () => {
         const state: GameState = {
             ...baseState,

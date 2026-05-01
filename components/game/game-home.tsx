@@ -235,6 +235,11 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                 return false;
             }
 
+            if (isImpostor) {
+                setScanFeedback(t("game.sabotage.messages.scanHandled"));
+                return true;
+            }
+
             await originalHandleScan(questId);
             return true;
         } catch (error) {
@@ -275,11 +280,10 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
 
     const role = currentPlayer.role;
     const isImpostor = role === "IMPOSTOR";
-    const canCrewmateScanToRepairSabotage = !isImpostor && currentPlayer.isAlive && hasActiveSabotage;
+    const canScanToRepairSabotage = currentPlayer.isAlive && hasActiveSabotage;
     const shouldShowScanControls =
-        !isImpostor &&
         !isMeetingActive &&
-        (!allQuestsDone || canCrewmateScanToRepairSabotage);
+        ((!isImpostor && !allQuestsDone) || canScanToRepairSabotage);
     const ghostReminderCrewmate = (() => {
         try {
             return t("game.home.ghostReminderCrewmate");
