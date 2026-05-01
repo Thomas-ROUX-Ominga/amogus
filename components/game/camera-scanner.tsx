@@ -136,6 +136,16 @@ export function CameraScanner({
                 undefined // Ignore constant scan errors while searching
             );
 
+            // Attempt to force the torch/flash on
+            try {
+                await html5QrCode.applyVideoConstraints({
+                    advanced: [{ torch: true }]
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                } as any);
+            } catch (torchError) {
+                console.warn("Flash not supported on this device or failed to activate.", torchError);
+            }
+
         } catch (err) {
             console.error('Camera initialization error:', err);
             setError(handleCameraError(err as Error));
