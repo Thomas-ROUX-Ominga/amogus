@@ -420,7 +420,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                             disabledHint={
                                 isAwaitingMeetingAfterDeath ? t("game.home.awaitingMeetingScanDisabled") : null
                             }
-                            communicationsSabotaged={!isAwaitingMeetingAfterDeath && communicationsSabotaged}
+                            communicationsSabotaged={!isAwaitingMeetingAfterDeath && (communicationsSabotaged || (isImpostor && hasActiveSabotage))}
                             onClick={() => {
                                 setScanFeedback(null);
                                 openScanner();
@@ -471,6 +471,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                             onClose={closeScanner}
                             onScan={handleScan}
                             statusMessage={scanFeedback}
+                            isSabotaged={communicationsSabotaged || (isImpostor && hasActiveSabotage)}
                         />
                     )}
 

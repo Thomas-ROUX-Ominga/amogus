@@ -12,6 +12,7 @@ export interface CameraScannerProps {
     onClose: () => void;
     onScan: (questId: string) => void | boolean | Promise<void | boolean>;
     statusMessage?: string | null;
+    isSabotaged?: boolean;
 }
 
 export function CameraScanner({
@@ -19,6 +20,7 @@ export function CameraScanner({
     onClose,
     onScan,
     statusMessage = null,
+    isSabotaged = false,
 }: CameraScannerProps) {
     const t = useTranslations();
     const [isLoading, setIsLoading] = useState(false);
@@ -248,44 +250,44 @@ export function CameraScanner({
             animate={{ opacity: 1 }}
             className="fixed inset-0 z-[9999] bg-black/55 backdrop-blur-md"
         >
-                        <button
-                            type="button"
-                            onMouseDown={onClose}
-                            aria-hidden="true"
-                            tabIndex={-1}
-                            className="absolute inset-0 h-full w-full cursor-default"
-                        />
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(88,166,255,0.14),transparent_65%)]" />
-                        <div className="relative z-10 flex h-full w-full items-center justify-center p-3 sm:p-6">
-                            <div
-                                className="w-full max-w-3xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto border border-primary/35 bg-black/70 backdrop-blur-xl p-4 sm:p-5"
-                            >
-                                <div className="mb-4 flex items-start justify-between gap-3">
-                                    <div>
-                                        <h2 className="text-sm sm:text-base font-black uppercase tracking-[0.2em] text-primary font-orbitron">
-                                            {t("game.scanner.title")}
-                                        </h2>
-                                        <p className="mt-1 text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground font-rajdhani">
-                                            {t("game.scanner.instruction")}
-                                        </p>
+                            <button
+                                type="button"
+                                onMouseDown={onClose}
+                                aria-hidden="true"
+                                tabIndex={-1}
+                                className="absolute inset-0 h-full w-full cursor-default"
+                            />
+                            <div className={`absolute inset-0 ${isSabotaged ? "bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.14),transparent_65%)]" : "bg-[radial-gradient(circle_at_center,rgba(88,166,255,0.14),transparent_65%)]"}`} />
+                            <div className="relative z-10 flex h-full w-full items-center justify-center p-3 sm:p-6">
+                                <div
+                                    className={`w-full max-w-3xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto border bg-black/70 backdrop-blur-xl p-4 sm:p-5 ${isSabotaged ? "border-red-500/35" : "border-primary/35"}`}
+                                >
+                                    <div className="mb-4 flex items-start justify-between gap-3">
+                                        <div>
+                                            <h2 className={`text-sm sm:text-base font-black uppercase tracking-[0.2em] font-orbitron ${isSabotaged ? "text-red-400" : "text-primary"}`}>
+                                                {t("game.scanner.title")}
+                                            </h2>
+                                            <p className="mt-1 text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground font-rajdhani">
+                                                {t("game.scanner.instruction")}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={onClose}
+                                            className={`shrink-0 h-9 w-9 border bg-black/70 inline-flex items-center justify-center transition-colors ${isSabotaged ? "border-red-500/35 text-red-400 hover:bg-red-500/15" : "border-primary/35 text-primary hover:bg-primary/15"}`}
+                                            aria-label={t("game.scanner.closeScannerAria")}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={onClose}
-                                        className="shrink-0 h-9 w-9 border border-primary/35 bg-black/70 text-primary inline-flex items-center justify-center hover:bg-primary/15 transition-colors"
-                                        aria-label={t("game.scanner.closeScannerAria")}
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                </div>
 
                                 {statusMessage && (
-                                    <div className="mb-4 w-full border border-primary/35 bg-primary/10 px-3 py-2 text-center text-xs text-primary font-rajdhani tracking-wide">
+                                    <div className={`mb-4 w-full border px-3 py-2 text-center text-xs font-rajdhani tracking-wide ${isSabotaged ? "border-red-500/35 bg-red-500/10 text-red-400" : "border-primary/35 bg-primary/10 text-primary"}`}>
                                         {statusMessage}
                                     </div>
                                 )}
 
                                 <div className="relative mx-auto w-full max-w-[560px]">
-                                    <div className="relative aspect-square w-full overflow-hidden border border-primary/35 bg-black/90 shadow-[0_0_40px_rgba(88,166,255,0.15)]">
+                                    <div className={`relative aspect-square w-full overflow-hidden border bg-black/90 ${isSabotaged ? "border-red-500/35 shadow-[0_0_40px_rgba(239,68,68,0.15)]" : "border-primary/35 shadow-[0_0_40px_rgba(88,166,255,0.15)]"}`}>
                                         <div
                                             id={scannerRegionId}
                                             className="h-full w-full overflow-hidden bg-black [&_video]:h-full [&_video]:w-full [&_video]:object-cover [&_canvas]:hidden [&_img]:hidden"
@@ -294,7 +296,7 @@ export function CameraScanner({
                                         />
 
                                         <div className="pointer-events-none absolute inset-0">
-                                            <div className="absolute inset-5 border border-primary/45" />
+                                            <div className={`absolute inset-5 border ${isSabotaged ? "border-red-500/45" : "border-primary/45"}`} />
 
                                             <div className="absolute left-5 top-5 h-8 w-8 border-l-2 border-t-2 border-white/80" />
                                             <div className="absolute right-5 top-5 h-8 w-8 border-r-2 border-t-2 border-white/80" />
@@ -303,7 +305,7 @@ export function CameraScanner({
 
                                             <div className="absolute inset-5">
                                                 <m.div
-                                                    className="absolute left-3 right-3 h-[2px] bg-primary shadow-[0_0_14px_rgba(88,166,255,0.9)]"
+                                                    className={`absolute left-3 right-3 h-[2px] ${isSabotaged ? "bg-red-500 shadow-[0_0_14px_rgba(239,68,68,0.9)]" : "bg-primary shadow-[0_0_14px_rgba(88,166,255,0.9)]"}`}
                                                     animate={{ top: ["calc(100% - 2px)", "0%"] }}
                                                     transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
                                                 />
@@ -313,8 +315,8 @@ export function CameraScanner({
                                         {isLoading && (
                                             <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/65">
                                                 <div className="space-y-3 text-center">
-                                                    <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" />
-                                                    <p className="text-xs uppercase tracking-wider text-primary font-rajdhani">
+                                                    <Loader2 className={`mx-auto h-10 w-10 animate-spin ${isSabotaged ? "text-red-500" : "text-primary"}`} />
+                                                    <p className={`text-xs uppercase tracking-wider font-rajdhani ${isSabotaged ? "text-red-400" : "text-primary"}`}>
                                                         {t("game.scanner.initializingCamera")}
                                                     </p>
                                                 </div>
@@ -335,7 +337,7 @@ export function CameraScanner({
                                                     </div>
                                                     <button
                                                         onClick={handleRetry}
-                                                        className="h-10 px-4 border border-primary bg-primary text-primary-foreground text-xs uppercase tracking-widest font-orbitron hover:opacity-90 transition-opacity"
+                                                        className={`h-10 px-4 border text-xs uppercase tracking-widest font-orbitron hover:opacity-90 transition-opacity ${isSabotaged ? "border-red-500 bg-red-600 text-white" : "border-primary bg-primary text-primary-foreground"}`}
                                                     >
                                                         {t("game.scanner.retry")}
                                                     </button>
