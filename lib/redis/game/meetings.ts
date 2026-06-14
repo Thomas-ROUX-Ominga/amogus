@@ -5,6 +5,7 @@ import { GameState, ActionResponse, MeetingState, MeetingView } from "@/types/ga
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 import { resolveGameTimerSettings, secondsToMs } from "@/lib/game/timers";
 import { getMeetingVoteKey } from "@/lib/redis/game-state-keys";
+import { SKIP_VOTE_ID } from "@/lib/constants/meeting";
 import {
     readGameState,
     mutateGameState,
@@ -166,7 +167,7 @@ export async function triggerMeeting(
                 return null;
             }
 
-            const voteCounts: Record<string, number> = {};
+            const voteCounts: Record<string, number> = { [SKIP_VOTE_ID]: 0 };
             eligibleVoterIds.forEach((playerId) => {
                 voteCounts[playerId] = 0;
             });
@@ -301,7 +302,8 @@ export async function castMeetingVote(
                 return null;
             }
 
-            if (!meeting.eligibleVoterIds.includes(targetId)) {
+            const isValidTarget = targetId === SKIP_VOTE_ID || meeting.eligibleVoterIds.includes(targetId);
+            if (!isValidTarget) {
                 validationError = {
                     success: false,
                     error: "Invalid vote target.",
@@ -310,7 +312,7 @@ export async function castMeetingVote(
                 return null;
             }
 
-            if (targetId === userId) {
+            if (targetId !== SKIP_VOTE_ID && targetId === userId) {
                 validationError = {
                     success: false,
                     error: "Self-vote is not allowed.",
@@ -321,7 +323,9 @@ export async function castMeetingVote(
 
             const voteCounts: Record<string, number> = { ...meeting.voteCounts };
             let totalVotes = meeting.totalVotes;
-            const hasPreviousVote = !!previousVote && meeting.eligibleVoterIds.includes(previousVote);
+            const hasPreviousVote =
+                !!previousVote &&
+                (previousVote === SKIP_VOTE_ID || meeting.eligibleVoterIds.includes(previousVote));
 
             if (hasPreviousVote && previousVote === targetId) {
                 return workingState;
@@ -453,7 +457,10 @@ export async function cancelMeetingVote(
                 return null;
             }
 
-            if (!previousVote || !meeting.eligibleVoterIds.includes(previousVote)) {
+            const isPreviousVoteValid =
+                !!previousVote &&
+                (previousVote === SKIP_VOTE_ID || meeting.eligibleVoterIds.includes(previousVote));
+            if (!isPreviousVoteValid) {
                 return workingState;
             }
 

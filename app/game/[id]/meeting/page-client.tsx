@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Skull } from "lucide-react";
+import { ArrowLeft, Skull, SkipForward } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useAuth } from "@/hooks/use-auth";
 import { useGameStore, useRealTimeGamePolling } from "@/lib/store/game-store";
@@ -11,6 +11,7 @@ import { ErrorView } from "@/components/game/error-view";
 import { ReactorSabotageAlert } from "@/components/game/reactor-sabotage-alert";
 import { GameOverScreen } from "@/components/game/game-over-screen";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
+import { SKIP_VOTE_ID } from "@/lib/constants/meeting";
 
 function formatRemaining(ms: number): string {
     if (ms <= 0) return "00:00";
@@ -143,7 +144,10 @@ export default function MeetingPage() {
                   return a.name.localeCompare(b.name, locale, { sensitivity: "base" });
               });
 
-    const myVoteName = playersForMeetingList.find((target) => target.id === myVoteTargetId)?.name ?? null;
+    const myVoteName = myVoteTargetId === SKIP_VOTE_ID
+        ? null
+        : playersForMeetingList.find((target) => target.id === myVoteTargetId)?.name ?? null;
+    const myVoteIsSkip = myVoteTargetId === SKIP_VOTE_ID;
 
     return (
         <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
@@ -275,26 +279,51 @@ export default function MeetingPage() {
                             </div>
 
                             {active && isEligibleVoter && (
-                                <div className="flex items-center justify-between gap-3">
-                                    <div className="text-xs text-muted-foreground font-rajdhani">
-                                        {myVoteName
-                                            ? t("game.meeting.yourVote", { playerName: myVoteName })
-                                            : t("game.meeting.noVoteYet")}
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (!userId || isMeetingVoting) return;
+                                            castMeetingVoteAction(gameId, userId, SKIP_VOTE_ID);
+                                        }}
+                                        disabled={isMeetingVoting}
+                                        className={`w-full p-3 border text-xs uppercase tracking-widest transition-colors flex items-center justify-between gap-2 ${
+                                            myVoteIsSkip
+                                                ? "border-primary/60 bg-primary/10 text-primary"
+                                                : "border-white/10 bg-white/5 text-muted-foreground hover:border-primary/40"
+                                        } disabled:cursor-not-allowed`}
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <SkipForward className="w-3 h-3" />
+                                            {t("game.meeting.skipVote")}
+                                        </span>
+                                        <span className="text-primary/60">
+                                            {meeting?.voteCounts[SKIP_VOTE_ID] ?? 0}
+                                        </span>
+                                    </button>
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="text-xs text-muted-foreground font-rajdhani">
+                                            {myVoteIsSkip
+                                                ? t("game.meeting.yourVoteSkip")
+                                                : myVoteName
+                                                ? t("game.meeting.yourVote", { playerName: myVoteName })
+                                                : t("game.meeting.noVoteYet")}
+                                        </div>
+                                        {myVoteTargetId && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (!userId) return;
+                                                    cancelMeetingVoteAction(gameId, userId);
+                                                }}
+                                                disabled={isMeetingVoting}
+                                                className="px-3 py-1.5 border border-primary/40 text-primary text-xs uppercase tracking-widest hover:bg-primary/10 transition-colors disabled:opacity-50"
+                                            >
+                                                {t("game.actions.cancelVote")}
+                                            </button>
+                                        )}
                                     </div>
-                                    {myVoteTargetId && (
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                if (!userId) return;
-                                                cancelMeetingVoteAction(gameId, userId);
-                                            }}
-                                            disabled={isMeetingVoting}
-                                            className="px-3 py-1.5 border border-primary/40 text-primary text-xs uppercase tracking-widest hover:bg-primary/10 transition-colors disabled:opacity-50"
-                                        >
-                                            {t("game.actions.cancelVote")}
-                                        </button>
-                                    )}
-                                </div>
+                                </>
                             )}
                         </div>
                     </>

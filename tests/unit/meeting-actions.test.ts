@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GameState } from "@/types/game";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
+import { SKIP_VOTE_ID } from "@/lib/constants/meeting";
 
 vi.mock("@/lib/redis/client", () => {
     const memory = new Map<string, unknown>();
@@ -123,6 +124,7 @@ describe("meeting actions", () => {
         const caller = state?.players.find((player) => player.id === "u1");
         expect(caller?.meetingBuzzUsedAt).toBeTypeOf("number");
         expect(state?.meeting?.voteCounts).toEqual({
+            SKIP: 0,
             u1: 0,
             u2: 0,
             u3: 0,
@@ -633,6 +635,108 @@ describe("meeting actions", () => {
         expect(view.data?.meeting?.endReason).toBe("TIMEOUT");
         expect(view.data?.meeting?.eliminatedPlayerId).toBeUndefined();
         expect(view.data?.meeting?.endedAt).toBe(forcedEndsAt);
+    });
+
+    it("can cast a skip vote", async () => {
+        await triggerMeeting(gameId, "u1");
+
+        const result = await castMeetingVote(gameId, "u1", SKIP_VOTE_ID);
+        expect(result.success).toBe(true);
+        expect(result.data?.myVoteTargetId).toBe(SKIP_VOTE_ID);
+
+        const state = await redis.get<GameState>(stateKey);
+        expect(state?.meeting?.voteCounts[SKIP_VOTE_ID]).toBe(1);
+        expect(state?.meeting?.totalVotes).toBe(1);
+    });
+
+    it("can cancel a skip vote", async () => {
+        await triggerMeeting(gameId, "u1");
+        await castMeetingVote(gameId, "u1", SKIP_VOTE_ID);
+
+        const canceled = await cancelMeetingVote(gameId, "u1");
+        expect(canceled.success).toBe(true);
+        expect(canceled.data?.myVoteTargetId).toBeNull();
+
+        const state = await redis.get<GameState>(stateKey);
+        expect(state?.meeting?.voteCounts[SKIP_VOTE_ID]).toBe(0);
+        expect(state?.meeting?.totalVotes).toBe(0);
+    });
+
+    it("skip vote wins and prevents elimination", async () => {
+        await triggerMeeting(gameId, "u1");
+
+        // u1 votes skip, u2 votes u3, u3 votes skip → skip wins 2-1
+        await castMeetingVote(gameId, "u1", SKIP_VOTE_ID);
+        await castMeetingVote(gameId, "u2", "u3");
+        const result = await castMeetingVote(gameId, "u3", SKIP_VOTE_ID);
+
+        expect(result.success).toBe(true);
+        expect(result.data?.meeting?.status).toBe("COMPLETED");
+        expect(result.data?.meeting?.eliminatedPlayerId).toBeUndefined();
+        expect(result.data?.meeting?.endReason).toBe("ALL_VOTED");
+
+        const state = await redis.get<GameState>(stateKey);
+        expect(state?.players.every((p) => p.isAlive || !p.role)).toBe(true);
+    });
+
+    it("skip vote ties with top player — no elimination", async () => {
+        // 4-player scenario: u1→u2, u2→skip, u3→skip, u4→u2 → u2:2 skip:2 → tie → no elimination
+        const now = Date.now();
+        await redis.set(stateKey, {
+            id: gameId,
+            status: "IN_PROGRESS",
+            createdAt: now,
+            revision: 1,
+            updatedAt: now,
+            players: [
+                { id: "u1", name: "Alice", role: "CREWMATE", isAlive: true, completedQuests: [] },
+                { id: "u2", name: "Bob", role: "IMPOSTOR", isAlive: true, completedQuests: [] },
+                { id: "u3", name: "Chloe", role: "CREWMATE", isAlive: true, completedQuests: [] },
+                { id: "u4", name: "Dan", role: "CREWMATE", isAlive: true, completedQuests: [] },
+            ],
+        });
+
+        vi.mocked(verifyPlayerSession).mockResolvedValue({ success: true });
+        await triggerMeeting(gameId, "u1");
+
+        // u1→u2 (1), u2→skip (1), u3→skip (1), u4→u2 (1) → u2: 2, skip: 2 → tie → no elimination
+        await castMeetingVote(gameId, "u1", "u2");
+        await castMeetingVote(gameId, "u2", SKIP_VOTE_ID);
+        await castMeetingVote(gameId, "u3", SKIP_VOTE_ID);
+        const result = await castMeetingVote(gameId, "u4", "u2");
+
+        expect(result.success).toBe(true);
+        expect(result.data?.meeting?.status).toBe("COMPLETED");
+        expect(result.data?.meeting?.eliminatedPlayerId).toBeUndefined();
+    });
+
+    it("player gets most votes over skip — player is eliminated", async () => {
+        await triggerMeeting(gameId, "u1");
+
+        // u1→u2, u3→u2, u2→skip → u2:2 skip:1 → u2 eliminated
+        await castMeetingVote(gameId, "u1", "u2");
+        await castMeetingVote(gameId, "u3", "u2");
+        const result = await castMeetingVote(gameId, "u2", SKIP_VOTE_ID);
+
+        expect(result.success).toBe(true);
+        expect(result.data?.meeting?.status).toBe("COMPLETED");
+        expect(result.data?.meeting?.eliminatedPlayerId).toBe("u2");
+
+        const state = await redis.get<GameState>(stateKey);
+        expect(state?.players.find((p) => p.id === "u2")?.isAlive).toBe(false);
+    });
+
+    it("all vote skip — auto-resolves with no elimination", async () => {
+        await triggerMeeting(gameId, "u1");
+        await castMeetingVote(gameId, "u1", SKIP_VOTE_ID);
+        await castMeetingVote(gameId, "u2", SKIP_VOTE_ID);
+        const result = await castMeetingVote(gameId, "u3", SKIP_VOTE_ID);
+
+        expect(result.success).toBe(true);
+        expect(result.data?.meeting?.status).toBe("COMPLETED");
+        expect(result.data?.meeting?.eliminatedPlayerId).toBeUndefined();
+        expect(result.data?.meeting?.endReason).toBe("ALL_VOTED");
+        expect(result.data?.meeting?.voteCounts[SKIP_VOTE_ID]).toBe(3);
     });
 
     it("ends the game with CREWMATE victory when the last impostor is eliminated in meeting", async () => {

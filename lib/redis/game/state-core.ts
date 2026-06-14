@@ -13,6 +13,7 @@ import {
     ReactorSabotageState,
 } from "@/types/game";
 import { ERROR_CODES } from "@/lib/constants/error-codes";
+import { SKIP_VOTE_ID } from "@/lib/constants/meeting";
 import { Quest } from "@/types/quest";
 import { optimizeCrewmateAssignmentsFromLoadedBatch } from "@/lib/quests/quest-assignment";
 import { resolveGameTimerSettings, secondsToMs } from "@/lib/game/timers";
@@ -268,8 +269,10 @@ export function resolveMeetingState(
     meeting.eligibleVoterIds.forEach((playerId) => {
         normalizedVoteCounts[playerId] = Math.max(0, meeting.voteCounts[playerId] ?? 0);
     });
+    const skipVotes = Math.max(0, meeting.voteCounts[SKIP_VOTE_ID] ?? 0);
+    normalizedVoteCounts[SKIP_VOTE_ID] = skipVotes;
 
-    const totalVotes = sumVoteCounts(normalizedVoteCounts, meeting.eligibleVoterIds);
+    const totalVotes = sumVoteCounts(normalizedVoteCounts, meeting.eligibleVoterIds) + skipVotes;
 
     let eliminatedPlayerId: string | undefined;
     let eliminatedPlayerName: string | undefined;
@@ -281,7 +284,7 @@ export function resolveMeetingState(
             .sort((a, b) => b.votes - a.votes);
 
         const maxVotes = ranked[0]?.votes ?? 0;
-        if (maxVotes > 0) {
+        if (maxVotes > 0 && skipVotes < maxVotes) {
             const topPlayers = ranked
                 .filter((entry) => entry.votes === maxVotes)
                 .map((entry) => entry.playerId)
@@ -420,7 +423,9 @@ export async function buildMeetingViewData(gameId: string, userId: string, state
 
     const voteKey = getMeetingVoteKey(gameId, meeting.id, userId);
     const myVoteTargetId = await redis.get<string>(voteKey);
-    const isValidTarget = myVoteTargetId ? meeting.eligibleVoterIds.includes(myVoteTargetId) : false;
+    const isValidTarget = myVoteTargetId
+        ? myVoteTargetId === SKIP_VOTE_ID || meeting.eligibleVoterIds.includes(myVoteTargetId)
+        : false;
 
     return {
         meeting,
