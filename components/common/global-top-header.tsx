@@ -63,8 +63,16 @@ export function GlobalTopHeader() {
       }
     };
 
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setIsMenuOpen(false);
+    };
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [shouldHide]);
 
   const handleGoToBatches = () => {
@@ -113,7 +121,7 @@ export function GlobalTopHeader() {
         <button
           type="button"
           onClick={() => router.push("/")}
-          className="h-10 px-1 bg-transparent text-foreground hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-2"
+          className="min-h-[44px] px-1 bg-transparent text-foreground hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-2"
           aria-label={t("game.meeting.home")}
         >
           <span className="h-7 w-7 border border-primary/35 bg-black inline-flex items-center justify-center text-primary text-[11px] font-bold leading-none">
@@ -132,7 +140,9 @@ export function GlobalTopHeader() {
                 if (!hasAccountMenuActions) return;
                 setIsMenuOpen((prev) => !prev);
               }}
-              className="h-10 px-3 border border-primary/25 bg-black/75 inline-flex items-center gap-2 text-[10px] uppercase tracking-wider text-foreground/90 hover:bg-primary/10 hover:border-primary/45 transition-colors cursor-pointer"
+              aria-haspopup={hasAccountMenuActions ? "menu" : undefined}
+              aria-expanded={hasAccountMenuActions ? isMenuOpen : undefined}
+              className="min-h-[44px] px-3 border border-primary/25 bg-black/75 inline-flex items-center gap-2 text-xs uppercase tracking-wider text-foreground/90 hover:bg-primary/10 hover:border-primary/45 transition-colors cursor-pointer"
             >
               {isOrganizer ? (
                 <Shield className="h-3.5 w-3.5 text-primary" />
@@ -151,7 +161,7 @@ export function GlobalTopHeader() {
                   <button
                     type="button"
                     onClick={handleGoToCreateGame}
-                    className="w-full h-10 px-3 text-left inline-flex items-center gap-2 text-[10px] uppercase tracking-wider text-foreground/90 hover:bg-primary/10 transition-colors cursor-pointer"
+                    className="w-full min-h-[44px] px-3 text-left inline-flex items-center gap-2 text-xs uppercase tracking-wider text-foreground/90 hover:bg-primary/10 transition-colors cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5 text-primary" />
                     {t("home.createGame")}
@@ -161,7 +171,7 @@ export function GlobalTopHeader() {
                   <button
                     type="button"
                     onClick={handleGoToBatches}
-                    className="w-full h-10 px-3 text-left inline-flex items-center gap-2 text-[10px] uppercase tracking-wider text-foreground/90 hover:bg-primary/10 transition-colors cursor-pointer border-t border-primary/15"
+                    className="w-full min-h-[44px] px-3 text-left inline-flex items-center gap-2 text-xs uppercase tracking-wider text-foreground/90 hover:bg-primary/10 transition-colors cursor-pointer border-t border-primary/15"
                   >
                     <LayoutGrid className="h-3.5 w-3.5 text-primary" />
                     {t("common.user.myBatches")}
@@ -171,7 +181,7 @@ export function GlobalTopHeader() {
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className={`w-full h-10 px-3 text-left inline-flex items-center gap-2 text-[10px] uppercase tracking-wider text-foreground/90 hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer ${
+                    className={`w-full min-h-[44px] px-3 text-left inline-flex items-center gap-2 text-xs uppercase tracking-wider text-foreground/90 hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer ${
                       isOrganizer ? "border-t border-primary/15" : ""
                     }`}
                   >
@@ -189,7 +199,7 @@ export function GlobalTopHeader() {
               setIsMenuOpen(false);
               setIsRulesOpen(true);
             }}
-            className="h-10 px-3 border border-primary/30 bg-black/75 text-primary hover:bg-primary/10 transition-colors cursor-pointer inline-flex items-center gap-2 text-[10px] uppercase tracking-wider"
+            className="min-h-[44px] px-3 border border-primary/30 bg-black/75 text-primary hover:bg-primary/10 transition-colors cursor-pointer inline-flex items-center gap-2 text-xs uppercase tracking-wider"
             aria-label={t("common.rules.buttonLabel")}
             title={t("common.rules.buttonLabel")}
           >
@@ -200,7 +210,7 @@ export function GlobalTopHeader() {
           <button
             type="button"
             onClick={handleSwitchLanguage}
-            className="h-10 px-3 text-[10px] uppercase tracking-wider border border-primary/30 bg-black/75 text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+            className="min-h-[44px] px-3 text-xs uppercase tracking-wider border border-primary/30 bg-black/75 text-primary hover:bg-primary/10 transition-colors cursor-pointer"
             aria-label={t("common.language.switchTo", { language: nextLanguageLabel })}
             title={t("common.language.currentLocale", { locale })}
           >

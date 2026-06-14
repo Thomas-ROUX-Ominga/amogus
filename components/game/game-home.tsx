@@ -341,7 +341,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
             <div
                 className={`max-w-2xl w-full border-2 p-6 md:p-10 bg-black/50 backdrop-blur-sm transition-all duration-500 ${
                     currentPlayer.isAlive
-                        ? "border-primary/20 shadow-[0_0_50px_rgba(var(--primary),0.05)]"
+                        ? "border-primary/20 shadow-[0_0_50px_rgb(var(--primary-rgb)/0.05)]"
                         : "border-red-500/40 shadow-[0_0_50px_rgba(239,68,68,0.2)]"
                 } h-full min-h-0 flex flex-col`}
             >
@@ -357,8 +357,8 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                             aria-hidden="true"
                         />
                         <span
-                            className={`text-[10px] tracking-widest ${
-                                currentPlayer.isAlive ? "text-green-400/80" : "text-red-400/80 font-bold"
+                            className={`text-xs tracking-wider ${
+                                currentPlayer.isAlive ? "text-green-400" : "text-red-400 font-bold"
                             }`}
                         >
                             {currentPlayer.isAlive ? t("game.home.statusActive") : t("game.home.statusDead")}
@@ -493,7 +493,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                 </div>
 
                 {eliminationError && (
-                    <div className="mt-2 p-2 border border-destructive/20 bg-destructive/10 text-destructive text-xs text-center">
+                    <div className="mt-2 p-2 border border-destructive/20 bg-destructive/10 text-destructive text-xs text-center" role="alert" aria-live="assertive">
                         {getLocalizedErrorMessage({
                             t,
                             code: eliminationErrorCode,
@@ -502,7 +502,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     </div>
                 )}
                 {meetingError && (
-                    <div className="mt-2 p-2 border border-destructive/20 bg-destructive/10 text-destructive text-xs text-center">
+                    <div className="mt-2 p-2 border border-destructive/20 bg-destructive/10 text-destructive text-xs text-center" role="alert" aria-live="assertive">
                         {getLocalizedErrorMessage({
                             t,
                             code: meetingErrorCode,
@@ -511,7 +511,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     </div>
                 )}
                 {scanFeedback && !isOpen && (
-                    <div className="mt-2 p-2 border border-primary/20 bg-primary/10 text-primary text-xs text-center">
+                    <div className="mt-2 p-2 border border-primary/20 bg-primary/10 text-primary text-xs text-center" role="status" aria-live="polite">
                         {scanFeedback}
                     </div>
                 )}

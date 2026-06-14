@@ -42,10 +42,10 @@ export function NumberStepperInput({
         max={typeof max === "number" ? String(max) : undefined}
         value={value}
         onChange={(e) => setNextValue(parseInt(e.target.value, 10) || min)}
-        className="number-input-clean w-full h-10 sm:h-12 bg-gradient-to-b from-black/80 to-black/50 border border-primary/35 hover:border-primary/60 pl-2 pr-10 sm:pr-11 text-center text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/35 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        className="number-input-clean w-full h-10 sm:h-12 bg-gradient-to-b from-black/80 to-black/50 border border-primary/35 hover:border-primary/60 pl-2 pr-12 text-center text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/35 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         disabled={disabled}
       />
-      <div className="absolute right-1 top-1 bottom-1 w-7 sm:w-8 border border-primary/20 bg-black/70 flex flex-col">
+      <div className="absolute right-0 top-0 bottom-0 w-10 border-l border-primary/20 bg-black/70 flex flex-col">
         <button
           type="button"
           onClick={() => setNextValue(value + 1)}

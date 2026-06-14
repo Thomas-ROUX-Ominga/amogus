@@ -33,7 +33,8 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
   const t = useTranslations();
   const locale = useLocale();
   const [eliminatingPlayer, setEliminatingPlayer] = useState<string | null>(null);
-  
+  const [eliminationError, setEliminationError] = useState<string | null>(null);
+
   const {
     data: dashboardData,
     error,
@@ -47,17 +48,18 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
 
   const handleEliminatePlayer = async (playerId: string) => {
     setEliminatingPlayer(playerId);
+    setEliminationError(null);
     try {
       const result = await eliminatePlayer(gameId, playerId);
       if (result.success) {
-        // Refresh data to show the updated player status
         mutate();
       } else {
-        console.error("Failed to eliminate player:", result.error);
-        // TODO: Show error notification to user
+        setEliminationError(
+          getLocalizedErrorMessage({ t, code: result.code, fallback: result.error }),
+        );
       }
-    } catch (error) {
-      console.error("Error eliminating player:", error);
+    } catch {
+      setEliminationError(getLocalizedErrorMessage({ t, code: "ERR_SIGNAL_LOST" }));
     } finally {
       setEliminatingPlayer(null);
     }
@@ -116,7 +118,8 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
         <div className="flex items-center gap-4">
           <button
             onClick={onGameChange}
-            className="p-2 border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+            className="min-h-[44px] min-w-[44px] p-2 border border-primary/30 text-primary hover:bg-primary/10 transition-colors inline-flex items-center justify-center"
+            aria-label={t("admin.dashboard.selectDifferentGame")}
           >
             <ArrowLeft size={16} />
           </button>
@@ -124,7 +127,7 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
             <h2 className="text-lg font-bold uppercase tracking-[0.2em] text-primary font-orbitron">
               {t("admin.dashboard.gameLabel", { gameId: gameState.id })}
             </h2>
-            <div className="flex items-center gap-4 text-[10px] text-primary/50 tracking-widest mt-1">
+            <div className="flex items-center gap-4 text-xs text-primary/60 tracking-wider mt-1">
               <span className="flex items-center gap-1">
                 <Clock size={10} />
                 {new Date(gameState.createdAt).toLocaleTimeString(
@@ -282,17 +285,22 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
           <h3 className="text-sm font-bold uppercase tracking-widest text-primary">
             {t("admin.dashboard.individualProgress")}
           </h3>
-          <div className="text-[10px] text-primary/50 tracking-widest">
+          <div className="text-xs text-primary/60 tracking-wider">
             {t("admin.dashboard.liveData")}
           </div>
         </div>
+        {eliminationError && (
+          <div className="mb-4 p-3 border border-destructive/30 bg-destructive/10 text-destructive text-xs uppercase tracking-wider" role="alert" aria-live="assertive">
+            {eliminationError}
+          </div>
+        )}
         <div className="space-y-3">
           {stats.playerProgress.map((player) => (
             <div
               key={player.id}
-              className={`p-4 border transition-all duration-300 ${
-                player.isAlive 
-                  ? "border-primary/20 bg-black/30" 
+              className={`p-4 border transition-colors ${
+                player.isAlive
+                  ? "border-primary/20 bg-black/30"
                   : "border-red-500/40 bg-red-900/20 shadow-[inset_0_0_20px_rgba(239,68,68,0.1)]"
               }`}
             >
@@ -335,8 +343,8 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
                     <button
                       onClick={() => handleEliminatePlayer(player.id)}
                       disabled={eliminatingPlayer === player.id}
-                      className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
-                      title={t("admin.dashboard.eliminatePlayerTitle")}
+                      className="min-h-[44px] min-w-[44px] p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed group inline-flex items-center justify-center"
+                      aria-label={t("admin.dashboard.eliminatePlayerTitle")}
                     >
                       {eliminatingPlayer === player.id ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />

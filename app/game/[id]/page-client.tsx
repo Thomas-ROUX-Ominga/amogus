@@ -213,7 +213,7 @@ export default function LobbyPage() {
     if (currentGameInProgress && isJoined && !hasRole) {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
-                <div className="max-w-2xl w-full border-2 border-primary/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgba(var(--primary),0.05)]">
+                <div className="max-w-2xl w-full border-2 border-primary/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgb(var(--primary-rgb)/0.05)]">
                     <div className="flex items-center justify-between border-b border-primary/20 pb-4">
                         <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-primary font-orbitron">
                             {t("game.lobby.missionActive")}
@@ -237,7 +237,7 @@ export default function LobbyPage() {
 
     return (
         <main className="flex h-[100dvh] overflow-hidden flex-col items-center justify-start bg-background text-foreground font-mono px-4 pb-4 pt-20 md:pt-24">
-            <div className="max-w-2xl w-full h-full max-h-full border-2 border-primary/20 p-8 md:p-12 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgba(var(--primary),0.05)] flex flex-col gap-6 overflow-hidden">
+            <div className="max-w-2xl w-full h-full max-h-full border-2 border-primary/20 p-8 md:p-12 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgb(var(--primary-rgb)/0.05)] flex flex-col gap-6 overflow-hidden">
                 <div className="flex flex-col items-start gap-3 border-b border-primary/20 pb-4 sm:flex-row sm:items-center sm:justify-between">
                     <h1 className="text-lg sm:text-xl font-bold uppercase tracking-[0.22em] sm:tracking-[0.3em] text-primary font-orbitron leading-tight">
                         {isJoined ? t("game.lobby.cockpitTerminal") : t("game.lobby.inboundEntry")}

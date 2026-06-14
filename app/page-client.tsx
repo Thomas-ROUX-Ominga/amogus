@@ -68,15 +68,18 @@ export default function Home() {
           <div className="space-y-8">
             <form onSubmit={handleJoinByCode} className="space-y-4">
               <div className="relative group">
-                <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/30 group-focus-within:text-primary transition-colors" />
+                <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/30 group-focus-within:text-primary transition-colors" aria-hidden="true" />
+                <label htmlFor="session-code" className="sr-only">{t("home.sessionCodePlaceholder")}</label>
                 <input
+                  id="session-code"
                   type="text"
                   value={gameId}
                   onChange={handleInputChange}
                   placeholder={t("home.sessionCodePlaceholder")}
-                  className={`w-full bg-black/50 border-2 p-5 pl-12 text-2xl font-black tracking-[0.3em] text-foreground placeholder:text-primary/10 focus:outline-none transition-all rounded-none uppercase ${
-                    error 
-                      ? 'border-destructive animate-pulse' 
+                  autoComplete="off"
+                  className={`w-full bg-black/50 border-2 p-5 pl-12 text-2xl font-black tracking-[0.3em] text-foreground placeholder:text-muted-foreground/50 focus:outline-none transition-all rounded-none uppercase ${
+                    error
+                      ? 'border-destructive animate-pulse'
                       : 'border-primary/20 focus:border-primary'
                   }`}
                   maxLength={6}
@@ -84,7 +87,7 @@ export default function Home() {
               </div>
               
               {error && (
-                <div className="text-destructive text-[10px] uppercase tracking-widest text-center">
+                <div className="text-destructive text-xs uppercase tracking-wider text-center" role="alert" aria-live="assertive">
                   {error}
                 </div>
               )}
@@ -92,7 +95,7 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={!gameId.trim() || !!error}
-                className="w-full h-14 rounded-xl bg-primary text-primary-foreground border border-primary font-semibold text-base transition-all hover:opacity-95 hover:shadow-[0_0_20px_hsl(var(--primary)/0.25)] cursor-pointer flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+                className="w-full h-14 bg-primary text-primary-foreground border border-primary font-semibold text-base transition-all hover:opacity-95 active:scale-95 hover:shadow-[0_0_20px_rgb(var(--primary-rgb)/0.25)] cursor-pointer flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
               >
                 <span>{t("home.joinSession")}</span>
                 <ChevronRight className="group-hover:translate-x-1 transition-transform" />
@@ -115,7 +118,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => router.push("/games/create")}
-                  className="w-full h-12 rounded-lg border border-primary/35 bg-background/40 text-foreground font-medium text-sm transition-all hover:bg-primary/10 hover:border-primary hover:-translate-y-0.5 hover:shadow-[0_10px_24px_hsl(var(--primary)/0.16)] cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full h-12 border border-primary/35 bg-background/40 text-foreground font-medium text-sm transition-all hover:bg-primary/10 hover:border-primary active:scale-95 hover:shadow-[0_10px_24px_rgb(var(--primary-rgb)/0.16)] cursor-pointer flex items-center justify-center gap-2"
                 >
                   <Plus size={18} />
                   {t("home.createGame")}
@@ -123,7 +126,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => router.push("/batches")}
-                  className="w-full h-12 rounded-lg border border-primary/35 bg-background/40 text-foreground font-medium text-sm transition-all hover:bg-primary/10 hover:border-primary hover:-translate-y-0.5 hover:shadow-[0_10px_24px_hsl(var(--primary)/0.16)] cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full h-12 border border-primary/35 bg-background/40 text-foreground font-medium text-sm transition-all hover:bg-primary/10 hover:border-primary active:scale-95 hover:shadow-[0_10px_24px_rgb(var(--primary-rgb)/0.16)] cursor-pointer flex items-center justify-center gap-2"
                 >
                   <LayoutGrid size={18} />
                   {t("common.user.myBatches")}
@@ -134,7 +137,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => router.push("/login")}
-                  className="w-full h-12 rounded-lg border border-primary/35 bg-background/40 text-foreground font-medium text-sm transition-all hover:bg-primary/10 hover:border-primary hover:-translate-y-0.5 hover:shadow-[0_10px_24px_hsl(var(--primary)/0.16)] cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full h-12 border border-primary/35 bg-background/40 text-foreground font-medium text-sm transition-all hover:bg-primary/10 hover:border-primary active:scale-95 hover:shadow-[0_10px_24px_rgb(var(--primary-rgb)/0.16)] cursor-pointer flex items-center justify-center gap-2"
                 >
                   <LogIn size={18} />
                   {t("home.signIn")}
@@ -142,7 +145,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => router.push("/register")}
-                  className="w-full h-12 rounded-lg border border-primary/25 bg-transparent text-muted-foreground font-medium text-sm transition-all hover:text-foreground hover:border-primary/45 hover:bg-primary/10 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_hsl(var(--primary)/0.12)] cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full h-12 border border-primary/25 bg-transparent text-muted-foreground font-medium text-sm transition-all hover:text-foreground hover:border-primary/45 hover:bg-primary/10 active:scale-95 hover:shadow-[0_10px_24px_rgb(var(--primary-rgb)/0.12)] cursor-pointer flex items-center justify-center gap-2"
                 >
                   <UserPlus size={16} />
                   {t("home.createAccount")}

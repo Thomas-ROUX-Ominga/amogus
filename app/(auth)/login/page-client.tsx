@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, ChevronRight, ChevronLeft } from "lucide-react";
+import { Lock, ChevronRight, ChevronLeft, Eye, EyeOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { login } from "@/lib/redis/auth-actions";
 import { useAuth } from "@/hooks/use-auth";
@@ -21,6 +21,7 @@ export default function LoginPage({
   const t = useTranslations();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -78,7 +79,7 @@ export default function LoginPage({
             <h1 className="text-2xl font-black uppercase tracking-[0.2em] text-primary font-orbitron">
               {t("auth.login.title")}
             </h1>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest leading-relaxed">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider leading-relaxed">
               {t("auth.login.subtitle")}
             </p>
           </div>
@@ -93,7 +94,7 @@ export default function LoginPage({
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-tighter text-primary/60 ml-1">{t("auth.login.usernameLabel")}</label>
+                <label className="text-xs uppercase tracking-wide text-primary/70 ml-1">{t("auth.login.usernameLabel")}</label>
                 <div className="relative group/input">
                   <div className="absolute -inset-0.5 bg-primary/20 rounded-sm opacity-0 group-focus-within/input:opacity-100 transition duration-300 blur-sm"></div>
                   <input
@@ -102,35 +103,43 @@ export default function LoginPage({
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder={t("auth.login.usernamePlaceholder")}
                     autoComplete="username"
-                    className="relative w-full bg-black border border-primary/30 p-3 text-lg tracking-[0.2em] text-foreground placeholder:text-primary/10 focus:outline-none focus:border-primary transition-all rounded-none uppercase"
+                    className="relative w-full bg-black border border-primary/30 p-3 text-lg tracking-[0.2em] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary transition-all rounded-none uppercase"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-tighter text-primary/60 ml-1">{t("auth.login.passwordLabel")}</label>
+                <label className="text-xs uppercase tracking-wide text-primary/70 ml-1">{t("auth.login.passwordLabel")}</label>
                 <div className="relative group/input">
                   <div className="absolute -inset-0.5 bg-primary/20 rounded-sm opacity-0 group-focus-within/input:opacity-100 transition duration-300 blur-sm"></div>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={t("auth.login.passwordPlaceholder")}
                     autoComplete="current-password"
-                    className="relative w-full bg-black border border-primary/30 p-3 text-lg tracking-[0.2em] text-foreground placeholder:text-primary/10 focus:outline-none focus:border-primary transition-all rounded-none uppercase"
+                    className="relative w-full bg-black border border-primary/30 p-3 pr-10 text-lg tracking-[0.2em] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary transition-all rounded-none uppercase"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-primary/40 hover:text-primary transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
               </div>
             </div>
 
             {registered && (
-                <div className="bg-green-500/10 border border-green-500/20 p-3 text-[10px] text-green-500 uppercase tracking-widest text-center">
+                <div className="bg-green-500/10 border border-green-500/20 p-3 text-xs text-green-500 uppercase tracking-wider text-center" role="status">
                   {t("auth.login.registeredSuccess")}
               </div>
             )}
 
             {error && (
-              <div className="bg-destructive/10 border border-destructive/20 p-3 text-[10px] text-destructive uppercase tracking-widest text-center animate-shake">
+              <div className="bg-destructive/10 border border-destructive/20 p-3 text-xs text-destructive uppercase tracking-wider text-center animate-shake" role="alert" aria-live="assertive">
                 {t("auth.login.errorPrefix")} {error}
               </div>
             )}
@@ -138,7 +147,7 @@ export default function LoginPage({
             <button
               type="submit"
               disabled={!username.trim() || !password.trim() || isLoading}
-              className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground font-black py-4 transition-all flex items-center justify-center gap-2 group relative overflow-hidden"
+              className="w-full bg-primary hover:bg-primary/90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground font-black py-4 transition-all flex items-center justify-center gap-2 group relative overflow-hidden"
             >
               <span className="relative z-10 flex items-center gap-2 tracking-[0.3em] uppercase text-sm">
                 {isLoading ? t("auth.login.authorizing") : t("auth.login.initializeSession")}
@@ -150,7 +159,7 @@ export default function LoginPage({
               <button 
                 type="button"
                 onClick={() => router.push("/register")}
-                className="text-[10px] uppercase tracking-widest text-primary/50 hover:text-primary transition-colors"
+                className="text-xs uppercase tracking-wider text-primary/60 hover:text-primary transition-colors min-h-[44px] inline-flex items-center"
               >
                 {t("auth.login.noAccount")}
               </button>
@@ -162,7 +171,7 @@ export default function LoginPage({
           <button
             type="button"
             onClick={() => router.push("/")}
-            className="text-[10px] uppercase tracking-widest text-primary/50 hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-1"
+            className="text-xs uppercase tracking-wider text-primary/60 hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-1 min-h-[44px]"
           >
             <ChevronLeft size={14} />
             {t("auth.login.backHome")}

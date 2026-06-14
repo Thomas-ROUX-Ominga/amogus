@@ -84,7 +84,7 @@ export default function RegisterPage() {
             <h1 className="text-2xl font-black uppercase tracking-[0.2em] text-primary font-orbitron">
               {t("auth.register.title")}
             </h1>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest leading-relaxed">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider leading-relaxed">
               {t("auth.register.subtitle")}
             </p>
           </div>
@@ -99,7 +99,7 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-tighter text-primary/60 ml-1">{t("auth.register.usernameLabel")}</label>
+                <label className="text-xs uppercase tracking-wide text-primary/70 ml-1">{t("auth.register.usernameLabel")}</label>
                 <div className="relative group">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/30" />
                   <input
@@ -117,7 +117,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-tighter text-primary/60 ml-1">{t("auth.register.passwordLabel")}</label>
+                <label className="text-xs uppercase tracking-wide text-primary/70 ml-1">{t("auth.register.passwordLabel")}</label>
                 <div className="relative group">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/30" />
                   <input
@@ -146,7 +146,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-tighter text-primary/60 ml-1">{t("auth.register.confirmPasswordLabel")}</label>
+                <label className="text-xs uppercase tracking-wide text-primary/70 ml-1">{t("auth.register.confirmPasswordLabel")}</label>
                 <div className="relative group">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/30" />
                   <input
@@ -165,7 +165,7 @@ export default function RegisterPage() {
             </div>
 
             {error && (
-              <div className="bg-destructive/10 border border-destructive/20 p-3 text-[10px] text-destructive uppercase tracking-widest text-center">
+              <div className="bg-destructive/10 border border-destructive/20 p-3 text-xs text-destructive uppercase tracking-wider text-center" role="alert" aria-live="assertive">
                 {t("auth.register.setupFailedPrefix")} {error}
               </div>
             )}
@@ -173,7 +173,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isLoading || !username || !password || password !== confirmPassword}
-              className="w-full bg-primary hover:bg-primary/90 disabled:bg-primary/10 disabled:text-primary/30 text-primary-foreground font-black py-4 transition-all flex items-center justify-center gap-2 group relative overflow-hidden"
+              className="w-full bg-primary hover:bg-primary/90 active:scale-95 disabled:bg-primary/10 disabled:text-primary/30 text-primary-foreground font-black py-4 transition-all flex items-center justify-center gap-2 group relative overflow-hidden"
             >
               {isLoading ? t("auth.register.initializing") : t("auth.register.registerOperator")}
             </button>
@@ -182,7 +182,7 @@ export default function RegisterPage() {
               <button 
                 type="button"
                 onClick={() => router.push("/login")}
-                className="text-[10px] uppercase tracking-widest text-primary/50 hover:text-primary transition-colors"
+                className="text-xs uppercase tracking-wider text-primary/60 hover:text-primary transition-colors min-h-[44px] inline-flex items-center"
               >
                 {t("auth.register.existingAccount")}
               </button>
@@ -194,7 +194,7 @@ export default function RegisterPage() {
           <button
             type="button"
             onClick={() => router.push("/")}
-            className="text-[10px] uppercase tracking-widest text-primary/50 hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-1"
+            className="text-xs uppercase tracking-wider text-primary/60 hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-1 min-h-[44px]"
           >
             <ChevronLeft size={14} />
             {t("auth.register.backHome")}

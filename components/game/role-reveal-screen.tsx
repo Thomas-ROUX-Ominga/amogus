@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { m } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import { ShieldAlert, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { PlayerRole } from "@/types/game";
@@ -30,6 +30,7 @@ const ROLE_CONFIG = {
 
 export function RoleRevealScreen({ role, onComplete }: RoleRevealScreenProps) {
   const t = useTranslations();
+  const prefersReducedMotion = useReducedMotion();
   const config = ROLE_CONFIG[role];
   const { Icon, color, glow, labelKey, subtitleKey } = config;
 
@@ -63,34 +64,36 @@ export function RoleRevealScreen({ role, onComplete }: RoleRevealScreenProps) {
 
       <div className="absolute inset-0 pointer-events-none opacity-[0.08] bg-[linear-gradient(rgba(255,255,255,0.2)_1px,transparent_1px)] bg-[length:100%_4px]" />
 
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <m.div
-          className="absolute left-0 right-0 h-[28vh]"
-          style={{
-            background: `linear-gradient(to top, transparent 0%, ${color}00 20%, ${color}22 45%, ${color}80 50%, ${color}22 55%, ${color}00 80%, transparent 100%)`,
-            filter: "blur(1.5px)",
-          }}
-          initial={{ y: "110%" }}
-          animate={{ y: ["110%", "-130%"] }}
-          transition={{ duration: 1.45, repeat: 1, ease: "linear" }}
-        />
-        <m.div
-          className="absolute left-0 right-0 h-px"
-          style={{ background: color, boxShadow: `0 0 16px ${color}` }}
-          initial={{ y: "100%" }}
-          animate={{ y: ["100%", "-10%"] }}
-          transition={{ duration: 1.45, repeat: 1, ease: "linear" }}
-        />
-      </div>
+      {!prefersReducedMotion && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <m.div
+            className="absolute left-0 right-0 h-[28vh]"
+            style={{
+              background: `linear-gradient(to top, transparent 0%, ${color}00 20%, ${color}22 45%, ${color}80 50%, ${color}22 55%, ${color}00 80%, transparent 100%)`,
+              filter: "blur(1.5px)",
+            }}
+            initial={{ y: "110%" }}
+            animate={{ y: ["110%", "-130%"] }}
+            transition={{ duration: 1.45, repeat: 1, ease: "linear" }}
+          />
+          <m.div
+            className="absolute left-0 right-0 h-px"
+            style={{ background: color, boxShadow: `0 0 16px ${color}` }}
+            initial={{ y: "100%" }}
+            animate={{ y: ["100%", "-10%"] }}
+            transition={{ duration: 1.45, repeat: 1, ease: "linear" }}
+          />
+        </div>
+      )}
 
       <m.div
-        initial={{ opacity: 0, scale: 0.9, y: 10 }}
-        animate={{ opacity: [0, 1, 0.92, 1], scale: [0.9, 1.02, 1] }}
-        transition={{ duration: 0.55 }}
+        initial={{ opacity: 0, scale: prefersReducedMotion ? 1 : 0.9, y: prefersReducedMotion ? 0 : 10 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: prefersReducedMotion ? 0.15 : 0.55 }}
         className="relative z-10 w-full max-w-3xl px-4 sm:px-5 text-center"
       >
         <m.div
-          animate={{ opacity: [1, 0.78, 1, 0.88, 1] }}
+          animate={prefersReducedMotion ? {} : { opacity: [1, 0.78, 1, 0.88, 1] }}
           transition={{ duration: 1.1, repeat: Infinity }}
           className="relative inline-flex items-center justify-center w-40 h-40 sm:w-48 sm:h-48 border-4 rounded-full mb-8"
           style={{ borderColor: color, boxShadow: glow, backgroundColor: `${color}14` }}
@@ -99,12 +102,12 @@ export function RoleRevealScreen({ role, onComplete }: RoleRevealScreenProps) {
           <Icon className="w-20 h-20 sm:w-24 sm:h-24" style={{ color }} />
         </m.div>
 
-        <div className="mb-3 px-2 text-[9px] uppercase tracking-[0.2em] sm:text-[10px] sm:tracking-[0.35em] text-muted-foreground font-rajdhani">
+        <div className="mb-3 px-2 text-xs uppercase tracking-wider text-muted-foreground font-rajdhani">
           {t("game.roleReveal.assigned")}
         </div>
 
         <m.h1
-          animate={{ opacity: [1, 0.76, 1] }}
+          animate={prefersReducedMotion ? {} : { opacity: [1, 0.76, 1] }}
           transition={{ duration: 0.75, repeat: Infinity }}
           className="mx-auto max-w-[92vw] text-[clamp(1.9rem,11.5vw,4.5rem)] leading-[0.95] font-black uppercase tracking-[0.06em] sm:tracking-[0.18em] font-orbitron break-words"
           style={{ color, textShadow: glow }}
@@ -112,11 +115,11 @@ export function RoleRevealScreen({ role, onComplete }: RoleRevealScreenProps) {
           {t(labelKey)}
         </m.h1>
 
-        <p className="mt-4 px-2 text-[11px] sm:text-sm uppercase tracking-[0.09em] sm:tracking-[0.16em] text-foreground/80 font-rajdhani">
+        <p className="mt-4 px-2 text-xs sm:text-sm uppercase tracking-wider text-foreground/80 font-rajdhani">
           {t(subtitleKey)}
         </p>
 
-        <div className="mt-8 px-2 text-[9px] sm:text-[10px] uppercase tracking-[0.14em] sm:tracking-[0.25em] text-foreground/65 animate-pulse">
+        <div className={`mt-8 px-2 text-xs uppercase tracking-wider text-foreground/65 ${prefersReducedMotion ? "" : "animate-pulse"}`}>
           {t("game.roleReveal.enteringCockpit")}
         </div>
       </m.div>

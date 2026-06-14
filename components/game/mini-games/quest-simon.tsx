@@ -173,7 +173,7 @@ export function QuestSimon({ duration, onSuccess, onError }: QuestSimonProps) {
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
                             onClick={handleStart}
-                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full bg-black/80 border-2 border-primary text-primary font-orbitron font-bold text-xl flex items-center justify-center z-20 shadow-[0_0_20px_rgba(var(--primary-rgb),0.5)] active:scale-95 transition-transform"
+                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full bg-black/80 border-2 border-primary text-primary font-orbitron font-bold text-xl flex items-center justify-center z-20 shadow-[0_0_20px_rgb(var(--primary-rgb)/0.5)] active:scale-95 transition-transform"
                         >
                             GO
                         </m.button>

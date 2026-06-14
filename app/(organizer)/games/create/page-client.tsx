@@ -259,7 +259,7 @@ export default function CreateGamePage() {
         <h1 className="text-lg sm:text-2xl font-black uppercase tracking-[0.12em] sm:tracking-[0.2em] text-primary font-orbitron">
           {t("organizer.gamesCreate.title")}
         </h1>
-        <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-[0.14em] sm:tracking-widest mt-1">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider mt-1">
           {t("organizer.gamesCreate.subtitle")}
         </p>
       </div>
@@ -322,7 +322,7 @@ export default function CreateGamePage() {
                     <button
                       type="button"
                       onClick={clearBatchSelection}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 border border-primary/25 text-primary/80 hover:text-primary hover:border-primary/50 hover:bg-primary/10 transition-all inline-flex items-center justify-center"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 h-full min-h-[44px] w-10 border-l border-primary/25 text-primary/80 hover:text-primary hover:border-primary/50 hover:bg-primary/10 transition-all inline-flex items-center justify-center"
                       aria-label={t("common.actions.cancel")}
                     >
                       <X size={13} />
@@ -393,7 +393,7 @@ export default function CreateGamePage() {
 
             <div className="grid grid-cols-3 gap-2 sm:gap-4">
               <div>
-                <label htmlFor="short-quests" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-widest block mb-1.5">
+                <label htmlFor="short-quests" className="text-xs text-primary/70 uppercase tracking-wider block mb-1.5">
                   {t("organizer.gamesCreate.shortQuests")}
                 </label>
                 <NumberStepperInput
@@ -413,7 +413,7 @@ export default function CreateGamePage() {
               </div>
               
               <div>
-                <label htmlFor="medium-quests" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-widest block mb-1.5">
+                <label htmlFor="medium-quests" className="text-xs text-primary/70 uppercase tracking-wider block mb-1.5">
                   {t("organizer.gamesCreate.mediumQuests")}
                 </label>
                 <NumberStepperInput
@@ -433,7 +433,7 @@ export default function CreateGamePage() {
               </div>
               
               <div>
-                <label htmlFor="long-quests" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-widest block mb-1.5">
+                <label htmlFor="long-quests" className="text-xs text-primary/70 uppercase tracking-wider block mb-1.5">
                   {t("organizer.gamesCreate.longQuests")}
                 </label>
                 <NumberStepperInput
@@ -453,7 +453,7 @@ export default function CreateGamePage() {
               </div>
             </div>
             
-            <p className="text-[9px] sm:text-[10px] text-primary/60 mt-3 uppercase tracking-wider">
+            <p className="text-xs text-primary/60 mt-3 uppercase tracking-wider">
               {t("organizer.gamesCreate.totalPerPlayer", {
                 count: String(
                   questsPerPlayer.short +
@@ -502,7 +502,7 @@ export default function CreateGamePage() {
 
             {impostorMode === "manual" && (
               <div className="mt-3 flex items-center justify-between gap-3">
-                <label htmlFor="manual-impostors" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-widest">
+                <label htmlFor="manual-impostors" className="text-xs text-primary/70 uppercase tracking-wider">
                   {t("organizer.gamesCreate.manualImpostorCountLabel")}
                 </label>
                 <NumberStepperInput
@@ -518,7 +518,7 @@ export default function CreateGamePage() {
               </div>
             )}
 
-            <p className="mt-3 text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-wider">
+            <p className="mt-3 text-xs text-primary/60 uppercase tracking-wider">
               {impostorMode === "auto"
                 ? t("organizer.gamesCreate.autoImpostorRule")
                 : t("organizer.gamesCreate.manualImpostorRule", {
@@ -536,7 +536,7 @@ export default function CreateGamePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-4">
               <div>
-                <label htmlFor="timer-meeting-duration" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-[0.12em] leading-tight block mb-1.5 min-h-[1.75rem]">
+                <label htmlFor="timer-meeting-duration" className="text-xs text-primary/70 uppercase tracking-wider leading-tight block mb-1.5 min-h-[1.75rem]">
                   {t("organizer.gamesCreate.meetingDurationSeconds")}
                 </label>
                 <NumberStepperInput
@@ -551,7 +551,7 @@ export default function CreateGamePage() {
               </div>
 
               <div>
-                <label htmlFor="timer-post-meeting-grace" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-[0.12em] leading-tight block mb-1.5 min-h-[1.75rem]">
+                <label htmlFor="timer-post-meeting-grace" className="text-xs text-primary/70 uppercase tracking-wider leading-tight block mb-1.5 min-h-[1.75rem]">
                   {t("organizer.gamesCreate.postMeetingGraceSeconds")}
                 </label>
                 <NumberStepperInput
@@ -566,7 +566,7 @@ export default function CreateGamePage() {
               </div>
 
               <div>
-                <label htmlFor="timer-sabotage-duration" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-[0.12em] leading-tight block mb-1.5 min-h-[1.75rem]">
+                <label htmlFor="timer-sabotage-duration" className="text-xs text-primary/70 uppercase tracking-wider leading-tight block mb-1.5 min-h-[1.75rem]">
                   {t("organizer.gamesCreate.sabotageDurationSeconds")}
                 </label>
                 <NumberStepperInput
@@ -581,7 +581,7 @@ export default function CreateGamePage() {
               </div>
 
               <div>
-                <label htmlFor="timer-sabotage-cooldown" className="text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-[0.12em] leading-tight block mb-1.5 min-h-[1.75rem]">
+                <label htmlFor="timer-sabotage-cooldown" className="text-xs text-primary/70 uppercase tracking-wider leading-tight block mb-1.5 min-h-[1.75rem]">
                   {t("organizer.gamesCreate.sabotageCooldownSeconds")}
                 </label>
                 <NumberStepperInput
@@ -596,7 +596,7 @@ export default function CreateGamePage() {
               </div>
             </div>
 
-            <p className="mt-3 text-[9px] sm:text-[10px] text-primary/60 uppercase tracking-wider">
+            <p className="mt-3 text-xs text-primary/60 uppercase tracking-wider">
               {t("organizer.gamesCreate.timersHint")}
             </p>
           </section>
@@ -604,8 +604,8 @@ export default function CreateGamePage() {
 
         {/* Messages */}
         {error && (
-          <div className="border border-destructive/30 bg-destructive/10 p-3">
-            <p className="text-destructive text-[10px] uppercase tracking-wider">{error}</p>
+          <div className="border border-destructive/30 bg-destructive/10 p-3" role="alert" aria-live="assertive">
+            <p className="text-destructive text-xs uppercase tracking-wider">{error}</p>
           </div>
         )}
 
@@ -613,7 +613,7 @@ export default function CreateGamePage() {
         <button
           type="submit"
           disabled={isCreating || !isValidTotal || !selectedBatch || !isBatchLimitsReady}
-          className="w-full bg-primary text-primary-foreground border border-primary font-black py-3 sm:py-4 transition-all hover:opacity-95 hover:shadow-[0_0_20px_hsl(var(--primary)/0.25)] flex items-center justify-center gap-2 group"
+          className="w-full bg-primary text-primary-foreground border border-primary font-black py-3 sm:py-4 transition-all hover:opacity-95 active:scale-95 hover:shadow-[0_0_20px_rgb(var(--primary-rgb)/0.25)] flex items-center justify-center gap-2 group"
         >
           <Plus size={16} />
           <span className="tracking-[0.2em] sm:tracking-[0.35em] uppercase text-xs sm:text-sm">

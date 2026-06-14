@@ -187,7 +187,7 @@ export function BatchDetail({ batch, onUpdate, className }: BatchDetailProps) {
             <button
               onClick={handleGeneratePDF}
               disabled={isGenerating}
-              className="w-full sm:w-auto justify-center flex items-center gap-2 bg-primary text-primary-foreground border border-primary font-black py-3 px-6 rounded-sm transition-all hover:opacity-95 hover:shadow-[0_0_20px_hsl(var(--primary)/0.25)] text-xs tracking-widest"
+              className="w-full sm:w-auto justify-center flex items-center gap-2 bg-primary text-primary-foreground border border-primary font-black py-3 px-6 rounded-sm transition-all hover:opacity-95 hover:shadow-[0_0_20px_rgb(var(--primary-rgb)/0.25)] text-xs tracking-widest"
             >
               <Printer size={14} />
               {isGenerating ? t("admin.batchDetail.generating") : t("admin.batchDetail.printQuests")}

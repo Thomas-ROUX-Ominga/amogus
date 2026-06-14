@@ -1,16 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Orbitron, Rajdhani, JetBrains_Mono } from "next/font/google";
+import { Geist_Mono, Orbitron, Rajdhani, JetBrains_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { AuthProvider } from "@/hooks/use-auth";
 import { GlobalTopHeader } from "@/components/common/global-top-header";
 import { LazyMotionProvider } from "@/components/effects/lazy-motion-provider";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -64,7 +59,7 @@ export default async function RootLayout({
   return (
     <html lang={locale}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${orbitron.variable} ${rajdhani.variable} ${jetbrainsMono.variable} antialiased font-mono`}
+        className={`${geistMono.variable} ${orbitron.variable} ${rajdhani.variable} ${jetbrainsMono.variable} antialiased font-mono`}
       >
         <NextIntlClientProvider locale={locale} messages={messages}>
           <LazyMotionProvider>

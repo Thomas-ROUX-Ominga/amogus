@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { m } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import { X, AlertCircle, Loader2 } from "lucide-react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { useTranslations } from "next-intl";
@@ -23,6 +23,7 @@ export function CameraScanner({
     isSabotaged = false,
 }: CameraScannerProps) {
     const t = useTranslations();
+    const prefersReducedMotion = useReducedMotion();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
@@ -273,7 +274,7 @@ export function CameraScanner({
                                         </div>
                                         <button
                                             onClick={onClose}
-                                            className={`shrink-0 h-9 w-9 border bg-black/70 inline-flex items-center justify-center transition-colors ${isSabotaged ? "border-red-500/35 text-red-400 hover:bg-red-500/15" : "border-primary/35 text-primary hover:bg-primary/15"}`}
+                                            className={`shrink-0 min-h-[44px] min-w-[44px] border bg-black/70 inline-flex items-center justify-center transition-colors ${isSabotaged ? "border-red-500/35 text-red-400 hover:bg-red-500/15" : "border-primary/35 text-primary hover:bg-primary/15"}`}
                                             aria-label={t("game.scanner.closeScannerAria")}
                                         >
                                             <X className="h-4 w-4" />
@@ -303,13 +304,15 @@ export function CameraScanner({
                                             <div className="absolute left-5 bottom-5 h-8 w-8 border-l-2 border-b-2 border-white/80" />
                                             <div className="absolute right-5 bottom-5 h-8 w-8 border-r-2 border-b-2 border-white/80" />
 
-                                            <div className="absolute inset-5">
+                                            {!prefersReducedMotion && (
+                                              <div className="absolute inset-5">
                                                 <m.div
                                                     className={`absolute left-3 right-3 h-[2px] ${isSabotaged ? "bg-red-500 shadow-[0_0_14px_rgba(239,68,68,0.9)]" : "bg-primary shadow-[0_0_14px_rgba(88,166,255,0.9)]"}`}
                                                     animate={{ top: ["calc(100% - 2px)", "0%"] }}
                                                     transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
                                                 />
-                                            </div>
+                                              </div>
+                                            )}
                                         </div>
 
                                         {isLoading && (

@@ -19,7 +19,7 @@ export function ProgressBar({ gameState }: ProgressBarProps) {
     });
 
     return (
-        <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgba(var(--primary),0.05)]">
+        <div className="border-2 border-primary/20 p-6 bg-black/50 backdrop-blur-sm shadow-[0_0_50px_rgb(var(--primary-rgb)/0.05)]">
             <div className="flex items-center justify-between border-b border-primary/20 pb-4 mb-6">
                 <h2 className="text-lg font-bold uppercase tracking-[0.2em] text-primary font-orbitron">
                     {t("admin.progressBar.title")}

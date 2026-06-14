@@ -206,7 +206,7 @@ export function QuestPad({ duration, onSuccess, onError }: QuestPadProps) {
                             {!hasStarted && (
                                 <button
                                     onClick={handleStart}
-                                    className="absolute inset-0 m-auto h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-black/85 border-2 border-primary text-primary font-orbitron font-bold text-base tracking-wider shadow-[0_0_20px_rgba(var(--primary-rgb),0.45)] active:scale-95 transition-transform z-10"
+                                    className="absolute inset-0 m-auto h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-black/85 border-2 border-primary text-primary font-orbitron font-bold text-base tracking-wider shadow-[0_0_20px_rgb(var(--primary-rgb)/0.45)] active:scale-95 transition-transform z-10"
                                 >
                                     GO
                                 </button>
