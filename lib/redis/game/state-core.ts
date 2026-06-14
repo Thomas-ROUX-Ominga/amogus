@@ -1,5 +1,3 @@
-"use server";
-
 import { redis, GAME_TTL_SECONDS } from "@/lib/redis/client";
 import {
     GameState,

@@ -12,5 +12,4 @@ const withNextIntl = createNextIntlPlugin("./lib/i18n/request.ts");
 export default withNextIntl(withSerwist({
   // Next.js config options
   serverExternalPackages: ["redis"],
-  turbopack: {},
 }));
