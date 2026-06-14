@@ -19,6 +19,7 @@ vi.mock("@/lib/redis/actions", () => ({
 vi.mock("@/hooks/use-camera-scanner", () => ({
     useCameraScanner: vi.fn().mockReturnValue({
         isOpen: false,
+        isLoading: false,
         openScanner: vi.fn(),
         closeScanner: vi.fn(),
         handleScan: vi.fn(),
@@ -82,6 +83,7 @@ describe("GameHome", () => {
 
         vi.mocked(useCameraScanner).mockReturnValue({
             isOpen: false,
+            isLoading: false,
             openScanner: vi.fn(),
             closeScanner: vi.fn(),
             handleScan: vi.fn(),
@@ -182,6 +184,7 @@ describe("GameHome", () => {
     it("keeps scanner open and shows communications-blocked feedback when lights is scanned during communications sabotage", async () => {
         vi.mocked(useCameraScanner).mockReturnValue({
             isOpen: true,
+            isLoading: false,
             openScanner: vi.fn(),
             closeScanner: vi.fn(),
             handleScan: vi.fn(),

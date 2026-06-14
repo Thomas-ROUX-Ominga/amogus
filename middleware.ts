@@ -43,37 +43,34 @@ export async function middleware(request: NextRequest) {
 
   // No bypasses for E2E tests in middleware - use real auth or mock cookies
 
+  const organizerRoutes = ["/batches", "/dashboard", "/games", "/tracker"];
+  const isOrganizerRoute = organizerRoutes.some(route => pathname === route || pathname.startsWith(route + "/"));
+
   // Production/staging organizer middleware
   try {
     const { verifySession } = await import("@/lib/redis/auth-utils");
     const { adminExists } = await import("@/lib/redis/admin-utils");
-    
-    // List of organizer routes (previously under /admin)
-    const organizerRoutes = ["/batches", "/dashboard", "/games", "/tracker"];
-    const isOrganizerRoute = organizerRoutes.some(route => pathname === route || pathname.startsWith(route + "/"));
-    
+
     // For organizer routes, first check if user has a valid session
     if (isOrganizerRoute) {
       const sessionResult = await verifySession();
-      
+
       if (sessionResult.success) {
-        // Valid session, allow access
         return withLocaleCookie(NextResponse.next());
       }
     }
-    
+
     // Check if any user (organizer) exists for non-authenticated users
     const hasUsers = await adminExists();
-    
+
     if (!hasUsers) {
-      // No users exist, redirect to registration
       if (pathname !== "/register") {
         const registerUrl = new URL("/register", request.url);
         return withLocaleCookie(NextResponse.redirect(registerUrl));
       }
       return withLocaleCookie(NextResponse.next());
     }
-    
+
     // Users exist but no valid session for organizer routes, redirect to login
     if (isOrganizerRoute) {
       const loginUrl = new URL("/login", request.url);
@@ -82,6 +79,12 @@ export async function middleware(request: NextRequest) {
     }
   } catch (error) {
     console.error("Middleware auth error:", error);
+    // Fail closed: a Redis/auth outage must not expose organizer routes
+    if (isOrganizerRoute) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      return withLocaleCookie(NextResponse.redirect(loginUrl));
+    }
     return withLocaleCookie(NextResponse.next());
   }
 

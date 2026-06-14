@@ -94,6 +94,9 @@ export interface RedisClient {
     del(key: string): Promise<number>;
     keys(pattern: string): Promise<string[]>;
     exists(key: string): Promise<number>;
+    sAdd(key: string, ...members: string[]): Promise<number>;
+    sRem(key: string, ...members: string[]): Promise<number>;
+    sMembers(key: string): Promise<string[]>;
     atomicUpdate<T>(key: string, updater: (current: T | null) => T | null, ttlSeconds?: number): Promise<T | null>;
 }
 
@@ -150,6 +153,33 @@ export const redis: RedisClient = {
             return await client.exists(key);
         } catch (error) {
             console.error("Redis Exists Error:", error);
+            throw error;
+        }
+    },
+    sAdd: async function (key: string, ...members: string[]): Promise<number> {
+        const client = await ensureConnectedClient();
+        try {
+            return await client.sAdd(key, members);
+        } catch (error) {
+            console.error("Redis SAdd Error:", error);
+            throw error;
+        }
+    },
+    sRem: async function (key: string, ...members: string[]): Promise<number> {
+        const client = await ensureConnectedClient();
+        try {
+            return await client.sRem(key, members);
+        } catch (error) {
+            console.error("Redis SRem Error:", error);
+            throw error;
+        }
+    },
+    sMembers: async function (key: string): Promise<string[]> {
+        const client = await ensureConnectedClient();
+        try {
+            return await client.sMembers(key);
+        } catch (error) {
+            console.error("Redis SMembers Error:", error);
             throw error;
         }
     },

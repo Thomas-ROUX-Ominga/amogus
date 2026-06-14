@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import LobbyPage from '@/app/game/[id]/page';
 import { useGameStore, useRealTimeGamePolling } from '@/lib/store/game-store';
 import { useAuth } from '@/hooks/use-auth';
+import { GameState } from "@/types/game";
 
 // Mock dependencies
 vi.mock('next/navigation', () => ({
@@ -26,7 +27,7 @@ describe('Task 3: Restrict Game Launch to Admin - UI', () => {
     vi.clearAllMocks();
     vi.mocked(useRouter).mockReturnValue({
       push: vi.fn(),
-    } as ReturnType<typeof useRouter>);
+    } as unknown as ReturnType<typeof useRouter>);
   });
 
   it('should show launch button for admin player', () => {
@@ -173,9 +174,9 @@ describe('Task 3: Restrict Game Launch to Admin - UI', () => {
       clearAnonymousSession: vi.fn(),
     } as ReturnType<typeof useAuth>);
 
-    let mockGameState = {
+    let mockGameState: GameState = {
       id: "TEST123",
-      status: "LOBBY" as const,
+      status: "LOBBY",
       players: [{ id: "admin-user-id", name: "Admin", isAlive: true }],
       createdAt: Date.now(),
       revision: 1,

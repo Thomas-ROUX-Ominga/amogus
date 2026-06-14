@@ -44,7 +44,7 @@ const baseStoreState = {
 function renderQuestPage(searchParams: { duration?: string | string[]; questId?: string | string[] } = { duration: "short" }) {
     return render(
         <AuthProvider>
-            <QuestPage searchParams={searchParams} />
+            <QuestPage />
         </AuthProvider>
     );
 }

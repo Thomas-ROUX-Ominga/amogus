@@ -8,6 +8,9 @@ vi.mock('@/lib/redis/client', () => ({
     get: vi.fn(),
     del: vi.fn(),
     keys: vi.fn(),
+    sAdd: vi.fn(),
+    sRem: vi.fn(),
+    sMembers: vi.fn(),
   },
 }));
 
@@ -27,10 +30,14 @@ describe('Batch Actions', () => {
     // Reset implementations to prevent state leaks
     vi.resetAllMocks();
     // Default to authorized
-    (verifySession as any).mockResolvedValue({ 
-      success: true, 
-      data: { userId: 'admin-id', username: 'admin' } 
+    (verifySession as any).mockResolvedValue({
+      success: true,
+      data: { userId: 'admin-id', username: 'admin' }
     });
+    // Default set/index mocks so tests only need to override what they care about
+    (redis.sMembers as any).mockResolvedValue([]);
+    (redis.sAdd as any).mockResolvedValue(0);
+    (redis.sRem as any).mockResolvedValue(0);
   });
 
   describe('createBatch', () => {

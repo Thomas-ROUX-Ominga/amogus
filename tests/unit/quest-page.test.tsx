@@ -80,9 +80,13 @@ const baseStoreState = {
 };
 
 function renderQuestPage(searchParams: { duration?: string | string[]; questId?: string | string[] } = { duration: "short" }) {
+    const params = new URLSearchParams();
+    if (searchParams.duration) params.set("duration", [searchParams.duration].flat()[0]);
+    if (searchParams.questId) params.set("questId", [searchParams.questId].flat()[0]);
+    mockSearchParams = params;
     return render(
         <AuthProvider>
-            <QuestPage searchParams={searchParams} />
+            <QuestPage />
         </AuthProvider>
     );
 }

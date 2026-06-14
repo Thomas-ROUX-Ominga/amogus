@@ -119,7 +119,7 @@ describe("Story 11.3: Game Settings from Batch", () => {
             vi.mocked(redis.atomicUpdate).mockImplementation(async (_key, updater) => {
                 const updated = updater(mutableState);
                 if (updated) {
-                    mutableState = updated;
+                    mutableState = updated as GameState;
                     return updated;
                 }
                 return mutableState;

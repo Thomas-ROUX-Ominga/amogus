@@ -31,6 +31,8 @@ describe('Admin Elimination Action', () => {
         creatorId: 'admin-123',
         status: 'IN_PROGRESS',
         createdAt: Date.now(),
+        revision: 1,
+        updatedAt: Date.now(),
         players: [
           { id: 'player-1', name: 'Player1', isAlive: true },
           { id: 'player-2', name: 'Player2', isAlive: true }
@@ -97,6 +99,8 @@ describe('Admin Elimination Action', () => {
         creatorId: 'admin-123', // Different creator
         status: 'IN_PROGRESS',
         createdAt: Date.now(),
+        revision: 1,
+        updatedAt: Date.now(),
         players: []
       }
     });
@@ -121,6 +125,8 @@ describe('Admin Elimination Action', () => {
         creatorId: 'admin-123',
         status: 'IN_PROGRESS',
         createdAt: Date.now(),
+        revision: 1,
+        updatedAt: Date.now(),
         players: []
       }
     });

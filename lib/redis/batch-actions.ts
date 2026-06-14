@@ -60,9 +60,10 @@ export async function createBatch(input: BatchCreateInput): Promise<ActionRespon
       ownerId: session.data.userId,
     };
     
-    // Store in Redis
+    // Store in Redis and add to index
     const batchKey = `batch:${batch.id}`;
     await redis.set(batchKey, batch);
+    await redis.sAdd("batch:index", batch.id);
 
     return {
       success: true,
@@ -89,10 +90,17 @@ export async function getAllBatches(): Promise<ActionResponse<BatchListItem[]>> 
       };
     }
 
-    // Get all batch keys
-    const batchKeys = await redis.keys("batch:*");
-    
-    if (!batchKeys || batchKeys.length === 0) {
+    // Use the index set; fall back to KEYS for legacy data and backfill
+    let batchIds = await redis.sMembers("batch:index");
+    if (batchIds.length === 0) {
+      const legacyKeys = await redis.keys("batch:*");
+      batchIds = legacyKeys.map((k: string) => k.replace("batch:", ""));
+      if (batchIds.length > 0) {
+        await redis.sAdd("batch:index", ...batchIds);
+      }
+    }
+
+    if (batchIds.length === 0) {
       return {
         success: true,
         data: [],
@@ -102,10 +110,7 @@ export async function getAllBatches(): Promise<ActionResponse<BatchListItem[]>> 
     const ownerId = session.data.userId;
 
     // Retrieve all batches
-    const batchPromises = batchKeys.map(async (key: string) => {
-      const batch = await redis.get<Batch>(key);
-      return batch;
-    });
+    const batchPromises = batchIds.map((id: string) => redis.get<Batch>(`batch:${id}`));
 
     const batches = await Promise.all(batchPromises);
     
@@ -185,9 +190,10 @@ export async function deleteBatch(batchId: string): Promise<ActionResponse<void>
       }
     }
 
-    // Delete the batch
+    // Delete the batch and remove from index
     const result = await redis.del(batchKey);
-    
+    await redis.sRem("batch:index", batchId);
+
     if (result === 0) {
       return {
         success: false,
