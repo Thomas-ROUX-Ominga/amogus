@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Quest } from "@/types/quest";
 import { useTranslations } from "next-intl";
 
@@ -8,7 +9,7 @@ interface QuestListProps {
     isLoading?: boolean;
 }
 
-export function QuestList({ quests, isLoading = false }: QuestListProps) {
+function QuestListInner({ quests, isLoading = false }: QuestListProps) {
     const t = useTranslations();
     if (isLoading) {
         return (
@@ -143,3 +144,5 @@ export function QuestList({ quests, isLoading = false }: QuestListProps) {
         </div>
     );
 }
+
+export const QuestList = React.memo(QuestListInner);

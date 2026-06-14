@@ -339,10 +339,10 @@ function QuestPageContent({ durationParam = null, questIdParam = null }: QuestPa
             if (!isQuestCompletionFlowActive && completedQuests.includes(currentQuest.id)) {
                 return (
                     <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground font-mono p-4">
-                        <div className="max-w-2xl w-full border-2 border-[#2DA44E]/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm">
+                        <div className="max-w-2xl w-full border-2 border-role-crewmate/20 p-8 md:p-12 space-y-6 bg-black/50 backdrop-blur-sm">
                             <div className="flex items-center justify-center gap-3">
-                                <Check className="w-6 h-6 text-[#2DA44E]" aria-hidden="true" />
-                                <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-[#2DA44E] font-orbitron">
+                                <Check className="w-6 h-6 text-role-crewmate" aria-hidden="true" />
+                                <h1 className="text-xl font-bold uppercase tracking-[0.3em] text-role-crewmate font-orbitron">
                                     {t("game.questPage.questAlreadyCompletedTitle")}
                                 </h1>
                             </div>

@@ -108,7 +108,10 @@ export function SuccessOverlay({
   return (
     <m.div
       {...containerVariants}
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm p-4 ${
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("game.overlays.mission")}
+      className={`fixed inset-0 z-[var(--z-modal)] flex flex-col items-center justify-center backdrop-blur-sm p-4 ${
         isImpostor ? 'bg-red-900/40' : 'bg-black/90'
       }`}
     >
@@ -118,7 +121,7 @@ export function SuccessOverlay({
         className="text-center mb-12"
       >
         <h1 className={`text-4xl md:text-6xl font-orbitron font-bold tracking-wider ${
-          isImpostor ? 'text-[#DA3633]' : 'text-green-500'
+          isImpostor ? 'text-role-impostor' : 'text-role-crewmate'
         }`}>
           {t("game.overlays.mission")}
           <br />
@@ -132,12 +135,12 @@ export function SuccessOverlay({
         transition={{ delay: 0.5 }}
       >
         {allowManualExit && (
-          <button 
+          <button
             onClick={onManualExit}
-            className={`flex items-center gap-2 px-6 py-3 border-2 rounded font-rajdhani font-bold uppercase tracking-wider transition-colors ${
-              isImpostor 
-                ? 'border-[#DA3633]/50 text-[#DA3633] hover:bg-[#DA3633]/10' 
-                : 'border-green-500/50 text-green-500 hover:bg-green-500/10'
+            className={`flex items-center gap-2 px-6 py-3 border-2 font-rajdhani font-bold uppercase tracking-wider transition-colors ${
+              isImpostor
+                ? 'border-role-impostor/50 text-role-impostor hover:bg-role-impostor/10'
+                : 'border-role-crewmate/50 text-role-crewmate hover:bg-role-crewmate/10'
             }`}
           >
             <X size={18} />

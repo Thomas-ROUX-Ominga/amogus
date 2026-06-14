@@ -1,8 +1,18 @@
+import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { QuestRenderer } from "@/components/game/quest-renderer";
 import { QuestGame, QuestType } from "@/types/quest";
 import { getRandomMiniGame } from "@/lib/mini-games";
+
+vi.mock("next/dynamic", async () => {
+    const { QuestWires } = await vi.importActual<typeof import("@/components/game/mini-games/quest-wires")>(
+        "@/components/game/mini-games/quest-wires"
+    );
+    return {
+        default: (_importFn: unknown, _opts?: unknown) => QuestWires,
+    };
+});
 
 vi.mock("@/lib/mini-games", async () => {
     const actual = await vi.importActual<typeof import("@/lib/mini-games")>("@/lib/mini-games");
@@ -106,10 +116,10 @@ describe("QuestRenderer", () => {
         expect(screen.getByText(/Données de quête invalides/)).toBeTruthy();
     });
 
-    it("should render QuestWires when random mini-game is wires", () => {
+    it("should render QuestWires when random mini-game is wires", async () => {
         render(<QuestRenderer quest={baseMiniGameQuest} gameId="g1" onSuccess={onSuccess} onError={onError} />);
-        expect(screen.getByText(/Reliez les fils de la même couleur/i)).toBeTruthy();
-        expect(screen.getByText(/Fils reliés : 0\/4/i)).toBeTruthy();
+        await waitFor(() => expect(screen.getByText(/Reliez les fils de la même couleur/i)).toBeTruthy());
+        await waitFor(() => expect(screen.getByText(/Fils reliés : 0\/4/i)).toBeTruthy());
     });
 
     it("should render QuestGauges when random mini-game is gauges", () => {

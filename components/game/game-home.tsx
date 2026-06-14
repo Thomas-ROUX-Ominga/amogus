@@ -9,7 +9,11 @@ import { useGameStore } from "@/lib/store/game-store";
 import { QuestProgress } from "@/components/game/quest-progress";
 import { ScanButton } from "@/components/game/scan-button";
 import { BuzzerButton } from "@/components/game/buzzer-button";
-import { CameraScanner } from "@/components/game/camera-scanner";
+import dynamic from "next/dynamic";
+const CameraScanner = dynamic(
+  () => import("@/components/game/camera-scanner").then((m) => m.CameraScanner),
+  { ssr: false }
+);
 import { EliminationButton } from "@/components/game/elimination-button";
 import { EliminatedScreen } from "@/components/game/eliminated-screen";
 import { GameOverScreen } from "@/components/game/game-over-screen";
@@ -342,7 +346,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                 className={`max-w-2xl w-full border-2 p-6 md:p-10 bg-black/50 backdrop-blur-sm transition-all duration-500 ${
                     currentPlayer.isAlive
                         ? "border-primary/20 shadow-[0_0_50px_rgb(var(--primary-rgb)/0.05)]"
-                        : "border-red-500/40 shadow-[0_0_50px_rgba(239,68,68,0.2)]"
+                        : "border-role-impostor/40 shadow-[0_0_50px_rgba(239,68,68,0.2)]"
                 } h-full min-h-0 flex flex-col`}
             >
                 <div className="flex items-center justify-between border-b border-primary/20 pb-4">
@@ -352,13 +356,13 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     <div className="flex items-center gap-2">
                         <span
                             className={`w-2 h-2 rounded-full animate-pulse ${
-                                currentPlayer.isAlive ? "bg-green-500" : "bg-red-500"
+                                currentPlayer.isAlive ? "bg-role-crewmate" : "bg-role-impostor"
                             }`}
                             aria-hidden="true"
                         />
                         <span
                             className={`text-xs tracking-wider ${
-                                currentPlayer.isAlive ? "text-green-400" : "text-red-400 font-bold"
+                                currentPlayer.isAlive ? "text-role-crewmate" : "text-role-impostor font-bold"
                             }`}
                         >
                             {currentPlayer.isAlive ? t("game.home.statusActive") : t("game.home.statusDead")}
@@ -379,7 +383,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     <ReactorSabotageAlert gameState={gameState} />
 
                     {isAwaitingMeetingAfterDeath && (
-                        <div className="border border-red-500/30 bg-red-950/35 p-3 text-center text-xs text-red-100 font-rajdhani tracking-wide">
+                        <div className="border border-role-impostor/30 bg-role-impostor/10 p-3 text-center text-xs text-role-impostor/90 font-rajdhani tracking-wide">
                             {t("game.home.awaitingMeetingBanner")}
                         </div>
                     )}
@@ -483,7 +487,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                     </div>
                     <div
                         className={`text-[8px] uppercase tracking-widest font-[family-name:var(--font-jetbrains-mono)] ${
-                            currentPlayer.isAlive ? "opacity-40 text-muted-foreground" : "text-red-500 font-bold"
+                            currentPlayer.isAlive ? "opacity-40 text-muted-foreground" : "text-role-impostor font-bold"
                         }`}
                     >
                         {currentPlayer.isAlive
@@ -519,8 +523,8 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
 
             {showMeetingPopup && isMeetingActive && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="max-w-md w-full border border-red-500/30 bg-black p-6 space-y-4 shadow-xl">
-                        <h2 className="text-lg font-bold uppercase tracking-wider text-red-300 font-orbitron">
+                    <div className="max-w-md w-full border border-role-impostor/30 bg-black p-6 space-y-4 shadow-xl">
+                        <h2 className="text-lg font-bold uppercase tracking-wider text-role-impostor/70 font-orbitron">
                             {t("game.home.meetingTriggeredTitle")}
                         </h2>
                         <p className="text-sm text-muted-foreground font-rajdhani">
@@ -530,7 +534,7 @@ export function GameHome({ gameState, currentPlayer, userId }: GameHomeProps) {
                             <Link
                                 href={`/game/${gameState.id}/meeting`}
                                 onClick={dismissMeetingPopup}
-                                className="px-4 py-2 text-sm bg-red-600 text-white hover:bg-red-500 transition-colors font-rajdhani uppercase tracking-widest"
+                                className="px-4 py-2 text-sm bg-role-impostor text-white hover:bg-role-impostor/80 transition-colors font-rajdhani uppercase tracking-widest"
                             >
                                 {t("game.home.meetingJoin")}
                             </Link>

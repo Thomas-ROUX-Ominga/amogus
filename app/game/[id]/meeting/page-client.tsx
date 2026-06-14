@@ -25,7 +25,7 @@ function VoteSkulls({ votes, id }: { votes: number; id: string }) {
     const extraSkulls = votes > 6 ? votes - 6 : 0;
 
     return (
-        <span className="flex items-center gap-1 text-red-300">
+        <span className="flex items-center gap-1 text-role-impostor/70">
             {skullCount > 0 ? (
                 Array.from({ length: skullCount }).map((_, index) => (
                     <Skull key={`${id}-skull-${index}`} className="w-3 h-3" />
@@ -162,7 +162,7 @@ export default function MeetingPage() {
                         {t("game.meeting.roomTitle")}
                     </h1>
                     <div className="text-right">
-                        <div className={`text-2xl font-black ${active ? "text-red-300" : "text-primary/70"}`}>
+                        <div className={`text-2xl font-black ${active ? "text-role-impostor/70" : "text-primary/70"}`}>
                             {timerLabel}
                         </div>
                         <div className="text-[10px] uppercase tracking-widest text-primary/60">
@@ -181,13 +181,13 @@ export default function MeetingPage() {
                 )}
                 {snapshot && (
                     <>
-                        <div className="p-4 border border-primary/20 bg-black/30 space-y-3">
+                        <div className="pt-2 space-y-3 border-t border-primary/10">
                             <div className="text-xs text-primary/60 uppercase tracking-widest font-rajdhani">
                                 {t("game.meeting.crewProgressSnapshot")}
                             </div>
                             <div className="w-full h-2 bg-white/10 overflow-hidden">
                                 <div
-                                    className="h-full bg-[#2DA44E] transition-all duration-500"
+                                    className="h-full bg-role-crewmate transition-all duration-500"
                                     style={{ width: `${snapshot.progress.percentage}%` }}
                                 />
                             </div>
@@ -199,7 +199,7 @@ export default function MeetingPage() {
                             </div>
                         </div>
 
-                        <div className="p-4 border border-primary/20 bg-black/30 space-y-3">
+                        <div className="pt-2 space-y-3 border-t border-primary/10">
                             <div className="flex items-center justify-between gap-3">
                                 <div className="text-xs text-primary/60 uppercase tracking-widest font-rajdhani">
                                     {t("game.meeting.playersAndVotesSnapshot")}
@@ -243,9 +243,9 @@ export default function MeetingPage() {
                                             disabled={disabled}
                                             className={`p-3 border text-left text-xs uppercase tracking-widest transition-colors ${
                                                 selected
-                                                    ? "border-red-400 bg-red-500/20 text-red-100"
+                                                    ? "border-role-impostor/60 bg-role-impostor/15 text-role-impostor/90"
                                                     : foundBody
-                                                    ? "border-red-500/80 bg-[linear-gradient(135deg,rgba(127,29,29,0.4)_0%,rgba(69,10,10,0.45)_55%,rgba(15,23,42,0.72)_100%)] text-red-100 shadow-[0_0_18px_rgba(248,113,113,0.2)]"
+                                                    ? "border-role-impostor/80 bg-[linear-gradient(135deg,rgba(127,29,29,0.4)_0%,rgba(69,10,10,0.45)_55%,rgba(15,23,42,0.72)_100%)] text-role-impostor/90 shadow-[0_0_18px_rgba(248,113,113,0.2)]"
                                                     : disabled
                                                     ? "border-white/10 bg-white/5 text-muted-foreground/60"
                                                     : "border-white/10 bg-white/5 text-muted-foreground hover:border-primary/40"
@@ -255,14 +255,14 @@ export default function MeetingPage() {
                                                 <div className="min-w-0 flex items-center gap-2">
                                                     <span className="truncate">{player.name}</span>
                                                     {foundBody && (
-                                                        <span className="inline-flex shrink-0 items-center gap-1 border border-red-300/60 bg-red-500/25 px-1.5 py-0.5 text-[9px] font-orbitron tracking-[0.14em] text-red-50">
+                                                        <span className="inline-flex shrink-0 items-center gap-1 border border-role-impostor/60 bg-role-impostor/20 px-1.5 py-0.5 text-[9px] font-orbitron tracking-[0.14em] text-role-impostor">
                                                             <Skull className="w-3 h-3" />
                                                             {bodyFoundTagLabel}
                                                         </span>
                                                     )}
                                                 </div>
                                                 {!player.isAlive ? (
-                                                    <span className={foundBody ? "text-red-200 font-bold" : "text-red-400"}>
+                                                    <span className={foundBody ? "text-role-impostor/80 font-bold" : "text-role-impostor"}>
                                                         {t("game.meeting.dead")}
                                                     </span>
                                                 ) : (

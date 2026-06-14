@@ -122,7 +122,7 @@ export function JoinForm({ gameId, userId }: JoinFormProps) {
                             setPseudo(e.target.value.slice(0, 20));
                         }}
                         placeholder={t("game.join.placeholder")}
-                        className="relative w-full bg-black/80 border border-primary/30 p-4 font-mono text-center text-xl tracking-widest text-foreground placeholder:text-primary/20 focus:outline-none focus:border-primary transition-all rounded-sm uppercase"
+                        className="relative w-full bg-black/80 border border-primary/30 p-4 font-mono text-center text-xl tracking-widest text-foreground placeholder:text-primary/20 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/35 transition-all rounded-sm uppercase"
                     />
                 </div>
 

@@ -90,14 +90,17 @@ export function FailedOverlay({
   return (
     <m.div
       {...containerVariants}
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm p-4 bg-red-900/40`}
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("game.overlays.mission")}
+      className="fixed inset-0 z-[var(--z-modal)] flex flex-col items-center justify-center backdrop-blur-sm p-4 bg-red-900/40"
     >
       <m.div
         {...textVariants}
         animate={reducedMotion ? textVariants.animate : { ...textVariants.animate, ...glitchVariants.animate }}
         className="text-center mb-12"
       >
-        <h1 className="text-4xl md:text-6xl font-orbitron font-bold tracking-wider text-[#DA3633]">
+        <h1 className="text-4xl md:text-6xl font-orbitron font-bold tracking-wider text-role-impostor">
           {t("game.overlays.mission")}
           <br />
           {t("game.overlays.failed")}

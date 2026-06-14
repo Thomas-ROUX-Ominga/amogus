@@ -61,19 +61,23 @@ export function ReactorSabotageAlert({ gameState }: ReactorSabotageAlertProps) {
     ];
 
     return (
-        <div className="border-2 border-red-500/50 bg-red-950/40 p-3 sm:p-4 animate-pulse">
+        <div className="border-2 border-role-impostor/50 bg-role-impostor/10 p-3 sm:p-4 animate-pulse">
             <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-red-200">
+                <div className="flex items-center gap-2 text-role-impostor/80">
                     <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span className="text-xs font-orbitron uppercase tracking-[0.2em]">
                         {t("game.sabotage.reactorAlertTitle")}
                     </span>
                 </div>
-                <span className="text-base sm:text-lg font-black text-red-100 font-orbitron">
+                <span
+                    className="text-base sm:text-lg font-black text-role-impostor font-orbitron"
+                    aria-live="assertive"
+                    aria-atomic="true"
+                >
                     {formatRemaining(remainingMs)}
                 </span>
             </div>
-            <div className="mt-1.5 text-xs sm:text-sm text-red-100 font-rajdhani uppercase tracking-widest">
+            <div className="mt-1.5 text-xs sm:text-sm text-role-impostor/90 font-rajdhani uppercase tracking-widest">
                 {t("game.sabotage.reactorProgress", {
                     scanned: String(scanned),
                     total: String(2),
@@ -91,8 +95,8 @@ export function ReactorSabotageAlert({ gameState }: ReactorSabotageAlertProps) {
                             key={reactorLocation.label}
                             className={`flex min-h-10 items-center justify-between gap-2 border px-2.5 py-1.5 font-rajdhani uppercase tracking-[0.12em] ${
                                 reactorLocation.isDisarmed
-                                    ? "border-emerald-400/50 bg-emerald-950/30 text-emerald-100"
-                                    : "border-red-300/35 bg-red-950/50 text-red-100"
+                                    ? "border-role-crewmate/50 bg-role-crewmate/10 text-role-crewmate"
+                                    : "border-role-impostor/35 bg-role-impostor/10 text-role-impostor/90"
                             }`}
                         >
                             <div className="flex min-w-0 items-baseline gap-2">
@@ -108,8 +112,8 @@ export function ReactorSabotageAlert({ gameState }: ReactorSabotageAlertProps) {
                                 title={statusLabel}
                                 className={`inline-flex min-h-7 shrink-0 items-center gap-1.5 border px-1.5 min-[430px]:px-2 py-1 text-[10px] font-bold ${
                                     reactorLocation.isDisarmed
-                                        ? "border-emerald-300/50 bg-emerald-500/15"
-                                        : "border-red-200/40 bg-red-500/15"
+                                        ? "border-role-crewmate/50 bg-role-crewmate/10"
+                                        : "border-role-impostor/40 bg-role-impostor/10"
                                 }`}
                             >
                                 <StatusIcon className="h-3.5 w-3.5" />

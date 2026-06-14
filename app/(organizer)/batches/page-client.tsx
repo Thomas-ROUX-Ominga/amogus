@@ -23,9 +23,9 @@ export default function AdminBatchesPage() {
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-black uppercase tracking-[0.2em] text-primary font-orbitron">
+            <h1 className="text-2xl font-black uppercase tracking-[0.2em] text-primary font-orbitron">
               {t("admin.batches.title")}
-            </h2>
+            </h1>
             <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-2">
               {t("admin.batches.subtitle")}
             </p>

@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-14T00:00:00Z",
+  "title": "Design System: amogus",
+  "extensions": {
+    "colorMeta": {
+      "hologram-blue": { "role": "primary", "displayName": "Hologram Blue", "canonical": "#58A6FF", "tonalRamp": ["#0a1f3d", "#103257", "#1a4a82", "#2563b8", "#3d83e0", "#58A6FF", "#84c0ff", "#b3d8ff", "#e0efff"] },
+      "signal-blue-deep": { "role": "primary", "displayName": "Signal Blue Deep", "canonical": "#1F6FEB", "tonalRamp": ["#08182f", "#0d2950", "#143d7a", "#1953a8", "#1F6FEB", "#4a8cf0", "#79abf5", "#a9c9fa", "#d8e6fd"] },
+      "crewmate-green": { "role": "secondary", "displayName": "Crewmate Green", "canonical": "#2DA44E", "tonalRamp": ["#08230f", "#0d3a18", "#135526", "#1c7836", "#249246", "#2DA44E", "#52c46f", "#8bdca0", "#c8f0d3"] },
+      "impostor-red": { "role": "secondary", "displayName": "Impostor Red", "canonical": "#DA3633", "tonalRamp": ["#2c0908", "#4a0e0c", "#6e1714", "#9a2220", "#c12d2a", "#DA3633", "#e76562", "#f09b99", "#f8cecd"] },
+      "alert-red": { "role": "destructive", "displayName": "Alert Red", "canonical": "#F85149", "tonalRamp": ["#2e0c0a", "#4d130f", "#721c17", "#9c2820", "#c5352b", "#F85149", "#fa7d77", "#fcaba7", "#fdd9d6"] },
+      "caution-amber": { "role": "warning", "displayName": "Caution Amber", "canonical": "#D29922", "tonalRamp": ["#2c1e05", "#49320a", "#6d4b10", "#946517", "#b6801d", "#D29922", "#e0b352", "#ecce8c", "#f6e8c6"] },
+      "cabin-black": { "role": "neutral", "displayName": "Cabin Black", "canonical": "#0D1117", "tonalRamp": ["#0D1117", "#161b22", "#21262D", "#30363D", "#484f58", "#6e7681", "#8B949E", "#C9D1D9", "#F0F6FC"] },
+      "panel-graphite": { "role": "neutral", "displayName": "Panel Graphite", "canonical": "#21262D", "tonalRamp": ["#0D1117", "#161b22", "#21262D", "#30363D", "#484f58", "#6e7681", "#8B949E", "#C9D1D9", "#F0F6FC"] },
+      "hull-line": { "role": "neutral", "displayName": "Hull Line", "canonical": "#30363D", "tonalRamp": ["#0D1117", "#161b22", "#21262D", "#30363D", "#484f58", "#6e7681", "#8B949E", "#C9D1D9", "#F0F6FC"] },
+      "readout-white": { "role": "neutral", "displayName": "Readout White", "canonical": "#F0F6FC", "tonalRamp": ["#0D1117", "#21262D", "#484f58", "#6e7681", "#8B949E", "#C9D1D9", "#dfe6ee", "#F0F6FC", "#ffffff"] },
+      "instrument-grey": { "role": "neutral", "displayName": "Instrument Grey", "canonical": "#8B949E", "tonalRamp": ["#0D1117", "#21262D", "#30363D", "#484f58", "#6e7681", "#8B949E", "#a9b1ba", "#C9D1D9", "#F0F6FC"] },
+      "secondary-ink": { "role": "neutral", "displayName": "Secondary Ink", "canonical": "#C9D1D9", "tonalRamp": ["#0D1117", "#21262D", "#484f58", "#6e7681", "#8B949E", "#a9b1ba", "#C9D1D9", "#e2e8ee", "#F0F6FC"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Role reveals and overlay verdicts. Orbitron 900, uppercase, one per screen." },
+      "headline": { "displayName": "Headline", "purpose": "Signature wide-tracked control labels (scan button). Orbitron 700, 0.3em tracking." },
+      "title": { "displayName": "Title", "purpose": "Panel and card headers. Orbitron 700." },
+      "body": { "displayName": "Body", "purpose": "Quest prompts, instructions, telemetry. JetBrains Mono, document default." },
+      "label": { "displayName": "Label", "purpose": "Hints, badges, action labels. Rajdhani 700, uppercase, short strings only." }
+    },
+    "shadows": [
+      { "name": "ambient-glow", "value": "0 0 50px rgb(88 166 255 / 0.05)", "purpose": "Faint blue cabin haze under large primary surfaces. Atmospheric only." },
+      { "name": "active-halo", "value": "0 0 20px rgb(88 166 255 / 0.25)", "purpose": "Blue corona on an armed/focused control. Default 'this is live' cue." },
+      { "name": "sabotage-glow", "value": "0 0 28px rgba(239,68,68,0.22)", "purpose": "Red halo on sabotaged/danger surfaces. Color = state." },
+      { "name": "success-glow", "value": "0 0 50px rgba(34,197,94,0.3)", "purpose": "Green halo on quest success surfaces." },
+      { "name": "overlay-lift", "value": "backdrop-filter: blur(4px)", "purpose": "Lifts full-screen verdict overlays above the cabin." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Snappy ease-out for state transitions and contact feedback." },
+      { "name": "scan-breathe", "value": "scale 1 -> 1.02 -> 1 over 2s easeInOut, infinite", "purpose": "Armed scan button breathing pulse." },
+      { "name": "ping-ring", "value": "scale 1 -> 1.5, opacity 0.5 -> 0 over 1.5s easeOut, infinite", "purpose": "Expanding blue ring on loading primary buttons." },
+      { "name": "crt-glitch", "value": "RGB-split text-shadow + hue-rotate jitter, 0.1-0.2s mirror loop", "purpose": "Impostor camouflage success glitch character." },
+      { "name": "duration-snap", "value": "200ms", "purpose": "Default transition duration for hover/active states." },
+      { "name": "reduced-motion", "value": "opacity crossfade only", "purpose": "Mandatory fallback under prefers-reduced-motion." }
+    ],
+    "haptics": [
+      { "name": "success-short", "value": "[50]", "purpose": "Successful interaction / armed contact." },
+      { "name": "blocked-long", "value": "[200]", "purpose": "Disabled or error contact." },
+      { "name": "crewmate-success", "value": "[50,50,50,50,200]", "purpose": "Quest success verdict (crewmate)." },
+      { "name": "impostor-success", "value": "[50,30,100,30,250,50,150]", "purpose": "Camouflage success verdict (impostor, glitchy)." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Charged primary action. Hologram-blue fill that inverts to outline on hover.",
+      "html": "<button class=\"ds-btn-primary\">LAUNCH GAME</button>",
+      "css": ".ds-btn-primary { background: #58A6FF; color: #0D1117; font-family: 'JetBrains Mono', monospace; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 16px 32px; border: 2px solid #58A6FF; border-radius: 0; cursor: pointer; transition: background 0.3s, color 0.3s; } .ds-btn-primary:hover { background: transparent; color: #58A6FF; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 20px rgb(88 166 255 / 0.25); } .ds-btn-primary:active { background: #1F6FEB; border-color: #1F6FEB; color: #0D1117; }"
+    },
+    {
+      "name": "Scan Button",
+      "kind": "custom",
+      "refersTo": "scan-button",
+      "description": "Signature full-width armed panel. Breathes while idle, snaps on press.",
+      "html": "<button class=\"ds-scan-btn\"><svg class=\"ds-scan-icon\" width=\"40\" height=\"40\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 7V5a2 2 0 0 1 2-2h2\"/><path d=\"M17 3h2a2 2 0 0 1 2 2v2\"/><path d=\"M21 17v2a2 2 0 0 1-2 2h-2\"/><path d=\"M7 21H5a2 2 0 0 1-2-2v-2\"/><path d=\"M7 12h10\"/></svg><span class=\"ds-scan-label\">SCAN</span></button>",
+      "css": ".ds-scan-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: 120px; padding: 24px; color: #58A6FF; background: rgb(88 166 255 / 0.10); border: 2px solid #58A6FF; border-radius: 0; font-family: 'Orbitron', monospace; cursor: pointer; position: relative; overflow: hidden; transition: background 0.2s; animation: ds-scan-breathe 2s ease-in-out infinite; } .ds-scan-btn:hover { background: rgb(88 166 255 / 0.20); } .ds-scan-label { font-size: 1.25rem; font-weight: 900; letter-spacing: 0.3em; text-transform: uppercase; } @keyframes ds-scan-breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.02); } } @media (prefers-reduced-motion: reduce) { .ds-scan-btn { animation: none; } }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Translucent cabin-black field with blurred backing; focus brightens border to a blue halo.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"ENTER CALLSIGN\" />",
+      "css": ".ds-input { width: 100%; min-height: 48px; padding: 12px 16px; background: rgb(0 0 0 / 0.5); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); color: #F0F6FC; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1rem; border: 2px solid rgb(88 166 255 / 0.2); border-radius: 0; transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; } .ds-input::placeholder { color: #8B949E; text-transform: uppercase; letter-spacing: 0.1em; } .ds-input:focus { outline: none; border-color: #58A6FF; background: rgb(88 166 255 / 0.05); box-shadow: 0 0 0 2px rgb(88 166 255 / 0.35); }"
+    },
+    {
+      "name": "Buzzer Button",
+      "kind": "button",
+      "refersTo": "buzzer-button",
+      "description": "Compact red alert control for buzz / report body.",
+      "html": "<button class=\"ds-buzzer\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M7 18v-6a5 5 0 0 1 10 0v6\"/><path d=\"M5 21a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1Z\"/><path d=\"M21 12h1\"/><path d=\"M18.5 4.5 18 5\"/><path d=\"M2 12h1\"/><path d=\"M12 2v1\"/><path d=\"m4.929 4.929.707.707\"/><path d=\"M12 12v6\"/></svg>REPORT</button>",
+      "css": ".ds-buzzer { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 6px 12px; color: #fca5a5; background: rgb(239 68 68 / 0.15); border: 1px solid rgb(239 68 68 / 0.5); border-radius: 0; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer; transition: background 0.2s, color 0.2s; } .ds-buzzer:hover { background: rgb(239 68 68 / 0.25); color: #fecaca; }"
+    },
+    {
+      "name": "Role Badge",
+      "kind": "card",
+      "refersTo": "role-badge",
+      "description": "Bordered identity panel; icon and label both inked in the role's signal color.",
+      "html": "<div class=\"ds-role-badge\"><svg width=\"40\" height=\"40\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#2DA44E\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/></svg><div class=\"ds-role-meta\"><div class=\"ds-role-caption\">YOUR ROLE</div><div class=\"ds-role-name\">CREWMATE</div></div></div>",
+      "css": ".ds-role-badge { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 32px; background: rgb(88 166 255 / 0.05); border: 1px solid rgb(88 166 255 / 0.2); border-radius: 0; } .ds-role-caption { font-family: 'Rajdhani', sans-serif; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; color: #8B949E; margin-bottom: 4px; } .ds-role-name { font-family: 'Orbitron', monospace; font-weight: 900; font-size: 1.875rem; text-transform: uppercase; letter-spacing: 0.06em; color: #2DA44E; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Spaceship Cockpit",
+    "overview": "Every screen is an instrument panel held in one hand, at night, mid-game. The cabin is dark and the readouts glow; the player glances down, acts, and looks back up at the room. The interface is hardware: flat metal panels with hairline seams, characters etched in Orbitron, indicator lights in Hologram Blue. Depth comes from light, not from drop shadows. Motion is electrical: elements pulse while armed, snap on contact, and fire a haptic the instant they register. The scan->action->success loop is the emotional apex; everything else recedes around it. It rejects the cartoonish Among Us clone, the cluttered quiz app, and the corporate SaaS dashboard.",
+    "keyCharacteristics": [
+      "Dark cabin (#0D1117) by default; color-scheme dark, no light mode.",
+      "Zero corner radius. Sharp panels everywhere; pills reserved for dots and tags.",
+      "Depth via neon glow and tonal fills, not drop shadows.",
+      "Orbitron display / Rajdhani labels / JetBrains Mono body.",
+      "Color is signal: blue active, green crewmate, red impostor/sabotage, amber caution.",
+      "Charged motion: armed states pulse, contact snaps, haptics confirm."
+    ],
+    "rules": [
+      { "name": "The One Light Rule", "body": "Hologram Blue is the only ambient accent. Green, red, and amber are signals that appear because the game state or a status demands them, never to add color.", "section": "colors" },
+      { "name": "The Camouflage Parity Rule", "body": "The impostor success flow must be structurally identical to the crewmate flow. The only sanctioned difference is the signal color and the haptic/glitch character, never layout, copy length, or information.", "section": "colors" },
+      { "name": "The Etched-Label Rule", "body": "Uppercase plus wide tracking belongs to Orbitron/Rajdhani labels and headings only. Never set body sentences in all-caps.", "section": "typography" },
+      { "name": "The Three-Voice Ceiling", "body": "Display is Orbitron, body is JetBrains Mono, labels are Rajdhani. No fourth family.", "section": "typography" },
+      { "name": "The Light-Not-Shadow Rule", "body": "Depth is conveyed with glow, tonal fill, and hairline borders, never a soft grey drop shadow. If an element needs to feel raised, light it.", "section": "elevation" },
+      { "name": "The Glow-Means-Live Rule", "body": "A blue halo signals an interactive, armed, or focused element. Don't apply glow to static decoration.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep the cabin dark: #0D1117 background, color-scheme dark, Readout White text. There is no light mode.",
+      "Do keep every corner sharp (--radius: 0). Pills (9999px) only for tags, dots, and ping rings.",
+      "Do convey depth with glow, tonal fills, and hairline borders. Light the element; don't shadow it.",
+      "Do reserve green/red/amber for real game and status signals, and keep Hologram Blue as the single ambient accent.",
+      "Do pair every interaction with a haptic and an instant visual confirmation.",
+      "Do give touch targets at least 44px and keep one primary action per screen.",
+      "Do provide a prefers-reduced-motion path for every animation; the scan-to-success loop must complete with motion suppressed.",
+      "Do keep crewmate and impostor success flows structurally identical.",
+      "Do keep body text at Instrument Grey or brighter; verify at least 4.5:1 on the dark cabin."
+    ],
+    "donts": [
+      "Don't make it a cartoonish Among Us clone: no bean characters, no primary-color crewmate cosmetics, no toy-like rounding or bounce.",
+      "Don't let it become a cluttered quiz app: no dense menus, no long scrollable option walls, no settings sprawl.",
+      "Don't dress the organizer dashboard as a corporate SaaS admin: no cream/navy, no hero-metric template, no tracked-uppercase eyebrow over every section.",
+      "Don't use soft grey drop shadows or border-radius >= 12px on panels.",
+      "Don't set body sentences in all-caps; uppercase is for Orbitron/Rajdhani labels and headings only.",
+      "Don't add a fourth font family.",
+      "Don't leak quest information into the impostor flow.",
+      "Don't drop body text below Instrument Grey (#8B949E)."
+    ]
+  }
+}

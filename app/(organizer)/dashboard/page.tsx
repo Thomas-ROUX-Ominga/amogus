@@ -53,8 +53,9 @@ export default function DashboardPage({ searchParams }: DashboardPageProps) {
                 <input
                   ref={gameInputRef}
                   type="text"
+                  aria-label={t("admin.dashboard.selectSessionTitle")}
                   placeholder={t("admin.dashboard.selectSessionPlaceholder")}
-                  className="w-full px-4 py-3 bg-black/50 border border-primary/30 text-primary placeholder:text-primary/30 font-mono text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                  className="w-full px-4 py-3 bg-black/50 border border-primary/30 text-primary placeholder:text-primary/30 font-mono text-sm focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/35 transition-colors"
                   onKeyPress={(e) => {
                     if (e.key === "Enter") {
                       const value = (e.target as HTMLInputElement).value.trim();

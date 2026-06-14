@@ -142,7 +142,7 @@ export function QuestSimon({ duration, onSuccess, onError }: QuestSimonProps) {
                                 onClick={() => handleColorClick(color)}
                                 tabIndex={isInputLocked ? -1 : 0}
                                 className={`
-                                    relative aspect-square rounded-2xl transition-all duration-150
+                                    relative aspect-square rounded-none transition-all duration-150
                                     ${config.bg}
                                     ${config.shadow}
                                     ${isActive 
@@ -158,7 +158,7 @@ export function QuestSimon({ duration, onSuccess, onError }: QuestSimonProps) {
                                 aria-label={`Bouton ${color}`}
                             >
                                 {isActive && (
-                                    <div className="absolute inset-0 rounded-2xl bg-white/30 animate-pulse blur-sm" />
+                                    <div className="absolute inset-0 rounded-none bg-white/30 animate-pulse blur-sm" />
                                 )}
                             </m.button>
                         );

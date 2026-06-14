@@ -225,6 +225,7 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
                   <div className="flex items-center gap-2 max-w-full">
                     <input
                       type="text"
+                      aria-label={t("admin.batches.editZoneName")}
                       value={editingName}
                       onChange={(e) => setEditingName(e.target.value.slice(0, 60))}
                       onKeyDown={(e) => {
@@ -237,14 +238,15 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
                           handleCancelEditing();
                         }
                       }}
-                      className="h-8 w-full max-w-[240px] bg-black border border-primary/40 px-2 text-[11px] font-mono text-primary uppercase tracking-wider focus:outline-none focus:border-primary"
+                      className="h-8 w-full max-w-[240px] bg-black border border-primary/40 px-2 text-[11px] font-mono text-primary uppercase tracking-wider focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/35"
                     />
                     <button
                       type="button"
                       onClick={() => void handleSaveName(batch.id)}
                       disabled={savingNameId === batch.id || !editingName.trim()}
-                      className="p-1.5 border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
                       title={t("common.actions.save")}
+                      aria-label={t("common.actions.save")}
                     >
                       <Check size={12} />
                     </button>
@@ -252,8 +254,9 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
                       type="button"
                       onClick={handleCancelEditing}
                       disabled={savingNameId === batch.id}
-                      className="p-1.5 border border-primary/25 text-muted-foreground hover:text-foreground hover:border-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center border border-primary/25 text-muted-foreground hover:text-foreground hover:border-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
                       title={t("common.actions.cancel")}
+                      aria-label={t("common.actions.cancel")}
                     >
                       <X size={12} />
                     </button>
@@ -266,8 +269,9 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
                     <button
                       type="button"
                       onClick={() => handleStartEditing(batch)}
-                      className="p-1 border border-primary/25 text-primary/70 hover:text-primary hover:border-primary/45 hover:bg-primary/10 transition-colors shrink-0"
+                      className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center border border-primary/25 text-primary/70 hover:text-primary hover:border-primary/45 hover:bg-primary/10 transition-colors shrink-0"
                       title={t("admin.batches.editZoneName")}
+                      aria-label={t("admin.batches.editZoneName")}
                     >
                       <Pencil size={10} />
                     </button>
@@ -293,6 +297,7 @@ export function BatchList({ refreshTrigger, onBatchDeleted }: BatchListProps) {
                 disabled={deletingId === batch.id}
                 className="p-2 text-destructive hover:text-destructive/80 hover:bg-destructive/10 border border-destructive/30 hover:border-destructive/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 title={t("admin.batches.deleteBatch")}
+                aria-label={t("admin.batches.deleteBatch")}
               >
                 <Trash2 size={16} />
               </button>

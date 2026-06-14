@@ -43,6 +43,7 @@ export function LiveDashboard({ gameId, onGameChange }: LiveDashboardProps) {
   } = useSWR(gameId, fetcher, {
     refreshInterval: DASHBOARD_REFRESH_INTERVAL,
     revalidateOnFocus: false,
+    refreshWhenHidden: false,
     errorRetryCount: 3,
   });
 

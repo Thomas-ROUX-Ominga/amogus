@@ -42,13 +42,13 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
             className="w-full max-w-md mx-auto space-y-8 px-4"
         >
             <div className="flex flex-col items-center gap-4">
-                <div className="w-20 h-20 rounded-full border-2 border-[#58A6FF]/30 flex items-center justify-center bg-[#58A6FF]/5 animate-pulse">
-                    <Shield className="text-[#58A6FF] w-10 h-10" />
+                <div className="w-20 h-20 rounded-full border-2 border-primary/30 flex items-center justify-center bg-primary/5 animate-pulse">
+                    <Shield className="text-primary w-10 h-10" />
                 </div>
-                <h2 className="text-3xl font-black uppercase tracking-[0.2em] text-[#58A6FF] font-orbitron">
+                <h2 className="text-3xl font-black uppercase tracking-[0.2em] text-primary font-orbitron">
                     {t("game.roleSelection.title")}
                 </h2>
-                <p className="text-xs text-[#8B949E] uppercase tracking-widest leading-relaxed font-rajdhani">
+                <p className="text-xs text-muted-foreground uppercase tracking-widest leading-relaxed font-rajdhani">
                     {t("game.roleSelection.subtitle")}
                 </p>
             </div>
@@ -59,15 +59,14 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleRoleSelect("CREWMATE")}
                     disabled={isSelectingRole}
-                    className="w-full min-h-[120px] p-6 border-2 border-[#2DA44E] bg-[#2DA44E]/10 hover:bg-[#2DA44E]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex flex-col items-center justify-center gap-3 group"
-                    style={{ minWidth: '44px', minHeight: '120px' }}
+                    className="w-full min-h-[120px] p-6 border-2 border-role-crewmate bg-role-crewmate/10 hover:bg-role-crewmate/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex flex-col items-center justify-center gap-3 group"
                 >
-                    <Users className="w-12 h-12 text-[#2DA44E] group-hover:scale-110 transition-transform" />
+                    <Users className="w-12 h-12 text-role-crewmate group-hover:scale-110 transition-transform" />
                     <div className="text-center">
-                        <div className="text-2xl font-black uppercase tracking-wider text-[#2DA44E] font-rajdhani">
+                        <div className="text-2xl font-black uppercase tracking-wider text-role-crewmate font-rajdhani">
                             {t("game.roleSelection.crewmate")}
                         </div>
-                        <div className="text-xs text-[#2DA44E]/70 uppercase tracking-widest mt-1 font-rajdhani">
+                        <div className="text-xs text-role-crewmate/70 uppercase tracking-widest mt-1 font-rajdhani">
                             {t("game.roleSelection.crewmateDescription")}
                         </div>
                     </div>
@@ -78,15 +77,14 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleRoleSelect("IMPOSTOR")}
                     disabled={isSelectingRole}
-                    className="w-full min-h-[120px] p-6 border-2 border-[#DA3633] bg-[#DA3633]/10 hover:bg-[#DA3633]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex flex-col items-center justify-center gap-3 group"
-                    style={{ minWidth: '44px', minHeight: '120px' }}
+                    className="w-full min-h-[120px] p-6 border-2 border-role-impostor bg-role-impostor/10 hover:bg-role-impostor/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex flex-col items-center justify-center gap-3 group"
                 >
-                    <Shield className="w-12 h-12 text-[#DA3633] group-hover:scale-110 transition-transform" />
+                    <Shield className="w-12 h-12 text-role-impostor group-hover:scale-110 transition-transform" />
                     <div className="text-center">
-                        <div className="text-2xl font-black uppercase tracking-wider text-[#DA3633] font-rajdhani">
+                        <div className="text-2xl font-black uppercase tracking-wider text-role-impostor font-rajdhani">
                             {t("game.roleSelection.impostor")}
                         </div>
-                        <div className="text-xs text-[#DA3633]/70 uppercase tracking-widest mt-1 font-rajdhani">
+                        <div className="text-xs text-role-impostor/70 uppercase tracking-widest mt-1 font-rajdhani">
                             {t("game.roleSelection.impostorDescription")}
                         </div>
                     </div>
@@ -97,9 +95,9 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                 <m.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="p-4 border border-[#58A6FF]/20 bg-[#58A6FF]/5 text-center"
+                    className="p-4 border border-primary/20 bg-primary/5 text-center"
                 >
-                    <div className="text-xs text-[#58A6FF] uppercase tracking-widest animate-pulse font-rajdhani">
+                    <div className="text-xs text-primary uppercase tracking-widest animate-pulse font-rajdhani">
                         {t("game.roleSelection.assigning")}
                     </div>
                 </m.div>
@@ -109,9 +107,9 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                 <m.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="p-4 border border-[#DA3633]/50 bg-[#DA3633]/10"
+                    className="p-4 border border-role-impostor/50 bg-role-impostor/10"
                 >
-                    <div className="text-sm text-[#DA3633] font-rajdhani">
+                    <div className="text-sm text-role-impostor font-rajdhani">
                         {roleError}
                     </div>
                     <button
@@ -121,14 +119,14 @@ export function RoleSelection({ gameId, onRoleSelected }: RoleSelectionProps) {
                                 handleRoleSelect(lastAttemptedRole.current);
                             }
                         }}
-                        className="mt-2 text-xs text-[#DA3633]/70 uppercase tracking-widest hover:text-[#DA3633] transition-colors font-rajdhani"
+                        className="mt-2 text-xs text-role-impostor/70 uppercase tracking-widest hover:text-role-impostor transition-colors font-rajdhani"
                     >
                         {t("game.roleSelection.retry")}
                     </button>
                 </m.div>
             )}
 
-            <div className="text-[8px] text-[#8B949E]/40 uppercase tracking-widest text-center font-rajdhani">
+            <div className="text-[8px] text-muted-foreground/40 uppercase tracking-widest text-center font-rajdhani">
                 {t("game.roleSelection.moduleStatus")}
             </div>
         </m.div>

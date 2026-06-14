@@ -247,13 +247,13 @@ describe("RoleSelection Component", () => {
 
     it("should have minimum 44px touch targets for buttons", () => {
         render(<RoleSelection gameId="game-123" />);
-        
+
         const crewmateButton = screen.getByText(/ÉQUIPIER/i).closest("button");
         const impostorButton = screen.getByText(/Imp/i).closest("button");
 
-        expect(crewmateButton?.style.minWidth).toBe('44px');
-        expect(crewmateButton?.style.minHeight).toBe('120px');
-        expect(impostorButton?.style.minWidth).toBe('44px');
-        expect(impostorButton?.style.minHeight).toBe('120px');
+        expect(crewmateButton?.className).toContain('min-h-[120px]');
+        expect(crewmateButton?.className).toContain('w-full');
+        expect(impostorButton?.className).toContain('min-h-[120px]');
+        expect(impostorButton?.className).toContain('w-full');
     });
 });

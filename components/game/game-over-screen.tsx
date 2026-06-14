@@ -24,17 +24,22 @@ export function GameOverScreen({ winner, userRole, gameId }: GameOverScreenProps
     if (winner === userRole) {
         title = t("game.gameOver.victoryTitle");
         message = userRole === "IMPOSTOR" ? t("game.gameOver.impostorWin") : t("game.gameOver.crewWin");
-        icon = <Trophy className="w-16 h-16 text-green-500 animate-bounce" />;
-        colorClass = "border-green-500/40 shadow-[0_0_50px_rgba(34,197,94,0.3)]";
+        icon = <Trophy className="w-16 h-16 text-role-crewmate animate-pulse" />;
+        colorClass = "border-role-crewmate/40 shadow-[0_0_50px_rgba(45,164,78,0.3)]";
     } else {
         title = t("game.gameOver.defeatTitle");
         message = userRole === "IMPOSTOR" ? t("game.gameOver.impostorDefeat") : t("game.gameOver.crewDefeat");
-        icon = <Skull className="w-16 h-16 text-red-500 animate-pulse" />;
-        colorClass = "border-red-500/40 shadow-[0_0_50px_rgba(239,68,68,0.3)]";
+        icon = <Skull className="w-16 h-16 text-role-impostor animate-pulse" />;
+        colorClass = "border-role-impostor/40 shadow-[0_0_50px_rgba(218,54,51,0.3)]";
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-700">
+        <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="game-over-title"
+            className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-700"
+        >
             <div className={`max-w-md w-full border-2 p-8 md:p-12 space-y-8 bg-black/80 text-center relative overflow-hidden ${colorClass}`}>
                 {/* Background decorative elements */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-20" />
@@ -44,7 +49,7 @@ export function GameOverScreen({ winner, userRole, gameId }: GameOverScreenProps
                         {icon}
                     </div>
                     
-                    <h2 className="text-4xl font-black tracking-[0.2em] uppercase font-orbitron">
+                    <h2 id="game-over-title" className="text-4xl font-black tracking-[0.2em] uppercase font-orbitron">
                         {title}
                     </h2>
                     

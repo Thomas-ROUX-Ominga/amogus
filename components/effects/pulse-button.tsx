@@ -1,6 +1,6 @@
 "use client";
 
-import { m } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
@@ -18,9 +18,10 @@ export function PulseButton({
     disabled,
 }: PulseButtonProps) {
     const t = useTranslations();
+    const prefersReducedMotion = useReducedMotion();
     return (
         <div className="relative inline-block">
-            {isLoading && (
+            {isLoading && !prefersReducedMotion && (
                 <m.div
                     className="absolute inset-0 rounded bg-primary/20"
                     initial={{ scale: 1, opacity: 0.5 }}
@@ -44,7 +45,7 @@ export function PulseButton({
             >
                 {isLoading ? (
                     <span className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-background rounded-full animate-bounce" />
+                        <span className="w-1.5 h-1.5 bg-background rounded-full animate-pulse" />
                         {t("common.actions.loading")}
                     </span>
                 ) : children}

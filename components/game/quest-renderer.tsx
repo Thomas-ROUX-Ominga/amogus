@@ -8,7 +8,11 @@ import { QuestNumberInput } from "@/components/game/quest-number-input";
 import { QuestIntrus } from "@/components/game/quest-intrus";
 import { QuestMiniBac } from "@/components/game/mini-games/quest-mini-bac";
 import { QuestSimon } from "@/components/game/mini-games/quest-simon";
-import { QuestWires } from "@/components/game/mini-games/quest-wires";
+import dynamic from "next/dynamic";
+const QuestWires = dynamic(
+  () => import("@/components/game/mini-games/quest-wires").then((m) => m.QuestWires),
+  { ssr: false }
+);
 import { QuestGauges } from "@/components/game/mini-games/quest-gauges";
 import { QuestPad } from "@/components/game/mini-games/quest-pad";
 import { QuestMemory } from "@/components/game/mini-games/quest-memory";

@@ -208,7 +208,7 @@ export function QuestMemory({ duration, onSuccess, onError }: QuestMemoryProps) 
                                 disabled={isLocked || card.isMatched}
                                 className={`aspect-square min-h-[44px] rounded-sm border transition-all ${
                                     card.isMatched
-                                        ? "border-[#2DA44E] bg-[#2DA44E]/20 text-[#2DA44E] shadow-[0_0_10px_rgba(45,164,78,0.35)]"
+                                        ? "border-role-crewmate bg-role-crewmate/20 text-role-crewmate shadow-[0_0_10px_rgba(45,164,78,0.35)]"
                                         : isRevealed
                                             ? "border-primary/25 bg-black/70 text-foreground"
                                             : "border-primary/40 bg-primary/10 text-primary/70 hover:bg-primary/15"

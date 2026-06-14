@@ -113,14 +113,15 @@ export function BatchForm({ onBatchCreated }: BatchFormProps) {
 
         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           <div className="space-y-2">
-            <label className="text-[10px] uppercase tracking-widest text-primary/70">
+            <label htmlFor="zone-name" className="text-[10px] uppercase tracking-widest text-primary/70">
               {t("admin.batchForm.zoneNameLabel")}
             </label>
             <input
+              id="zone-name"
               type="text"
               value={zoneName}
               onChange={(e) => setZoneName(e.target.value.slice(0, 60))}
-              className="w-full h-12 bg-black/80 border border-primary/30 p-3 font-mono text-sm tracking-wider text-foreground placeholder:text-primary/20 focus:outline-none focus:border-primary transition-all rounded-sm uppercase"
+              className="w-full h-12 bg-black/80 border border-primary/30 p-3 font-mono text-sm tracking-wider text-foreground placeholder:text-primary/20 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/35 transition-all rounded-sm uppercase"
               placeholder={t("admin.batchForm.zoneNamePlaceholder")}
               disabled={isSubmitting}
               required

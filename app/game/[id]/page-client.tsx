@@ -349,7 +349,7 @@ export default function LobbyPage() {
                             )}
 
                             {launchError && (
-                                <div className="p-4 border-l-4 border-destructive/50 bg-destructive/5 text-xs text-destructive/80 tracking-wide space-y-2">
+                                <div className="p-4 border border-destructive/40 bg-destructive/5 text-xs text-destructive/80 tracking-wide space-y-2">
                                     <div className="font-bold uppercase">{t("game.lobby.launchFailedTitle")}</div>
                                     <div>
                                         {getLocalizedErrorMessage({
@@ -368,7 +368,7 @@ export default function LobbyPage() {
                             )}
 
                             {!launchError && !canLaunch && currentPlayerCount < minimumPlayersToLaunch && (
-                                <div className="p-4 border-l-4 border-yellow-500/30 bg-yellow-500/5 text-xs text-yellow-500/80 italic tracking-wide">
+                                <div className="p-4 border border-yellow-500/30 bg-yellow-500/5 text-xs text-yellow-500/80 italic tracking-wide">
                                     {t("game.lobby.awaitingPlayers", {
                                         current: String(currentPlayerCount),
                                         required: String(minimumPlayersToLaunch),
@@ -377,7 +377,7 @@ export default function LobbyPage() {
                             )}
 
                             {!launchError && canLaunch && (
-                                <div className="p-4 border-l-4 border-primary/30 bg-primary/5 text-xs text-muted-foreground italic tracking-wide">
+                                <div className="p-4 border border-primary/20 bg-primary/5 text-xs text-muted-foreground italic tracking-wide">
                                     {t("game.lobby.systemReady")}
                                 </div>
                             )}

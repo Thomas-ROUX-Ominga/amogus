@@ -5,7 +5,6 @@ import { Printer, Check, X, Pencil } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Batch, Quest } from "@/types/quest";
 import { updateQuestsLocations } from "@/lib/redis/batch-actions";
-import { generateQuestPDF, downloadPDF } from "@/lib/utils/pdf-utils";
 import { useAuthGuard } from "@/hooks/use-auth";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-messages";
 
@@ -126,6 +125,7 @@ export function BatchDetail({ batch, onUpdate, className }: BatchDetailProps) {
     setError("");
 
     try {
+      const { generateQuestPDF, downloadPDF } = await import("@/lib/utils/pdf-utils");
       const pdfBlob = await generateQuestPDF(batch.quests, batch.sabotages);
       downloadPDF(pdfBlob, `batch-${batch.id.slice(-8)}-quests.pdf`);
     } catch {
@@ -236,6 +236,7 @@ export function BatchDetail({ batch, onUpdate, className }: BatchDetailProps) {
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
+                        aria-label={t("admin.batchDetail.editLocation")}
                         value={editingValue}
                         onChange={(e) => setEditingValue(e.target.value.slice(0, 50))}
                         onKeyDown={(e) => {
@@ -249,19 +250,21 @@ export function BatchDetail({ batch, onUpdate, className }: BatchDetailProps) {
                           }
                         }}
                         placeholder={t("admin.batchDetail.enterLocation")}
-                        className="flex-1 h-8 bg-black border border-primary/40 text-primary text-xs px-2 focus:outline-none focus:border-primary/60 placeholder:text-muted-foreground/50"
+                        className="flex-1 h-8 bg-black border border-primary/40 text-primary text-xs px-2 focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/35 placeholder:text-muted-foreground/50"
                       />
                       <button
                         type="button"
                           onClick={() => void handleConfirmEditingLocation(quest.id, index)}
-                        className="p-1.5 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
+                        className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center border border-primary/40 text-primary hover:bg-primary/10 transition-all"
+                        aria-label={t("common.actions.save")}
                       >
                         <Check size={12} />
                       </button>
                       <button
                         type="button"
                         onClick={handleCancelEditingLocation}
-                        className="p-1.5 border border-primary/25 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all"
+                        className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center border border-primary/25 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all"
+                        aria-label={t("common.actions.cancel")}
                       >
                         <X size={12} />
                       </button>
@@ -274,8 +277,9 @@ export function BatchDetail({ batch, onUpdate, className }: BatchDetailProps) {
                       <button
                         type="button"
                         onClick={() => handleStartEditingLocation(quest, index)}
-                        className="p-1 border border-primary/25 text-primary/70 hover:text-primary hover:border-primary/45 hover:bg-primary/10 transition-colors shrink-0"
+                        className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center border border-primary/25 text-primary/70 hover:text-primary hover:border-primary/45 hover:bg-primary/10 transition-colors shrink-0"
                         title={t("admin.batchDetail.editLocation")}
+                        aria-label={t("admin.batchDetail.editLocation")}
                       >
                         <Pencil size={10} />
                       </button>
@@ -308,6 +312,7 @@ export function BatchDetail({ batch, onUpdate, className }: BatchDetailProps) {
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
+                        aria-label={t("admin.batchDetail.editLocation")}
                         value={editingValue}
                         onChange={(e) => setEditingValue(e.target.value.slice(0, 50))}
                         onKeyDown={(e) => {
@@ -321,19 +326,21 @@ export function BatchDetail({ batch, onUpdate, className }: BatchDetailProps) {
                           }
                         }}
                         placeholder={t("admin.batchDetail.enterLocation")}
-                        className="flex-1 h-8 bg-black border border-primary/40 text-primary text-xs px-2 focus:outline-none focus:border-primary/60 placeholder:text-muted-foreground/50"
+                        className="flex-1 h-8 bg-black border border-primary/40 text-primary text-xs px-2 focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/35 placeholder:text-muted-foreground/50"
                       />
                       <button
                         type="button"
                         onClick={() => void handleConfirmEditingSabotageLocation(sabotage.key, sabotage.offset)}
-                        className="p-1.5 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
+                        className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center border border-primary/40 text-primary hover:bg-primary/10 transition-all"
+                        aria-label={t("common.actions.save")}
                       >
                         <Check size={12} />
                       </button>
                       <button
                         type="button"
                         onClick={handleCancelEditingLocation}
-                        className="p-1.5 border border-primary/25 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all"
+                        className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center border border-primary/25 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all"
+                        aria-label={t("common.actions.cancel")}
                       >
                         <X size={12} />
                       </button>
@@ -346,8 +353,9 @@ export function BatchDetail({ batch, onUpdate, className }: BatchDetailProps) {
                       <button
                         type="button"
                         onClick={() => handleStartEditingSabotageLocation(sabotage.key, sabotage.offset)}
-                        className="p-1 border border-primary/25 text-primary/70 hover:text-primary hover:border-primary/45 hover:bg-primary/10 transition-colors shrink-0"
+                        className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center border border-primary/25 text-primary/70 hover:text-primary hover:border-primary/45 hover:bg-primary/10 transition-colors shrink-0"
                         title={t("admin.batchDetail.editLocation")}
+                        aria-label={t("admin.batchDetail.editLocation")}
                       >
                         <Pencil size={10} />
                       </button>

@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Player } from "@/types/game";
 import { useLocale, useTranslations } from "next-intl";
 import { PlayerQuestProgress } from "./player-quest-progress";
@@ -9,7 +10,7 @@ interface PlayerListProps {
     currentUserId: string;
 }
 
-export function PlayerList({ players, currentUserId }: PlayerListProps) {
+function PlayerListInner({ players, currentUserId }: PlayerListProps) {
     const t = useTranslations();
     const locale = useLocale();
     const roleLabelMap: Record<string, string> = {
@@ -77,3 +78,5 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
         </div>
     );
 }
+
+export const PlayerList = React.memo(PlayerListInner);

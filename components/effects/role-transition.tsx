@@ -45,7 +45,7 @@ export function RoleTransition({ role, gameId, onComplete }: RoleTransitionProps
     }, [gameId, onComplete]);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0D1117]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
             <AnimatePresence mode="wait">
                 {phase === "badge" && (
                     <m.div

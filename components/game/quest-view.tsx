@@ -22,9 +22,9 @@ interface QuestViewProps {
 }
 
 const DURATION_COLORS: Record<QuestDuration, string> = {
-    short: "border-[#2DA44E] text-[#2DA44E] bg-[#2DA44E]/10",
-    medium: "border-[#D29922] text-[#D29922] bg-[#D29922]/10",
-    long: "border-[#DA3633] text-[#DA3633] bg-[#DA3633]/10",
+    short: "border-role-crewmate text-role-crewmate bg-role-crewmate/10",
+    medium: "border-warning text-warning bg-warning/10",
+    long: "border-role-impostor text-role-impostor bg-role-impostor/10",
 };
 
 const SUCCESS_OVERLAY_DURATION_MS = 2000;

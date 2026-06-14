@@ -513,11 +513,25 @@ export function useRealTimeGamePolling(gameId: string, userId?: string, enabled 
             connectSse();
         };
 
+        const handleVisibilityChange = () => {
+            if (disposed) return;
+            if (document.visibilityState === "hidden") {
+                stopFallbackPolling();
+            } else {
+                const { syncStatus } = useGameStore.getState();
+                if (syncStatus !== "connected") {
+                    startFallbackPolling();
+                }
+            }
+        };
+
         window.addEventListener("online", handleOnline);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
 
         return () => {
             disposed = true;
             window.removeEventListener("online", handleOnline);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
             clearReconnectTimer();
             stopFallbackPolling();
             closeEventSource();

@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Player } from "@/types/game";
 import { getTotalQuests } from "@/lib/utils/quest-calculations";
 import { Clock, CheckCircle } from "lucide-react";
@@ -12,7 +13,7 @@ interface PlayerQuestProgressProps {
     locale?: string;
 }
 
-export function PlayerQuestProgress({
+function PlayerQuestProgressInner({
     player,
     isCurrentUser = false,
     totalCount: providedTotalCount,
@@ -73,3 +74,5 @@ export function PlayerQuestProgress({
         </div>
     );
 }
+
+export const PlayerQuestProgress = React.memo(PlayerQuestProgressInner);

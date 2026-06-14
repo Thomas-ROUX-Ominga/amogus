@@ -60,7 +60,7 @@ export default function Home() {
                 AMOGUS <span className="text-primary">COCKPIT</span>
               </h1>
             </m.div>
-            <p className="text-muted-foreground text-xs uppercase tracking-[0.2em] border-l-2 border-primary/20 pl-4 py-1">
+            <p className="text-muted-foreground/70 text-xs uppercase tracking-[0.2em]">
               {t("home.missionUplink")}
             </p>
           </header>

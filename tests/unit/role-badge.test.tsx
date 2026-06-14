@@ -18,13 +18,13 @@ describe("RoleBadge", () => {
     it("should render Crewmate icon with correct color in full variant", () => {
         render(<RoleBadge role="CREWMATE" variant="full" />);
         const roleText = screen.getByText(/ÉQUIPIER/i);
-        expect(roleText.style.color).toBe("rgb(45, 164, 78)");
+        expect(roleText.className).toContain("text-role-crewmate");
     });
 
     it("should render Impostor icon with correct color in full variant", () => {
         render(<RoleBadge role="IMPOSTOR" variant="full" />);
         const roleText = screen.getByText(/Imp/i);
-        expect(roleText.style.color).toBe("rgb(218, 54, 51)");
+        expect(roleText.className).toContain("text-role-impostor");
     });
 
     it("should render compact variant with smaller text", () => {

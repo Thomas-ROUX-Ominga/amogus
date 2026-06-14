@@ -103,7 +103,7 @@ describe("Integration: Impostor Scan Flow", () => {
         });
 
         // Assert - Success overlay appears
-        const overlay = document.querySelector('h1.text-\\[\\#DA3633\\]');
+        const overlay = document.querySelector('h1.text-role-impostor');
         expect(overlay).toBeInTheDocument();
 
         // Assert - No quest content visible at any point
@@ -153,14 +153,14 @@ describe("Integration: Impostor Scan Flow", () => {
         });
 
         // Assert - Success overlay appears
-        const overlay = document.querySelector('h1.text-\\[\\#DA3633\\]');
+        const overlay = document.querySelector('h1.text-role-impostor');
         expect(overlay).toBeInTheDocument();
 
         // Assert - Success overlay persists for full 2000ms
         act(() => {
             vi.advanceTimersByTime(1999);
         });
-        expect(document.querySelector('h1.text-\\[\\#DA3633\\]')).toBeInTheDocument();
+        expect(document.querySelector('h1.text-role-impostor')).toBeInTheDocument();
 
         // Assert - Auto redirect callback is triggered after 2000ms
         act(() => {

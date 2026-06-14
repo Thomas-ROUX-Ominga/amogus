@@ -24,7 +24,12 @@ export function EliminatedScreen({
     const isGhostInfo = phase === "ghost-info";
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black backdrop-blur-md">
+        <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="eliminated-screen-title"
+            className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4 bg-black backdrop-blur-md"
+        >
             <div
                 className={`max-w-md w-full border-2 ${
                     isImpostor ? "border-red-600/50" : "border-red-500/50"
@@ -35,7 +40,7 @@ export function EliminatedScreen({
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-red-400">
                         <AlertTriangle className="w-6 h-6" />
-                        <h1 className="text-xl font-bold font-orbitron uppercase tracking-wider">
+                        <h1 id="eliminated-screen-title" className="text-xl font-bold font-orbitron uppercase tracking-wider">
                             {isGhostInfo
                                 ? t("game.eliminated.ghostPopupTitle")
                                 : t("game.eliminated.awaitingTitle")}

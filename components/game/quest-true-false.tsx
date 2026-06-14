@@ -39,15 +39,15 @@ export function QuestTrueFalse({ quest, onSuccess, onError }: QuestTrueFalseProp
 
         if (selectedValue === value) {
             if (isCorrect) {
-                return `${base} border-[#2DA44E] bg-[#2DA44E]/10 text-[#2DA44E]`;
+                return `${base} border-role-crewmate bg-role-crewmate/10 text-role-crewmate`;
             }
-            return `${base} border-[#DA3633] bg-[#DA3633]/10 text-[#DA3633]`;
+            return `${base} border-role-impostor bg-role-impostor/10 text-role-impostor`;
         }
 
         if (value === "true") {
-            return `${base} border-[#2DA44E]/40 text-[#2DA44E] bg-black/50 backdrop-blur-sm hover:bg-[#2DA44E]/10`;
+            return `${base} border-role-crewmate/40 text-role-crewmate bg-black/50 backdrop-blur-sm hover:bg-role-crewmate/10`;
         }
-        return `${base} border-[#DA3633]/40 text-[#DA3633] bg-black/50 backdrop-blur-sm hover:bg-[#DA3633]/10`;
+        return `${base} border-role-impostor/40 text-role-impostor bg-black/50 backdrop-blur-sm hover:bg-role-impostor/10`;
     };
 
     return (

@@ -90,7 +90,7 @@ export function GameRulesModal({ isOpen, onClose }: GameRulesModalProps) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1200] bg-black/80 backdrop-blur-md p-2 sm:p-4"
+      className="fixed inset-0 z-[var(--z-tooltip)] bg-black/80 backdrop-blur-md p-2 sm:p-4"
       data-testid="rules-overlay"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
@@ -123,7 +123,7 @@ export function GameRulesModal({ isOpen, onClose }: GameRulesModalProps) {
         </div>
 
         <article className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
-          <p className="mb-6 border-l-2 border-primary/25 pl-3 font-rajdhani text-sm leading-relaxed text-foreground/90 sm:text-base">
+          <p className="mb-6 border border-primary/20 bg-primary/5 px-3 py-2 font-rajdhani text-sm leading-relaxed text-foreground/90 sm:text-base">
             {t("common.rules.intro")}
           </p>
 

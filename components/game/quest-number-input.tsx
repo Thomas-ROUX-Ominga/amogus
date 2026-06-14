@@ -67,13 +67,13 @@ export function QuestNumberInput({ quest, onSuccess, onError }: QuestNumberInput
     };
 
     const getInputStyle = () => {
-        const base = "w-full min-h-[48px] flex items-center px-4 py-3 border-2 font-rajdhani font-bold text-base transition-colors touch-manipulation backdrop-blur-sm bg-black/50 text-foreground/90 focus:outline-none";
+        const base = "w-full min-h-[48px] flex items-center px-4 py-3 border-2 font-rajdhani font-bold text-base transition-colors touch-manipulation backdrop-blur-sm bg-black/50 text-foreground/90 focus:outline-none focus:ring-2 focus:ring-primary/35";
 
         if (isCorrect !== null) {
             if (isCorrect) {
-                return `${base} border-[#2DA44E] text-[#2DA44E]`;
+                return `${base} border-role-crewmate text-role-crewmate`;
             }
-            return `${base} border-[#DA3633] text-[#DA3633]`;
+            return `${base} border-role-impostor text-role-impostor`;
         }
 
         return `${base} border-primary/20 focus:border-primary/40 focus:bg-primary/5`;
@@ -97,7 +97,7 @@ export function QuestNumberInput({ quest, onSuccess, onError }: QuestNumberInput
             </m.div>
 
             {almost && feedbackMessage && (
-                <p className="text-sm font-rajdhani text-[#D29922]" role="status" aria-live="polite">
+                <p className="text-sm font-rajdhani text-warning" role="status" aria-live="polite">
                     {feedbackMessage}
                 </p>
             )}

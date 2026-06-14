@@ -91,7 +91,7 @@ describe("MeetingPage", () => {
 
     expect(screen.queryByText("Corps trouvé")).not.toBeInTheDocument();
     const foundBodyPlayerButton = screen.getByRole("button", { name: /Alex/i });
-    expect(foundBodyPlayerButton.className).toContain("border-red-500/80");
+    expect(foundBodyPlayerButton.className).toContain("border-role-impostor/80");
     expect(screen.getByText(/CORPS/)).toBeInTheDocument();
   });
 

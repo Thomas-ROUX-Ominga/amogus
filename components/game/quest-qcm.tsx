@@ -74,13 +74,13 @@ export function QuestQCM({ quest, onSuccess, onError }: QuestQCMProps) {
         if (isCorrect !== null) {
             if (isSelected) {
                 if (isCorrect) {
-                    return `${base} border-[#2DA44E] bg-[#2DA44E]/10 text-[#2DA44E]`;
+                    return `${base} border-role-crewmate bg-role-crewmate/10 text-role-crewmate`;
                 }
-                return `${base} border-[#DA3633] bg-[#DA3633]/10 text-[#DA3633]`;
+                return `${base} border-role-impostor bg-role-impostor/10 text-role-impostor`;
             }
             // highlight the actual correct answers when failed
             if (failed && quest.data.answerIds.includes(value)) {
-                return `${base} border-[#2DA44E]/60 bg-[#2DA44E]/5 text-[#2DA44E]`;
+                return `${base} border-role-crewmate/60 bg-role-crewmate/5 text-role-crewmate`;
             }
         } else if (isSelected) {
              return `${base} border-primary bg-primary/20 text-primary`;

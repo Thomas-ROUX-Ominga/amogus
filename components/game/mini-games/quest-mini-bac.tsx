@@ -202,7 +202,7 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
                                     }
                                     className={`w-full min-h-[48px] px-4 py-3 border-2 font-rajdhani font-bold text-base transition-colors touch-manipulation backdrop-blur-sm bg-black/50 text-foreground/90 focus:outline-none ${
                                         hasError
-                                            ? "border-[#DA3633] text-[#DA3633]"
+                                            ? "border-role-impostor text-role-impostor"
                                             : "border-primary/20 focus:border-primary/40 focus:bg-primary/5"
                                     }`}
                                     aria-label={t("game.miniBac.inputAria", {
@@ -215,7 +215,7 @@ export function QuestMiniBac({ duration, onSuccess, onError }: QuestMiniBacProps
                                     spellCheck={false}
                                 />
                                 {hasError && (
-                                    <p className="text-[10px] text-[#DA3633] font-rajdhani" role="alert">
+                                    <p className="text-[10px] text-role-impostor font-rajdhani" role="alert">
                                         {t("game.miniBac.invalidWord")}
                                     </p>
                                 )}

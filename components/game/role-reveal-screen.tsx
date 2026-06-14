@@ -48,7 +48,12 @@ export function RoleRevealScreen({ role, onComplete }: RoleRevealScreenProps) {
   }, [onComplete, role]);
 
   return (
-    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={t(config.labelKey)}
+      className="fixed inset-0 z-[var(--z-toast)] flex items-center justify-center bg-black"
+    >
       <m.div
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 1, 0.9, 1] }}

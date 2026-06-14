@@ -216,10 +216,10 @@ export function QuestRings({ duration, onSuccess, onError }: QuestRingsProps) {
                                         <div className="relative w-[68px] h-[68px] shrink-0">
                                             <div
                                                 className={`absolute inset-0 rounded-full border-[7px] ${
-                                                    ring.completed ? "border-[#2DA44E]" : "border-white/0"
+                                                    ring.completed ? "border-role-crewmate" : "border-white/0"
                                                 }`}
                                                 style={{
-                                                    borderColor: ring.completed ? "#2DA44E" : ring.colorHex,
+                                                    borderColor: ring.completed ? "var(--role-crewmate)" : ring.colorHex,
                                                     boxShadow: ring.completed
                                                         ? "0 0 14px rgba(45,164,78,0.55)"
                                                         : `0 0 10px ${ring.colorHex}55`,

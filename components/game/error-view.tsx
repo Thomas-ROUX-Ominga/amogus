@@ -2,7 +2,7 @@
 
 import { ERROR_CODES } from "@/lib/constants/error-codes";
 
-import { m } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import { AlertTriangle, Home, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -28,6 +28,7 @@ export function ErrorView({
 }: ErrorViewProps) {
     const t = useTranslations();
     const router = useRouter();
+    const prefersReducedMotion = useReducedMotion();
     const errorCode = code || ERROR_CODES.ERR_SIGNAL_LOST;
     const localizedTitle = title || t("errors.genericTitle");
     const localizedMessage = getLocalizedErrorMessage({
@@ -78,16 +79,18 @@ export function ErrorView({
             >
                 <div className="relative inline-block">
                     <AlertTriangle className="w-24 h-24 text-destructive animate-pulse" />
-                    <m.div
-                        className="absolute inset-0 text-destructive/30 w-24 h-24"
-                        animate={{
-                            x: [-2, 2, -2],
-                            opacity: [0.5, 0.2, 0.5]
-                        }}
-                        transition={{ duration: 0.1, repeat: Infinity }}
-                    >
-                        <AlertTriangle className="w-full h-full" />
-                    </m.div>
+                    {!prefersReducedMotion && (
+                        <m.div
+                            className="absolute inset-0 text-destructive/30 w-24 h-24"
+                            animate={{
+                                x: [-2, 2, -2],
+                                opacity: [0.5, 0.2, 0.5]
+                            }}
+                            transition={{ duration: 0.1, repeat: Infinity }}
+                        >
+                            <AlertTriangle className="w-full h-full" />
+                        </m.div>
+                    )}
                 </div>
             </m.div>
 
